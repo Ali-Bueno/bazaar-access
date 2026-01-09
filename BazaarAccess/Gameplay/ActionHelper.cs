@@ -241,4 +241,67 @@ public static class ActionHelper
             return false;
         }
     }
+
+    /// <summary>
+    /// Reordena un item en el tablero (mueve a un slot adyacente).
+    /// </summary>
+    /// <param name="card">El item a mover</param>
+    /// <param name="currentSlot">Slot actual del item (0-9)</param>
+    /// <param name="direction">-1 para izquierda, +1 para derecha</param>
+    /// <returns>True si el movimiento fue exitoso</returns>
+    public static bool ReorderItem(ItemCard card, int currentSlot, int direction)
+    {
+        if (card == null)
+        {
+            Plugin.Logger.LogWarning("ReorderItem: card is null");
+            return false;
+        }
+
+        var state = AppState.CurrentState;
+        if (state == null)
+        {
+            Plugin.Logger.LogWarning("ReorderItem: AppState.CurrentState is null");
+            return false;
+        }
+
+        try
+        {
+            int cardSize = (int)card.Size;
+            int newSlot = currentSlot + direction;
+
+            // Verificar límites (10 slots en el tablero, 0-9)
+            if (newSlot < 0)
+            {
+                TolkWrapper.Speak("Already at the start");
+                return false;
+            }
+            if (newSlot + cardSize > 10)
+            {
+                TolkWrapper.Speak("Already at the end");
+                return false;
+            }
+
+            // Crear lista de sockets destino según el tamaño de la carta
+            var desiredSockets = new System.Collections.Generic.List<EContainerSocketId>();
+            for (int i = 0; i < cardSize; i++)
+            {
+                desiredSockets.Add((EContainerSocketId)(newSlot + i));
+            }
+
+            state.MoveCardCommand(card, desiredSockets, EInventorySection.Hand);
+
+            string name = ItemReader.GetCardName(card);
+            string dirName = direction < 0 ? "left" : "right";
+            TolkWrapper.Speak($"Moved {name} {dirName}");
+
+            Plugin.Logger.LogInfo($"ReorderItem: {name} from slot {currentSlot} to {newSlot}");
+            return true;
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"ReorderItem failed: {ex.Message}");
+            TolkWrapper.Speak("Move failed");
+            return false;
+        }
+    }
 }

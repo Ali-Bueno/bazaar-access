@@ -57,24 +57,29 @@ public class KeyboardNavigator : MonoBehaviour
     /// </summary>
     private AccessibleKey MapKey(Event e)
     {
-        // Usar Event.current.control para detectar Ctrl (más confiable en OnGUI)
         bool ctrl = e.control;
+        bool shift = e.shift;
         KeyCode keyCode = e.keyCode;
 
         switch (keyCode)
         {
-            // Navegación con Ctrl = lectura detallada
+            // Ctrl = lectura detallada, Shift = mover entre board/stash
             case KeyCode.UpArrow:
-                return ctrl ? AccessibleKey.ReadDetails : AccessibleKey.Up;
+                if (ctrl) return AccessibleKey.DetailUp;
+                if (shift) return AccessibleKey.MoveToBoard;
+                return AccessibleKey.Up;
 
             case KeyCode.DownArrow:
-                return ctrl ? AccessibleKey.ReadDetails : AccessibleKey.Down;
+                if (ctrl) return AccessibleKey.DetailDown;
+                if (shift) return AccessibleKey.MoveToStash;
+                return AccessibleKey.Down;
 
+            // Shift+Izq/Der = reordenar items en el tablero
             case KeyCode.LeftArrow:
-                return AccessibleKey.Left;
+                return shift ? AccessibleKey.ReorderLeft : AccessibleKey.Left;
 
             case KeyCode.RightArrow:
-                return AccessibleKey.Right;
+                return shift ? AccessibleKey.ReorderRight : AccessibleKey.Right;
 
             // Acciones principales
             case KeyCode.Return:
@@ -100,6 +105,9 @@ public class KeyboardNavigator : MonoBehaviour
 
             case KeyCode.C:
                 return AccessibleKey.GoToChoices;
+
+            case KeyCode.F:
+                return AccessibleKey.GoToEnemy;
 
             // Acciones del juego
             case KeyCode.E:

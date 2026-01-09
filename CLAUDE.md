@@ -2,6 +2,17 @@
 
 Plugin de BepInEx para hacer el juego "The Bazaar" accesible para personas ciegas usando Tolk como lector de pantalla.
 
+## Código del juego
+
+El código descompilado del juego está en: `D:\code\unity and such\bazaar access\bazaar code`
+- **NO buscar en otros sitios**
+- **Código más importante**: `bazaar code\TheBazaarRuntime` - buscar aquí primero
+- Si no se encuentra, buscar en otras carpetas de `bazaar code`
+- Subcarpetas clave en TheBazaarRuntime:
+  - `TheBazaar\` - Clases principales (Events, AppState, Data, BoardManager)
+  - `TheBazaar.SequenceFramework\` - Condiciones de eventos
+  - Archivos raíz - BoardManager.cs, CardController.cs, etc.
+
 ## Estructura del proyecto
 
 ```
@@ -330,19 +341,29 @@ enum EContainerSocketId {
 
 Pantalla accesible principal del gameplay que implementa `IAccessibleScreen`. Se activa automáticamente cuando `BoardManager.OnAwake` se ejecuta (entrada al gameplay).
 
-**Controles**:
+**Controles generales**:
 - `Tab`: Cambiar sección (Selection → Board → Stash → Skills → Hero)
 - `B`: Ir directamente al Board
 - `V`: Ir directamente a Hero stats
 - `C`: Ir directamente a Choices/Selection
+- `F`: Ver información del enemigo/NPC
 - `Flechas izq/der`: Navegar items en la sección actual
-- `Ctrl+Flecha`: Leer información detallada del item
+- `Ctrl+Flecha`: Leer información detallada del item línea por línea
 - `Enter`: Acción contextual (comprar/vender/seleccionar)
 - `E`: Salir del estado actual (Exit)
 - `R`: Refrescar tienda (Reroll)
-- `Espacio`: Mover item entre Board y Stash
+- `Espacio`: Ir al Stash
+- `Shift+Arriba`: Mover item del Stash al Board
+- `Shift+Abajo`: Mover item del Board al Stash
+- `Shift+Izq/Der`: Reordenar items en el Board
 - `.` (punto): Leer último mensaje
 - `,` (coma): Leer mensaje anterior
+
+**Modo Combate**:
+Durante el combate, la navegación se simplifica:
+- Solo está disponible la sección Hero (V)
+- Usa `F` para ver los stats del enemigo (vida, escudo)
+- El combate se anuncia automáticamente al iniciar y terminar
 
 ### GameplayNavigator
 
@@ -384,11 +405,23 @@ Ejecuta acciones del juego sin drag-drop:
 
 ### StateChangePatch
 
-Suscripción a eventos del juego via reflexión (clase `Events` es internal):
-- `StateChanged`: Anuncia cambios de estado (Shop, Combat, Loot, etc.)
-- `CardPurchasedSimEvent`: Refresca pantalla al comprar
-- `CardSoldSimEvent`: Refresca pantalla al vender
-- `CardDealtSimEvent`: Refresca cuando aparecen nuevas cartas
+Suscripción a eventos nativos del juego (sin delays arbitrarios):
+
+**Eventos de TheBazaar.Events:**
+- `StateChanged`: Cambios de estado del juego
+- `BoardTransitionFinished`: Cuando terminan las animaciones de transición
+- `NewDayTransitionAnimationFinished`: Cuando termina la animación de nuevo día
+- `ItemCardsRevealed` / `SkillCardsRevealed`: Cuando se revelan cartas (después de animación)
+- `CombatStarted` / `CombatEnded`: Inicio y fin de combate
+- `CardPurchasedSimEvent` / `CardSoldSimEvent`: Compra/venta
+
+**Eventos de AppState:**
+- `StateExited`: Cuando se sale de un estado
+- `EncounterEntered`: Cuando se entra en un encuentro
+
+**Eventos de BoardManager:**
+- `ItemCardsRevealed`: Cuando los items son revelados (UI lista)
+- `SkillCardsRevealed`: Cuando las skills son reveladas
 
 ### ConfirmActionUI
 
@@ -420,6 +453,15 @@ EndRunDefeat  → "Defeat"
 
 ---
 
+## Implementado Recientemente
+
+- ✅ Sistema de eventos nativos del juego (sin delays arbitrarios)
+- ✅ Modo combate simplificado (solo Hero)
+- ✅ Información del enemigo con tecla F
+- ✅ Reordenamiento de items en el Board (Shift+Izq/Der)
+- ✅ Mover items entre Board y Stash (Shift+Arriba/Abajo)
+- ✅ Lectura detallada línea por línea (Ctrl+Flecha)
+
 ## Pendiente por Implementar
 
 ### Anuncios de Eventos
@@ -428,6 +470,6 @@ EndRunDefeat  → "Defeat"
 - Cambios de prestigio
 
 ### Mejoras de Navegación
-- Información del oponente durante combate
+- Localización del botón Exit (usar texto del juego)
 - Preview de sinergia de items
 - Acceso rápido a información de cooldowns en batalla

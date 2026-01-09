@@ -64,6 +64,14 @@ public class GameplayNavigator
 
     // Stats del héroe para navegación
     private int _heroStatIndex = 0;
+
+    // Modo combate
+    private bool _inCombat = false;
+
+    // Navegación detallada línea por línea
+    private List<string> _detailLines = new List<string>();
+    private int _detailIndex = -1;
+    private Card _detailCard = null;
     private static readonly EPlayerAttributeType[] HeroStats = new[]
     {
         EPlayerAttributeType.Health,
@@ -175,13 +183,35 @@ public class GameplayNavigator
     {
         _stashIndices.Clear();
         var bm = GetBoardManager();
-        if (bm?.playerStorageSockets == null) return;
 
-        for (int i = 0; i < bm.playerStorageSockets.Length; i++)
+        if (bm?.playerStorageSockets != null)
         {
-            if (bm.playerStorageSockets[i]?.CardController?.CardData != null)
-                _stashIndices.Add(i);
+            Plugin.Logger.LogInfo($"RefreshStash: playerStorageSockets.Length = {bm.playerStorageSockets.Length}");
+            for (int i = 0; i < bm.playerStorageSockets.Length; i++)
+            {
+                var socket = bm.playerStorageSockets[i];
+                if (socket?.CardController?.CardData != null)
+                {
+                    _stashIndices.Add(i);
+                    Plugin.Logger.LogInfo($"RefreshStash: Found item at index {i}: {socket.CardController.CardData}");
+                }
+            }
         }
+        else
+        {
+            Plugin.Logger.LogWarning("RefreshStash: playerStorageSockets is null");
+        }
+
+        Plugin.Logger.LogInfo($"RefreshStash: Total {_stashIndices.Count} items");
+    }
+
+    private Card GetStashSocketCard(BoardManager bm, int idx)
+    {
+        if (bm?.playerStorageSockets != null && idx < bm.playerStorageSockets.Length)
+        {
+            return bm.playerStorageSockets[idx]?.CardController?.CardData;
+        }
+        return null;
     }
 
     private void RefreshSkills()
@@ -269,9 +299,98 @@ public class GameplayNavigator
         GoToSection(NavigationSection.Hero);
     }
 
+    /// <summary>
+    /// Activa o desactiva el modo combate.
+    /// En combate solo se permite navegar al Hero.
+    /// </summary>
+    public void SetCombatMode(bool inCombat)
+    {
+        _inCombat = inCombat;
+        if (inCombat)
+        {
+            // En combate, forzar ir a Hero
+            GoToSection(NavigationSection.Hero);
+        }
+    }
+
+    /// <summary>
+    /// Lee la información del enemigo/NPC actual.
+    /// </summary>
+    public void ReadEnemyInfo()
+    {
+        try
+        {
+            var opponent = Data.Run?.Opponent;
+            if (opponent == null)
+            {
+                TolkWrapper.Speak("No enemy");
+                return;
+            }
+
+            var parts = new List<string>();
+
+            // Nombre del oponente (si es PvP tendrá nombre, si es NPC será el encuentro)
+            var pvpOpponent = Data.SimPvpOpponent;
+            if (pvpOpponent != null && !string.IsNullOrEmpty(pvpOpponent.Name))
+            {
+                parts.Add($"Opponent: {pvpOpponent.Name}");
+            }
+            else
+            {
+                parts.Add("Enemy");
+            }
+
+            // Vida
+            if (opponent.Attributes.TryGetValue(EPlayerAttributeType.Health, out int health))
+            {
+                parts.Add($"Health: {health}");
+            }
+            if (opponent.Attributes.TryGetValue(EPlayerAttributeType.HealthMax, out int maxHealth))
+            {
+                parts.Add($"of {maxHealth}");
+            }
+
+            // Escudo
+            if (opponent.Attributes.TryGetValue(EPlayerAttributeType.Shield, out int shield) && shield > 0)
+            {
+                parts.Add($"Shield: {shield}");
+            }
+
+            TolkWrapper.Speak(string.Join(", ", parts));
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"ReadEnemyInfo error: {ex.Message}");
+            TolkWrapper.Speak("Cannot read enemy info");
+        }
+    }
+
+    /// <summary>
+    /// Va a la sección del stash.
+    /// </summary>
+    public void GoToStash()
+    {
+        if (_stashIndices.Count > 0)
+        {
+            GoToSection(NavigationSection.Stash);
+        }
+        else
+        {
+            TolkWrapper.Speak("Stash is empty");
+        }
+    }
+
     private List<NavigationSection> GetAvailableSections()
     {
         var list = new List<NavigationSection>();
+
+        // En combate solo permitir Hero
+        if (_inCombat)
+        {
+            list.Add(NavigationSection.Hero);
+            return list;
+        }
+
         if (_selectionItems.Count > 0) list.Add(NavigationSection.Selection);
         if (_boardIndices.Count > 0) list.Add(NavigationSection.Board);
         if (_stashIndices.Count > 0) list.Add(NavigationSection.Stash);
@@ -652,7 +771,7 @@ public class GameplayNavigator
         TolkWrapper.Speak(value.HasValue ? $"{name}: {value.Value}" : $"{name}: none");
     }
 
-    private void ReadAllHeroStats()
+    public void ReadAllHeroStats()
     {
         var player = Data.Run?.Player;
         if (player == null) { TolkWrapper.Speak("No hero data"); return; }
@@ -730,7 +849,7 @@ public class GameplayNavigator
                 if (_currentIndex < _stashIndices.Count && bm != null)
                 {
                     int idx = _stashIndices[_currentIndex];
-                    return bm.playerStorageSockets[idx]?.CardController?.CardData;
+                    return GetStashSocketCard(bm, idx);
                 }
                 break;
 
@@ -748,6 +867,18 @@ public class GameplayNavigator
     public bool IsInSelectionSection() => _currentSection == NavigationSection.Selection;
     public bool IsInPlayerSection() => _currentSection == NavigationSection.Board ||
                                         _currentSection == NavigationSection.Stash;
+    public bool IsInBoardSection() => _currentSection == NavigationSection.Board;
+    public bool IsInStashSection() => _currentSection == NavigationSection.Stash;
+
+    /// <summary>
+    /// Obtiene el índice del slot actual en el tablero.
+    /// </summary>
+    public int GetCurrentBoardSlot()
+    {
+        if (_currentSection != NavigationSection.Board) return -1;
+        if (_currentIndex < 0 || _currentIndex >= _boardIndices.Count) return -1;
+        return _boardIndices[_currentIndex];
+    }
 
     public bool HasContent() => GetCurrentSectionCount() > 0;
 
@@ -813,5 +944,119 @@ public class GameplayNavigator
     {
         try { return Singleton<BoardManager>.Instance; }
         catch { return null; }
+    }
+
+    // --- Verificación de contenido ---
+
+    /// <summary>
+    /// Verifica si hay items en el tablero.
+    /// </summary>
+    public bool HasBoardContent() => _boardIndices.Count > 0;
+
+    /// <summary>
+    /// Verifica si hay items en la selección.
+    /// </summary>
+    public bool HasSelectionContent() => _selectionItems.Count > 0;
+
+    // --- Navegación detallada línea por línea ---
+
+    /// <summary>
+    /// Inicializa las líneas de detalle para el item actual.
+    /// </summary>
+    private void InitDetailLines()
+    {
+        var card = GetCurrentCard();
+
+        // Si es el mismo item, no reinicializar
+        if (card == _detailCard && _detailLines.Count > 0) return;
+
+        _detailCard = card;
+        _detailLines.Clear();
+        _detailIndex = -1;
+
+        if (card == null)
+        {
+            // Para Exit/Reroll
+            var navItem = GetCurrentNavItem();
+            if (navItem != null)
+            {
+                switch (navItem.Type)
+                {
+                    case NavItemType.Exit:
+                        _detailLines.Add("Exit");
+                        _detailLines.Add("Leave the current state and continue");
+                        break;
+                    case NavItemType.Reroll:
+                        int gold = Data.Run?.Player?.GetAttributeValue(EPlayerAttributeType.Gold) ?? 0;
+                        _detailLines.Add($"Refresh: {navItem.RerollCost} gold");
+                        _detailLines.Add($"Your gold: {gold}");
+                        break;
+                }
+            }
+            return;
+        }
+
+        // Obtener líneas de detalle del item
+        _detailLines = ItemReader.GetDetailLines(card);
+    }
+
+    /// <summary>
+    /// Lee la línea de detalle anterior (Ctrl+Up).
+    /// </summary>
+    public void ReadDetailPrevious()
+    {
+        InitDetailLines();
+
+        if (_detailLines.Count == 0)
+        {
+            TolkWrapper.Speak("No details");
+            return;
+        }
+
+        if (_detailIndex <= 0)
+        {
+            _detailIndex = 0;
+            TolkWrapper.Speak($"{_detailLines[0]}, 1 of {_detailLines.Count}");
+        }
+        else
+        {
+            _detailIndex--;
+            TolkWrapper.Speak($"{_detailLines[_detailIndex]}, {_detailIndex + 1} of {_detailLines.Count}");
+        }
+    }
+
+    /// <summary>
+    /// Lee la siguiente línea de detalle (Ctrl+Down).
+    /// </summary>
+    public void ReadDetailNext()
+    {
+        InitDetailLines();
+
+        if (_detailLines.Count == 0)
+        {
+            TolkWrapper.Speak("No details");
+            return;
+        }
+
+        if (_detailIndex < 0)
+        {
+            _detailIndex = 0;
+        }
+        else if (_detailIndex < _detailLines.Count - 1)
+        {
+            _detailIndex++;
+        }
+
+        TolkWrapper.Speak($"{_detailLines[_detailIndex]}, {_detailIndex + 1} of {_detailLines.Count}");
+    }
+
+    /// <summary>
+    /// Limpia el cache de detalles (llamar cuando cambia el item seleccionado).
+    /// </summary>
+    public void ClearDetailCache()
+    {
+        _detailCard = null;
+        _detailLines.Clear();
+        _detailIndex = -1;
     }
 }

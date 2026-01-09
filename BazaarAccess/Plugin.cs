@@ -28,7 +28,16 @@ public class Plugin : BaseUnityPlugin
 
         // Aplicar parches de Harmony
         _harmony = new Harmony(MyPluginInfo.PLUGIN_GUID);
-        _harmony.PatchAll();
+        try
+        {
+            _harmony.PatchAll();
+            Logger.LogInfo("Harmony patches aplicados correctamente");
+        }
+        catch (System.Exception ex)
+        {
+            Logger.LogError($"Error aplicando Harmony patches: {ex.Message}");
+            Logger.LogError(ex.StackTrace);
+        }
 
         Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} cargado");
     }

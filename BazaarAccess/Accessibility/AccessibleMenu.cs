@@ -222,12 +222,20 @@ public enum AccessibleKey
     GoToBoard,      // B - Ir al tablero
     GoToHero,       // V - Ir al héroe
     GoToChoices,    // C - Ir a choices/selection
+    GoToEnemy,      // F - Ir al enemigo/NPC
     // Acciones del juego
     Exit,           // E - Salir del estado actual
     Reroll,         // R - Reroll/Refresh
     Space,          // Espacio - Mover item
-    // Lectura detallada
-    ReadDetails,    // Ctrl+Up o Ctrl+Down - Leer info detallada
+    // Mover items entre board y stash
+    MoveToBoard,    // Shift+Up - Mover item del stash al board
+    MoveToStash,    // Shift+Down - Mover item del board al stash
+    // Reordenar items en el tablero
+    ReorderLeft,    // Shift+Left - Mover item a la izquierda
+    ReorderRight,   // Shift+Right - Mover item a la derecha
+    // Lectura detallada línea por línea
+    DetailUp,       // Ctrl+Up - Línea anterior del tooltip
+    DetailDown,     // Ctrl+Down - Siguiente línea del tooltip
     // Buffer de mensajes
     NextMessage,    // Punto - Mensaje más reciente
     PrevMessage     // Coma - Mensaje anterior

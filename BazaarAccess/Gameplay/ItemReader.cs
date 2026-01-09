@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using BazaarAccess.Core;
 using BazaarGameClient.Domain.Models.Cards;
@@ -301,5 +302,98 @@ public static class ItemReader
         }
 
         return string.Empty;
+    }
+
+    /// <summary>
+    /// Obtiene las líneas de detalle separadas para navegación Ctrl+Up/Down.
+    /// </summary>
+    public static List<string> GetDetailLines(Card card)
+    {
+        var lines = new List<string>();
+        if (card == null) return lines;
+
+        // Nombre
+        lines.Add($"Name: {GetCardName(card)}");
+
+        // Tier
+        lines.Add($"Tier: {GetTierName(card)}");
+
+        // Tamaño
+        var template = card.Template;
+        if (template != null)
+        {
+            lines.Add($"Size: {(int)template.Size}");
+        }
+
+        // Precio de compra
+        int buyPrice = GetBuyPrice(card);
+        if (buyPrice > 0)
+        {
+            lines.Add($"Buy price: {buyPrice} gold");
+        }
+
+        // Precio de venta
+        int sellPrice = GetSellPrice(card);
+        if (sellPrice > 0)
+        {
+            lines.Add($"Sell price: {sellPrice} gold");
+        }
+
+        // Cooldown
+        var cooldown = card.GetAttributeValue(ECardAttributeType.Cooldown);
+        if (cooldown.HasValue && cooldown.Value > 0)
+        {
+            float seconds = cooldown.Value / 1000f;
+            lines.Add($"Cooldown: {seconds:F1} seconds");
+        }
+
+        // Stats de combate
+        AddStatLine(lines, card, ECardAttributeType.Ammo, "Ammo");
+        AddStatLine(lines, card, ECardAttributeType.AmmoMax, "Max Ammo");
+        AddStatLine(lines, card, ECardAttributeType.DamageAmount, "Damage");
+        AddStatLine(lines, card, ECardAttributeType.HealAmount, "Heal");
+        AddStatLine(lines, card, ECardAttributeType.ShieldApplyAmount, "Shield");
+        AddStatLine(lines, card, ECardAttributeType.PoisonApplyAmount, "Poison");
+        AddStatLine(lines, card, ECardAttributeType.BurnApplyAmount, "Burn");
+        AddStatLine(lines, card, ECardAttributeType.RegenApplyAmount, "Regeneration");
+
+        // Stats de velocidad
+        AddStatLine(lines, card, ECardAttributeType.HasteAmount, "Haste");
+        AddStatLine(lines, card, ECardAttributeType.SlowAmount, "Slow");
+        AddStatLine(lines, card, ECardAttributeType.FreezeAmount, "Freeze");
+        AddStatLine(lines, card, ECardAttributeType.ChargeAmount, "Charge");
+
+        // Otros stats
+        AddStatLine(lines, card, ECardAttributeType.CritChance, "Crit Chance");
+        AddStatLine(lines, card, ECardAttributeType.Lifesteal, "Lifesteal");
+        AddStatLine(lines, card, ECardAttributeType.Multicast, "Multicast");
+
+        // Descripción
+        string desc = GetDescription(card);
+        if (!string.IsNullOrEmpty(desc))
+        {
+            lines.Add($"Effect: {desc}");
+        }
+
+        // Flavor text
+        string flavor = GetFlavorText(card);
+        if (!string.IsNullOrEmpty(flavor))
+        {
+            lines.Add($"Lore: {flavor}");
+        }
+
+        return lines;
+    }
+
+    /// <summary>
+    /// Añade una línea de stat si tiene valor.
+    /// </summary>
+    private static void AddStatLine(List<string> lines, Card card, ECardAttributeType type, string label)
+    {
+        var value = card.GetAttributeValue(type);
+        if (value.HasValue && value.Value != 0)
+        {
+            lines.Add($"{label}: {value.Value}");
+        }
     }
 }

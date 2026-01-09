@@ -1,7 +1,10 @@
+using System.Collections;
 using BazaarAccess.Accessibility;
+using BazaarAccess.Core;
 using BazaarAccess.Gameplay;
 using HarmonyLib;
 using TheBazaar;
+using UnityEngine;
 
 namespace BazaarAccess.Patches;
 
@@ -29,6 +32,46 @@ public static class GameplayPatch
         // Crear la pantalla de gameplay
         _gameplayScreen = new GameplayScreen();
         AccessibilityMgr.SetScreen(_gameplayScreen);
+
+        // Iniciar refresh con delay para dar tiempo al juego a cargar
+        Plugin.Instance.StartCoroutine(DelayedInitialize());
+    }
+
+    private static IEnumerator DelayedInitialize()
+    {
+        // Esperar inicial para que el juego arranque
+        yield return new WaitForSeconds(1.5f);
+        if (_gameplayScreen == null) yield break;
+
+        // Primer refresh
+        _gameplayScreen.RefreshNavigator();
+        Plugin.Logger.LogInfo($"DelayedInitialize: First refresh, hasContent={_gameplayScreen.HasContent()}");
+
+        // Si hay contenido inmediatamente, anunciar
+        if (_gameplayScreen.HasContent())
+        {
+            _gameplayScreen.ForceAnnounceState();
+            Plugin.Logger.LogInfo("DelayedInitialize: Content found on first check");
+            yield break;
+        }
+
+        // Esperar un poco más y hacer más refreshes
+        yield return new WaitForSeconds(0.5f);
+        if (_gameplayScreen == null) yield break;
+        _gameplayScreen.RefreshNavigator();
+
+        yield return new WaitForSeconds(0.5f);
+        if (_gameplayScreen == null) yield break;
+        _gameplayScreen.RefreshNavigator();
+
+        yield return new WaitForSeconds(0.5f);
+        if (_gameplayScreen == null) yield break;
+        _gameplayScreen.RefreshNavigator();
+
+        // Anunciar estado final - siempre anunciar después de esperar
+        Plugin.Logger.LogInfo($"DelayedInitialize: Final check, hasContent={_gameplayScreen.HasContent()}");
+        _gameplayScreen.ForceAnnounceState();
+        Plugin.Logger.LogInfo("DelayedInitialize: Announced state");
     }
 
     /// <summary>

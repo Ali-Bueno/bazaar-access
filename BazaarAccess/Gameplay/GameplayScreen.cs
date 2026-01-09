@@ -7,12 +7,14 @@ using BazaarGameShared.Domain.Core.Types;
 using BazaarGameShared.Domain.Runs;
 using TheBazaar;
 using TheBazaar.AppFramework;
+using UnityEngine;
 
 namespace BazaarAccess.Gameplay;
 
 /// <summary>
 /// Pantalla accesible para el gameplay.
 /// Navegación dinámica con items y acciones.
+/// Auto-focus a la sección correcta según el estado del juego.
 /// </summary>
 public class GameplayScreen : IAccessibleScreen
 {
@@ -48,6 +50,10 @@ public class GameplayScreen : IAccessibleScreen
                 _navigator.GoToChoices();
                 break;
 
+            case AccessibleKey.GoToEnemy:
+                _navigator.ReadEnemyInfo();
+                break;
+
             // Navegación dentro de la sección actual
             case AccessibleKey.Right:
                 _navigator.Next();
@@ -57,7 +63,7 @@ public class GameplayScreen : IAccessibleScreen
                 _navigator.Previous();
                 break;
 
-            // Up/Down para navegación vertical en Hero mode
+            // Up/Down para navegación vertical en Hero mode o detallada
             case AccessibleKey.Up:
                 if (_navigator.IsInHeroSection)
                     _navigator.Previous();
@@ -68,9 +74,13 @@ public class GameplayScreen : IAccessibleScreen
                     _navigator.Next();
                 break;
 
-            // Información detallada (Ctrl+flecha)
-            case AccessibleKey.ReadDetails:
-                _navigator.ReadDetailedInfo();
+            // Información detallada línea por línea (Ctrl+flecha)
+            case AccessibleKey.DetailUp:
+                _navigator.ReadDetailPrevious();
+                break;
+
+            case AccessibleKey.DetailDown:
+                _navigator.ReadDetailNext();
                 break;
 
             // Acción principal
@@ -80,11 +90,13 @@ public class GameplayScreen : IAccessibleScreen
 
             // Atajos directos para Exit/Reroll
             case AccessibleKey.Exit:
-                _navigator.TryExit();
+                if (_navigator.TryExit())
+                    Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
                 break;
 
             case AccessibleKey.Reroll:
-                _navigator.TryReroll();
+                if (_navigator.TryReroll())
+                    Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
                 break;
 
             // Cancelar/Releer estado
@@ -101,60 +113,152 @@ public class GameplayScreen : IAccessibleScreen
                 MessageBuffer.ReadPrevious();
                 break;
 
-            // Espacio - mover entre tablero y stash
+            // Espacio - ir al stash
             case AccessibleKey.Space:
-                HandleMoveAction();
+                _navigator.GoToStash();
+                break;
+
+            // Shift+Up - mover del stash al board
+            case AccessibleKey.MoveToBoard:
+                HandleMoveToBoard();
+                break;
+
+            // Shift+Down - mover del board al stash
+            case AccessibleKey.MoveToStash:
+                HandleMoveToStash();
+                break;
+
+            // Shift+Left/Right - reordenar items en el tablero
+            case AccessibleKey.ReorderLeft:
+                HandleReorder(-1);
+                break;
+
+            case AccessibleKey.ReorderRight:
+                HandleReorder(1);
                 break;
         }
     }
 
     public string GetHelp()
     {
-        return "Left/Right: Navigate. Tab: Switch section. " +
+        return "Left/Right: Navigate. Tab: Switch section. Space: Stash. " +
                "B: Board. V: Hero. C: Choices. " +
                "Enter: Select/Buy/Sell. E: Exit. R: Refresh. " +
-               "Ctrl+Arrow: Details. Space: Move item.";
+               "Shift+Up/Down: Move to board/stash. Shift+Left/Right: Reorder. " +
+               "Ctrl+Up/Down: Read details. Period/Comma: Messages.";
     }
 
     public void OnFocus()
     {
-        _navigator.Refresh();
         _lastState = StateChangePatch.GetCurrentRunState();
-        _navigator.AnnounceState();
+        _navigator.Refresh();
+
+        // Auto-focus a la sección correcta según el estado
+        AutoFocusForState(_lastState);
+
+        // No anunciar aquí - DelayedInitialize lo hará después de que el contenido esté listo
+        // _navigator.AnnounceState();
     }
 
     /// <summary>
     /// Llamado cuando cambia el estado del juego.
     /// </summary>
-    public void OnStateChanged(ERunState newState)
+    public void OnStateChanged(ERunState newState, bool announceChange = true)
     {
-        if (newState == _lastState) return;
-
+        bool stateChanged = newState != _lastState;
         _lastState = newState;
 
-        string stateDesc = StateChangePatch.GetStateDescription(newState);
-        TolkWrapper.Speak(stateDesc);
+        // Anunciar el cambio de estado
+        if (announceChange && stateChanged)
+        {
+            string stateDesc = StateChangePatch.GetStateDescription(newState);
+            TolkWrapper.Speak(stateDesc);
+        }
 
-        // Hacer varios refreshes con delays para asegurar que capturamos todo
-        Plugin.Instance.StartCoroutine(MultipleRefresh());
+        // Hacer refresh y auto-focus
+        Plugin.Instance.StartCoroutine(RefreshAndAutoFocus(newState, stateChanged));
     }
 
-    private System.Collections.IEnumerator MultipleRefresh()
+    private System.Collections.IEnumerator RefreshAndAutoFocus(ERunState state, bool stateChanged)
     {
-        // Primer refresh inmediato
+        // Primer refresh rápido
+        yield return new WaitForSeconds(0.1f);
         _navigator.Refresh();
+
+        // Auto-focus si cambió el estado
+        if (stateChanged)
+        {
+            AutoFocusForState(state);
+        }
+
+        // Anunciar el primer item si hay contenido
         if (_navigator.HasContent())
         {
             _navigator.AnnounceCurrentItem();
         }
 
-        // Segundo refresh después de un momento
-        yield return new UnityEngine.WaitForSeconds(0.3f);
+        // Segundo refresh para capturar cambios tardíos
+        yield return new WaitForSeconds(0.4f);
         _navigator.Refresh();
 
-        // Tercer refresh para estados que tardan más en inicializarse
-        yield return new UnityEngine.WaitForSeconds(0.5f);
+        // Tercer refresh para estados que tardan más
+        yield return new WaitForSeconds(0.5f);
         _navigator.Refresh();
+    }
+
+    /// <summary>
+    /// Auto-focus a la sección correcta según el estado del juego.
+    /// </summary>
+    private void AutoFocusForState(ERunState state)
+    {
+        switch (state)
+        {
+            case ERunState.Encounter:
+                // En encounter, ir a la selección de encuentros
+                _navigator.GoToSection(NavigationSection.Selection);
+                break;
+
+            case ERunState.Choice:
+                // En tienda, ir a la selección (items/skills)
+                _navigator.GoToSection(NavigationSection.Selection);
+                break;
+
+            case ERunState.Loot:
+                // En loot, ir a las recompensas
+                _navigator.GoToSection(NavigationSection.Selection);
+                break;
+
+            case ERunState.LevelUp:
+                // En level up, ir a la selección
+                _navigator.GoToSection(NavigationSection.Selection);
+                break;
+
+            case ERunState.Pedestal:
+                // En upgrade station, ir a la selección
+                _navigator.GoToSection(NavigationSection.Selection);
+                break;
+
+            case ERunState.Combat:
+            case ERunState.PVPCombat:
+                // En combate, ir al board del jugador
+                if (_navigator.HasBoardContent())
+                {
+                    _navigator.GoToSection(NavigationSection.Board);
+                }
+                break;
+
+            default:
+                // Por defecto, si hay selección ir ahí, sino al board
+                if (_navigator.HasSelectionContent())
+                {
+                    _navigator.GoToSection(NavigationSection.Selection);
+                }
+                else if (_navigator.HasBoardContent())
+                {
+                    _navigator.GoToSection(NavigationSection.Board);
+                }
+                break;
+        }
     }
 
     public bool IsValid()
@@ -172,7 +276,7 @@ public class GameplayScreen : IAccessibleScreen
         // Si estamos en Hero, leer toda la info
         if (_navigator.IsInHeroSection)
         {
-            _navigator.ReadDetailedInfo();
+            _navigator.ReadAllHeroStats();
             return;
         }
 
@@ -189,11 +293,13 @@ public class GameplayScreen : IAccessibleScreen
             switch (navItem.Type)
             {
                 case NavItemType.Exit:
-                    _navigator.TryExit();
+                    if (_navigator.TryExit())
+                        Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
                     break;
 
                 case NavItemType.Reroll:
-                    _navigator.TryReroll();
+                    if (_navigator.TryReroll())
+                        Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
                     break;
 
                 case NavItemType.Card:
@@ -239,7 +345,6 @@ public class GameplayScreen : IAccessibleScreen
             case ECardType.PedestalEncounter:
             case ECardType.EncounterStep:
             case ECardType.PvpEncounter:
-                // Encounters van directo sin confirmación
                 SelectEncounterDirect(card);
                 break;
 
@@ -258,13 +363,11 @@ public class GameplayScreen : IAccessibleScreen
 
         if (_navigator.IsSelectionFree())
         {
-            // Selección gratis - ir directo
             ActionHelper.BuyItem(itemCard);
             RefreshAndAnnounce();
         }
         else
         {
-            // Con precio - pedir confirmación
             int price = ItemReader.GetBuyPrice(card);
             var ui = new ConfirmActionUI(ConfirmActionType.Buy, name, price,
                 onConfirm: () => {
@@ -281,19 +384,14 @@ public class GameplayScreen : IAccessibleScreen
         var skillCard = card as SkillCard;
         if (skillCard == null) { TolkWrapper.Speak("Not a skill"); return; }
 
-        // Skills van directo sin confirmación
         ActionHelper.SelectSkill(skillCard);
         RefreshAndAnnounce();
     }
 
-    /// <summary>
-    /// Selecciona un encounter directamente sin confirmación.
-    /// </summary>
     private void SelectEncounterDirect(Card card)
     {
         string name = ItemReader.GetCardName(card);
 
-        // Leer el texto del evento si existe
         string flavorText = ItemReader.GetFlavorText(card);
         if (!string.IsNullOrEmpty(flavorText))
         {
@@ -303,7 +401,6 @@ public class GameplayScreen : IAccessibleScreen
         TolkWrapper.Speak($"Selecting {name}");
         ActionHelper.SelectEncounter(card);
 
-        // Esperar un momento para que el estado cambie
         Plugin.Instance.StartCoroutine(DelayedRefresh());
     }
 
@@ -321,7 +418,6 @@ public class GameplayScreen : IAccessibleScreen
         string name = ItemReader.GetCardName(card);
         int price = ItemReader.GetSellPrice(card);
 
-        // Vender siempre pide confirmación
         var ui = new ConfirmActionUI(ConfirmActionType.Sell, name, price,
             onConfirm: () => {
                 ActionHelper.SellItem(itemCard);
@@ -334,6 +430,65 @@ public class GameplayScreen : IAccessibleScreen
     private void HandleMoveAction()
     {
         if (!_navigator.IsInPlayerSection())
+        {
+            TolkWrapper.Speak("Select an item on your board or stash first");
+            return;
+        }
+
+        var card = _navigator.GetCurrentCard() as ItemCard;
+        if (card == null)
+        {
+            TolkWrapper.Speak("Cannot move this");
+            return;
+        }
+
+        if (!_navigator.CanMoveInCurrentState())
+        {
+            TolkWrapper.Speak("Cannot move right now");
+            return;
+        }
+
+        bool toStash = _navigator.CurrentSection == NavigationSection.Board;
+        string destination = toStash ? "stash" : "board";
+        string name = ItemReader.GetCardName(card);
+
+        ActionHelper.MoveItem(card, toStash);
+        TolkWrapper.Speak($"Moved {name} to {destination}");
+        RefreshAndAnnounce();
+    }
+
+    private void HandleMoveToBoard()
+    {
+        // Solo funciona si estamos en el stash
+        if (_navigator.CurrentSection != NavigationSection.Stash)
+        {
+            TolkWrapper.Speak("Select an item in your stash first");
+            return;
+        }
+
+        var card = _navigator.GetCurrentCard() as ItemCard;
+        if (card == null)
+        {
+            TolkWrapper.Speak("Cannot move this");
+            return;
+        }
+
+        if (!_navigator.CanMoveInCurrentState())
+        {
+            TolkWrapper.Speak("Cannot move right now");
+            return;
+        }
+
+        string name = ItemReader.GetCardName(card);
+        ActionHelper.MoveItem(card, false); // false = to board
+        TolkWrapper.Speak($"Moved {name} to board");
+        RefreshAndAnnounce();
+    }
+
+    private void HandleMoveToStash()
+    {
+        // Solo funciona si estamos en el board
+        if (_navigator.CurrentSection != NavigationSection.Board)
         {
             TolkWrapper.Speak("Select an item on your board first");
             return;
@@ -352,10 +507,45 @@ public class GameplayScreen : IAccessibleScreen
             return;
         }
 
-        // Mover directamente sin confirmación
-        bool toStash = _navigator.CurrentSection == NavigationSection.Board;
-        ActionHelper.MoveItem(card, toStash);
+        string name = ItemReader.GetCardName(card);
+        ActionHelper.MoveItem(card, true); // true = to stash
+        TolkWrapper.Speak($"Moved {name} to stash");
         RefreshAndAnnounce();
+    }
+
+    private void HandleReorder(int direction)
+    {
+        // Solo funciona si estamos en el board
+        if (!_navigator.IsInBoardSection())
+        {
+            TolkWrapper.Speak("Select an item on your board first");
+            return;
+        }
+
+        var card = _navigator.GetCurrentCard() as ItemCard;
+        if (card == null)
+        {
+            TolkWrapper.Speak("Cannot reorder this");
+            return;
+        }
+
+        if (!_navigator.CanMoveInCurrentState())
+        {
+            TolkWrapper.Speak("Cannot reorder right now");
+            return;
+        }
+
+        int currentSlot = _navigator.GetCurrentBoardSlot();
+        if (currentSlot < 0)
+        {
+            TolkWrapper.Speak("Cannot determine position");
+            return;
+        }
+
+        if (ActionHelper.ReorderItem(card, currentSlot, direction))
+        {
+            RefreshAndAnnounce();
+        }
     }
 
     private void RefreshAndAnnounce()
@@ -372,10 +562,68 @@ public class GameplayScreen : IAccessibleScreen
         _navigator.Refresh();
     }
 
+    /// <summary>
+    /// Verifica si hay contenido en el navegador.
+    /// </summary>
+    public bool HasContent()
+    {
+        return _navigator.HasContent() || _navigator.HasSelectionContent() || _navigator.HasBoardContent();
+    }
+
+    /// <summary>
+    /// Fuerza el anuncio del estado (simula lo que hace backspace).
+    /// </summary>
+    public void ForceAnnounceState()
+    {
+        _navigator.AnnounceState();
+    }
+
     private System.Collections.IEnumerator DelayedRefresh()
     {
-        yield return new UnityEngine.WaitForSeconds(0.5f);
+        yield return new WaitForSeconds(0.5f);
         _navigator.Refresh();
         _navigator.AnnounceState();
+    }
+
+    /// <summary>
+    /// Coroutine que espera a que el juego cambie de estado y luego anuncia.
+    /// </summary>
+    private System.Collections.IEnumerator DelayedRefreshAndAnnounce()
+    {
+        // Esperar a que el juego procese el cambio de estado
+        yield return new WaitForSeconds(0.5f);
+        _navigator.Refresh();
+
+        // Esperar un poco más para que el nuevo contenido se cargue
+        yield return new WaitForSeconds(0.5f);
+        _navigator.Refresh();
+
+        // Auto-focus a la sección correcta según el nuevo estado
+        var newState = StateChangePatch.GetCurrentRunState();
+        AutoFocusForState(newState);
+
+        // Anunciar el nuevo estado
+        _navigator.AnnounceState();
+
+        // Un refresh más por si acaso
+        yield return new WaitForSeconds(0.3f);
+        _navigator.Refresh();
+    }
+
+    /// <summary>
+    /// Llamado cuando cambia el estado de combate.
+    /// </summary>
+    public void OnCombatStateChanged(bool inCombat)
+    {
+        _navigator.SetCombatMode(inCombat);
+
+        if (inCombat)
+        {
+            TolkWrapper.Speak("Combat started. Press V for your stats, F for enemy stats.");
+        }
+        else
+        {
+            TolkWrapper.Speak("Combat ended.");
+        }
     }
 }
