@@ -9,23 +9,54 @@ namespace BazaarAccess.UI;
 
 /// <summary>
 /// UI accesible para el menú de opciones.
-/// Incluye todas las secciones: audio, video, accesibilidad, etc.
+/// Detecta automáticamente si estamos en la sección principal o en gameplay settings.
 /// </summary>
 public class OptionsUI : BaseUI
 {
-    public override string UIName => "Options";
+    private bool _inGameplaySection = false;
+
+    public override string UIName => _inGameplaySection ? "Gameplay Settings" : "Options";
 
     public OptionsUI(Transform root) : base(root)
     {
-        // Log de todos los elementos para debug
+        DetectCurrentSection();
         LogAllElements();
+    }
+
+    /// <summary>
+    /// Detecta si estamos en la sección de gameplay settings.
+    /// </summary>
+    private void DetectCurrentSection()
+    {
+        // Buscar el overlay de gameplay settings
+        var gameplayOverlay = FindGameObject("GameplaySettingsOverlay")
+                           ?? FindGameObject("_gameplaySettingsOverlay")
+                           ?? FindGameObject("GameplayOverlay");
+
+        // También buscar el botón de volver que solo aparece en gameplay settings
+        var backButton = FindButtonByName("Btn_Back")
+                      ?? FindButtonByName("_gameplayBackButton")
+                      ?? FindButtonByName("Btn_GameplayBack");
+
+        _inGameplaySection = (gameplayOverlay != null && gameplayOverlay.activeInHierarchy) ||
+                            (backButton != null && backButton.gameObject.activeInHierarchy && backButton.interactable);
+    }
+
+    private GameObject FindGameObject(string name)
+    {
+        var all = Root.GetComponentsInChildren<Transform>(true);
+        foreach (var t in all)
+        {
+            if (t.gameObject.name.Equals(name, System.StringComparison.OrdinalIgnoreCase))
+                return t.gameObject;
+        }
+        return null;
     }
 
     private void LogAllElements()
     {
-        Plugin.Logger.LogInfo("=== OptionsUI elementos ===");
+        Plugin.Logger.LogInfo($"=== OptionsUI elementos (Gameplay: {_inGameplaySection}) ===");
 
-        // Botones
         var buttons = Root.GetComponentsInChildren<Button>(true);
         foreach (var btn in buttons)
         {
@@ -36,7 +67,6 @@ public class OptionsUI : BaseUI
             }
         }
 
-        // Toggles
         var toggles = Root.GetComponentsInChildren<Toggle>(true);
         foreach (var toggle in toggles)
         {
@@ -47,7 +77,6 @@ public class OptionsUI : BaseUI
             }
         }
 
-        // Sliders
         var sliders = Root.GetComponentsInChildren<Slider>(true);
         foreach (var slider in sliders)
         {
@@ -58,7 +87,6 @@ public class OptionsUI : BaseUI
             }
         }
 
-        // Dropdowns
         var dropdowns = Root.GetComponentsInChildren<TMP_Dropdown>(true);
         foreach (var dd in dropdowns)
         {
@@ -83,12 +111,20 @@ public class OptionsUI : BaseUI
 
     protected override void BuildMenu()
     {
-        // === Botones de navegación entre secciones ===
+        if (_inGameplaySection)
+        {
+            BuildGameplayMenu();
+        }
+        else
+        {
+            BuildMainMenu();
+        }
+    }
+
+    private void BuildMainMenu()
+    {
+        // Botón para ir a gameplay settings
         AddSectionButton("Btn_GameplaySettings");
-        AddSectionButton("Btn_NotificationSettings");
-        AddSectionButton("Btn_AudioSettings");
-        AddSectionButton("Btn_VideoSettings");
-        AddSectionButton("Btn_AccessibilitySettings");
 
         // === Sliders de audio ===
         AddSliderOption("Slider_Master");
@@ -97,26 +133,13 @@ public class OptionsUI : BaseUI
         AddSliderOption("Slider_Voice");
 
         // === Dropdowns de video ===
-        AddDropdownOption("Dropdown", "Resolution"); // Resolución
-        AddDropdownOptionByIndex(1, "Framerate"); // Segundo dropdown es framerate
+        AddDropdownOption("Dropdown", "Resolution");
+        AddDropdownOptionByIndex(1, "Framerate");
 
         // === Toggles de video ===
         AddToggleOption("Toggle_Windowed");
         AddToggleOption("Toggle_VSync");
         AddToggleOption("Toggle_SkipVideo");
-
-        // === Toggles de accesibilidad ===
-        AddToggleOption("Toggle_AlternativeInput");
-        AddToggleOption("Toggle_Clock");
-        AddToggleOption("Toggle_Keyword");
-        AddToggleOption("Toggle_HealthBarIcons");
-        AddToggleOption("Toggle_GemStatusIcons");
-        AddToggleOption("Toggle_DisableScreenShake");
-        AddToggleOption("Toggle_MotionSensitivity");
-        AddToggleOption("Toggle_ClosedCaptions");
-
-        // === Dropdown de idioma ===
-        AddDropdownOption("Dropdown_Language", "Language");
 
         // === Botones de acción ===
         AddButtonIfActive("Btn_Privacy");
@@ -126,27 +149,142 @@ public class OptionsUI : BaseUI
         AddButtonIfActive("Btn_Close");
     }
 
-    /// <summary>
-    /// Reconstruye el menú para reflejar los elementos actuales.
-    /// </summary>
+    private void BuildGameplayMenu()
+    {
+        // Botón de volver (primero para fácil acceso)
+        AddBackToMainButton();
+
+        // === Toggles de gameplay/accesibilidad ===
+        AddToggleOption("Toggle_Keyword");
+        AddToggleOption("Toggle_DisableScreenShake");
+        AddToggleOption("Toggle_MotionSensitivity");
+        AddToggleOption("Toggle_AlternativeInput");
+        AddToggleOption("Toggle_Clock");
+        AddToggleOption("Toggle_HealthBarIcons");
+        AddToggleOption("Toggle_GemStatusIcons");
+        AddToggleOption("Toggle_ClosedCaptions");
+
+        // === Dropdown de idioma ===
+        AddDropdownOption("Dropdown_Language", "Language");
+
+        // === Keybinds (si existen) ===
+        AddAllKeybindButtons();
+    }
+
+    private void AddBackToMainButton()
+    {
+        // Buscar cualquier botón de volver
+        string[] backButtonNames = { "Btn_Back", "Btn_GameplayBack", "_gameplayBackButton" };
+
+        foreach (var name in backButtonNames)
+        {
+            var button = FindButtonByName(name);
+            if (button != null && button.gameObject.activeInHierarchy && button.interactable)
+            {
+                Menu.AddOption(
+                    () => GetButtonText(name).Length > 0 ? GetButtonText(name) : "Back",
+                    () => {
+                        ClickButtonByName(name);
+                        _inGameplaySection = false;
+                        Plugin.Instance.StartCoroutine(RebuildAfterDelay());
+                    });
+                return;
+            }
+        }
+    }
+
+    private void AddAllKeybindButtons()
+    {
+        // Buscar todos los KeyBindController en el menú
+        var keybindControllers = Root.GetComponentsInChildren<MonoBehaviour>(true)
+            .Where(m => m.GetType().Name == "KeyBindController" && m.gameObject.activeInHierarchy);
+
+        foreach (var controller in keybindControllers)
+        {
+            // Obtener el botón del keybind
+            var buttonField = controller.GetType().GetField("_keybindButton",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var button = buttonField?.GetValue(controller) as Button;
+
+            if (button == null || !button.interactable) continue;
+
+            // Capturar referencias para el closure
+            var ctrl = controller;
+            var btn = button;
+
+            Menu.AddOption(
+                () => GetKeybindLabel(ctrl),
+                () => btn.onClick.Invoke());
+        }
+    }
+
+    private string GetKeybindLabel(MonoBehaviour keybindController)
+    {
+        // Obtener el nombre de la acción
+        string actionName = "Keybind";
+        var actionField = keybindController.GetType().GetField("_keybindAction",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+        if (actionField != null)
+        {
+            var actionValue = actionField.GetValue(keybindController);
+            if (actionValue != null)
+            {
+                // Convertir enum a nombre legible
+                actionName = ConvertActionToReadableName(actionValue.ToString());
+            }
+        }
+
+        // Obtener la tecla actual
+        string keyText = "";
+        var textField = keybindController.GetType().GetField("_keybindText",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+        if (textField != null)
+        {
+            var tmpText = textField.GetValue(keybindController) as TMP_Text;
+            if (tmpText != null)
+            {
+                keyText = tmpText.text?.Trim() ?? "";
+            }
+        }
+
+        return $"{actionName}: {keyText}";
+    }
+
+    private string ConvertActionToReadableName(string actionEnum)
+    {
+        // Convertir nombres del enum a nombres legibles
+        return actionEnum switch
+        {
+            "ToggleStash" => "Toggle Stash",
+            "Settings" => "Access Settings",
+            "Lock" => "Access Locked Tooltip",
+            "Playlist" => "Playlist",
+            "Atlas" => "Atlas",
+            _ => actionEnum
+        };
+    }
+
     public void RebuildMenu()
     {
         Menu.Clear();
+        DetectCurrentSection();
         LogAllElements();
         BuildMenu();
-        Menu.StartReading(announceMenuName: false);
+        Menu.StartReading(announceMenuName: true);
     }
 
     private void AddSectionButton(string name)
     {
         var button = FindButtonByName(name);
-        if (button != null && button.gameObject.activeInHierarchy)
+        if (button != null && button.gameObject.activeInHierarchy && button.interactable)
         {
             Menu.AddOption(
                 () => GetButtonText(name),
                 () => {
                     ClickButtonByName(name);
-                    // Esperar un frame y reconstruir el menú
+                    _inGameplaySection = true;
                     Plugin.Instance.StartCoroutine(RebuildAfterDelay());
                 });
         }
@@ -154,15 +292,15 @@ public class OptionsUI : BaseUI
 
     private System.Collections.IEnumerator RebuildAfterDelay()
     {
-        yield return null; // Esperar un frame
-        yield return null; // Esperar otro frame para que Unity actualice
+        yield return null;
+        yield return null;
         RebuildMenu();
     }
 
     private void AddButtonIfActive(string name)
     {
         var button = FindButtonByName(name);
-        if (button != null && button.gameObject.activeInHierarchy)
+        if (button != null && button.gameObject.activeInHierarchy && button.interactable)
         {
             Menu.AddOption(
                 () => GetButtonText(name),
@@ -261,7 +399,6 @@ public class OptionsUI : BaseUI
         if (dropdown == null) return fallbackLabel;
 
         string label = fallbackLabel;
-        // Intentar obtener label del padre
         var parent = dropdown.transform.parent;
         if (parent != null)
         {
@@ -288,7 +425,6 @@ public class OptionsUI : BaseUI
         float step = 0.1f;
         slider.value = Mathf.Clamp01(slider.value + (step * direction));
 
-        // Anunciar el nuevo valor
         int percent = Mathf.RoundToInt(slider.value * 100);
         Core.TolkWrapper.Speak($"{percent}%");
     }
@@ -300,7 +436,6 @@ public class OptionsUI : BaseUI
 
         toggle.isOn = !toggle.isOn;
 
-        // Anunciar el nuevo estado
         string state = toggle.isOn ? "on" : "off";
         Core.TolkWrapper.Speak(state);
     }
@@ -310,7 +445,6 @@ public class OptionsUI : BaseUI
         var dropdown = FindDropdown(name);
         if (dropdown == null) return;
 
-        // Usar reflexión para evitar referencia directa a List<>
         var optionsProp = dropdown.GetType().GetProperty("options");
         if (optionsProp == null) return;
 
@@ -326,7 +460,6 @@ public class OptionsUI : BaseUI
         {
             dropdown.value = newIndex;
 
-            // Anunciar el nuevo valor
             string value = dropdown.captionText?.text ?? "";
             Core.TolkWrapper.Speak(value);
         }
@@ -334,6 +467,22 @@ public class OptionsUI : BaseUI
 
     protected override void OnBack()
     {
+        if (_inGameplaySection)
+        {
+            // Volver a la sección principal
+            string[] backButtonNames = { "Btn_Back", "Btn_GameplayBack", "_gameplayBackButton" };
+            foreach (var name in backButtonNames)
+            {
+                if (ClickButtonByName(name))
+                {
+                    _inGameplaySection = false;
+                    Plugin.Instance.StartCoroutine(RebuildAfterDelay());
+                    return;
+                }
+            }
+        }
+
+        // Cerrar opciones
         ClickButtonByName("Btn_Close");
     }
 }

@@ -22,11 +22,13 @@ BazaarAccess/
 │   ├── HeroSelectScreen.cs       # Pantalla de selección de héroe
 │   └── MainMenuScreen.cs         # Pantalla del menú principal
 ├── UI/
-│   └── OptionsUI.cs              # Diálogo de opciones
+│   ├── OptionsUI.cs              # Diálogo de opciones (main + gameplay settings)
+│   └── FightMenuUI.cs            # Menú de pausa durante gameplay
 └── Patches/
     ├── ViewControllerPatch.cs    # Detecta cambios de vista
     ├── PopupPatch.cs             # Popups genéricos
-    ├── OptionsDialogPatch.cs     # Menú de opciones
+    ├── OptionsDialogPatch.cs     # Menú de opciones desde menú principal
+    ├── FightMenuPatch.cs         # Menú de pausa y opciones durante gameplay
     └── HeroChangedPatch.cs       # Cambio de héroe
 ```
 
@@ -72,6 +74,20 @@ Opción de menú con delegados para máxima flexibilidad:
 - **Enter**: Activar opción
 - **Escape**: Volver/cerrar
 - **F1**: Ayuda
+
+## Menús durante Gameplay
+
+### Menú de Pausa (FightMenuPatch.cs)
+
+`FightMenuDialog` es el controlador del menú de pausa. Los parches:
+- `FightMenuShowPatch`: Crea FightMenuUI al abrir el menú de pausa
+- `FightMenuHidePatch`: Cierra FightMenuUI
+- `FightMenuOptionsClickPatch`: Transición pausa → opciones
+- `FightMenuOptionsClosedPatch`: Transición opciones → pausa
+
+### OptionsUI con Secciones
+
+`OptionsUI` detecta automáticamente si estamos en la sección principal o en "Gameplay Settings" y muestra solo las opciones relevantes. Los keybinds se leen con reflexión para mostrar "Acción: Tecla".
 
 ## Añadir una nueva pantalla (Screen)
 

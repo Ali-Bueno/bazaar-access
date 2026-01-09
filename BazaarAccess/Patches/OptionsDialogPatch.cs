@@ -65,12 +65,11 @@ public static class OptionsDialogShowPatch
         var scale = root.localScale;
         if (scale.x < 0.1f || scale.y < 0.1f) return false;
 
-        // Verificar que hay botones de opciones visibles (Btn_Close o Btn_Save siempre existen)
-        var buttons = root.GetComponentsInChildren<UnityEngine.UI.Button>(false);
-        foreach (var btn in buttons)
+        // Verificar que hay sliders activos (siempre hay sliders de audio en opciones)
+        var sliders = root.GetComponentsInChildren<UnityEngine.UI.Slider>(false);
+        foreach (var slider in sliders)
         {
-            if (btn.gameObject.activeInHierarchy &&
-                (btn.gameObject.name == "Btn_Close" || btn.gameObject.name == "Btn_Save"))
+            if (slider.gameObject.activeInHierarchy)
             {
                 return true;
             }
