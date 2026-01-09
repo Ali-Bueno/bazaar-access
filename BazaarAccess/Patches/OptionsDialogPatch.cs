@@ -1,34 +1,106 @@
+using BazaarAccess.Accessibility;
+using BazaarAccess.UI;
 using HarmonyLib;
 using UnityEngine;
+using TheBazaar;
+using TheBazaar.UI;
 
 namespace BazaarAccess.Patches;
 
+/// <summary>
+/// Hook en OptionsDialogController para hacer accesible el menú de opciones.
+/// Solo activa la UI cuando el menú está realmente visible.
+/// </summary>
 [HarmonyPatch(typeof(OptionsDialogController), "OnEnable")]
-public static class OptionsDialogEnablePatch
+public static class OptionsDialogShowPatch
 {
-    static void Postfix(OptionsDialogController __instance)
+    private static OptionsUI _currentOptionsUI;
+    private static bool _isOpen = false;
+    private static float _lastCloseTime = 0f;
+    private const float COOLDOWN = 0.5f; // Medio segundo de cooldown
+
+    [HarmonyPostfix]
+    public static void Postfix(MonoBehaviour __instance)
     {
-        // Solo procesar si el objeto está realmente visible
-        if (!__instance.gameObject.activeInHierarchy) return;
+        // Cooldown para evitar reabrir inmediatamente después de cerrar
+        if (Time.time - _lastCloseTime < COOLDOWN)
+        {
+            return;
+        }
 
-        Plugin.Logger.LogInfo("OptionsDialogController.OnEnable()");
+        // Verificar si el diálogo está realmente visible
+        if (!IsReallyVisible(__instance.transform))
+        {
+            return;
+        }
 
-        // Guardar el menú anterior
-        MenuNavigator.SavePreviousMenu();
+        // Evitar abrir múltiples veces
+        if (_isOpen) return;
+        _isOpen = true;
 
-        MenuNavigator.AnnounceMenuTitle(__instance.transform);
-        MenuNavigator.SetMenuRoot(__instance.transform, "Options");
+        // Crear UI accesible
+        _currentOptionsUI = new OptionsUI(__instance.transform);
+        AccessibilityMgr.ShowUI(_currentOptionsUI);
+
+        Plugin.Logger.LogInfo("OptionsUI abierta");
     }
+
+    /// <summary>
+    /// Verifica si el menú está realmente visible para el usuario.
+    /// </summary>
+    private static bool IsReallyVisible(Transform root)
+    {
+        if (root == null) return false;
+        if (!root.gameObject.activeInHierarchy) return false;
+
+        // Verificar CanvasGroup (alpha > 0, interactable)
+        var canvasGroup = root.GetComponent<CanvasGroup>();
+        if (canvasGroup != null)
+        {
+            if (canvasGroup.alpha < 0.1f) return false;
+            if (!canvasGroup.interactable) return false;
+        }
+
+        // Verificar escala (no es 0)
+        var scale = root.localScale;
+        if (scale.x < 0.1f || scale.y < 0.1f) return false;
+
+        // Verificar que hay botones de opciones visibles (Btn_Close o Btn_Save siempre existen)
+        var buttons = root.GetComponentsInChildren<UnityEngine.UI.Button>(false);
+        foreach (var btn in buttons)
+        {
+            if (btn.gameObject.activeInHierarchy &&
+                (btn.gameObject.name == "Btn_Close" || btn.gameObject.name == "Btn_Save"))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static void SetClosed()
+    {
+        _isOpen = false;
+        _currentOptionsUI = null;
+        _lastCloseTime = Time.time;
+    }
+
+    public static OptionsUI GetCurrentUI() => _currentOptionsUI;
 }
 
 [HarmonyPatch(typeof(OptionsDialogController), "OnDisable")]
-public static class OptionsDialogDisablePatch
+public static class OptionsDialogHidePatch
 {
-    static void Postfix(OptionsDialogController __instance)
+    [HarmonyPostfix]
+    public static void Postfix(MonoBehaviour __instance)
     {
-        Plugin.Logger.LogInfo("OptionsDialogController.OnDisable()");
-
-        // Restaurar el menú anterior
-        MenuNavigator.RestorePreviousMenu();
+        var currentUI = OptionsDialogShowPatch.GetCurrentUI();
+        if (currentUI != null)
+        {
+            AccessibilityMgr.HideUI(currentUI);
+            OptionsDialogShowPatch.SetClosed();
+            Plugin.Logger.LogInfo("OptionsUI cerrada");
+        }
     }
 }

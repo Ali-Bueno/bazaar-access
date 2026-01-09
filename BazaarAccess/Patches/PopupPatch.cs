@@ -1,34 +1,37 @@
+using BazaarAccess.Accessibility;
 using HarmonyLib;
 using TheBazaar;
-using UnityEngine;
 
 namespace BazaarAccess.Patches;
 
+/// <summary>
+/// Hook en PopupBase.Show para detectar cuando se abre un popup.
+/// TODO: Implementar UIs accesibles para popups.
+/// </summary>
 [HarmonyPatch(typeof(PopupBase), nameof(PopupBase.Show))]
 public static class PopupShowPatch
 {
     static void Postfix(PopupBase __instance)
     {
         string popupName = __instance.GetType().Name;
-        Plugin.Logger.LogInfo($"PopupBase.Show(): {popupName}");
+        Plugin.Logger.LogInfo($"PopupBase.Show: {popupName}");
 
-        // Guardar el menú anterior antes de cambiar al popup
-        MenuNavigator.SavePreviousMenu();
-
-        MenuNavigator.AnnounceMenuTitle(__instance.transform);
-        MenuNavigator.SetMenuRoot(__instance.transform, popupName);
+        // TODO: Crear UI accesible para el popup y hacer ShowUI
     }
 }
 
+/// <summary>
+/// Hook en PopupBase.Hide para detectar cuando se cierra un popup.
+/// </summary>
 [HarmonyPatch(typeof(PopupBase), nameof(PopupBase.Hide))]
 public static class PopupHidePatch
 {
     static void Postfix(PopupBase __instance)
     {
         string popupName = __instance.GetType().Name;
-        Plugin.Logger.LogInfo($"PopupBase.Hide(): {popupName}");
+        Plugin.Logger.LogInfo($"PopupBase.Hide: {popupName}");
 
-        // Restaurar el menú anterior
-        MenuNavigator.RestorePreviousMenu();
+        // Pop de la UI si había una
+        AccessibilityMgr.PopUI();
     }
 }

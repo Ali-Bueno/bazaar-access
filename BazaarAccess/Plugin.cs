@@ -1,8 +1,7 @@
+using BazaarAccess.Core;
 using BepInEx;
 using BepInEx.Logging;
-using DavyKager;
 using HarmonyLib;
-using UnityEngine;
 
 namespace BazaarAccess;
 
@@ -10,59 +9,34 @@ namespace BazaarAccess;
 public class Plugin : BaseUnityPlugin
 {
     internal static new ManualLogSource Logger;
+    internal static Plugin Instance { get; private set; }
     private static Harmony _harmony;
 
     private void Awake()
     {
+        Instance = this;
         Logger = base.Logger;
 
-        Tolk.Load();
-        Tolk.Output("Bazaar Access cargado");
+        // Inicializar Tolk con manejo de errores
+        if (TolkWrapper.Initialize())
+        {
+            TolkWrapper.Speak("Bazaar Access cargado");
+        }
 
+        // Crear el navegador de teclado
+        KeyboardNavigator.Create(gameObject);
+
+        // Aplicar parches de Harmony
         _harmony = new Harmony(MyPluginInfo.PLUGIN_GUID);
         _harmony.PatchAll();
 
         Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} cargado");
     }
 
-    private void OnGUI()
-    {
-        Event e = Event.current;
-        if (e != null && e.type == EventType.KeyDown)
-        {
-            bool handled = true;
-            switch (e.keyCode)
-            {
-                case KeyCode.DownArrow:
-                    MenuNavigator.Navigate(1);
-                    break;
-                case KeyCode.UpArrow:
-                    MenuNavigator.Navigate(-1);
-                    break;
-                case KeyCode.RightArrow:
-                    MenuNavigator.AdjustValue(1);
-                    break;
-                case KeyCode.LeftArrow:
-                    MenuNavigator.AdjustValue(-1);
-                    break;
-                case KeyCode.Return:
-                case KeyCode.KeypadEnter:
-                    MenuNavigator.ActivateSelected();
-                    break;
-                case KeyCode.F5:
-                    MenuNavigator.RefreshAndRead();
-                    break;
-                default:
-                    handled = false;
-                    break;
-            }
-            if (handled) e.Use();
-        }
-    }
-
     private void OnDestroy()
     {
+        KeyboardNavigator.Destroy();
         _harmony?.UnpatchSelf();
-        Tolk.Unload();
+        TolkWrapper.Shutdown();
     }
 }

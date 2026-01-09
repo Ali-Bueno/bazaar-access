@@ -1,4 +1,4 @@
-using DavyKager;
+using BazaarAccess.Core;
 using HarmonyLib;
 
 namespace BazaarAccess.Patches;
@@ -13,6 +13,6 @@ public static class HeroChangedPatch
     {
         string heroName = hero?.ToString() ?? "Desconocido";
         Plugin.Logger.LogInfo($"Héroe seleccionado: {heroName}");
-        Tolk.Output(heroName);
+        TolkWrapper.Speak(heroName);
     }
 }
