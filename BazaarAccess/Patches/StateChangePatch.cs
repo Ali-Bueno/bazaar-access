@@ -86,6 +86,15 @@ public static class StateChangePatch
             SubscribeToEvent("StorageToggled", typeof(Action<bool>),
                 (Action<bool>)OnStorageToggled);
 
+            // === Eventos de replay ===
+            SubscribeToEventNoParam("ReplayEnded", OnReplayEnded);
+
+            // === Eventos de errores ===
+            SubscribeToEvent("NotEnoughSpace", typeof(Action<Card>),
+                (Action<Card>)OnNotEnoughSpace);
+            SubscribeToEvent("CantAffordCard", typeof(Action<Card>),
+                (Action<Card>)OnCantAffordCard);
+
             // === Eventos de BoardManager (cartas reveladas) ===
             SubscribeToBoardManagerEvent("ItemCardsRevealed", OnItemCardsRevealed);
             SubscribeToBoardManagerEvent("SkillCardsRevealed", OnSkillCardsRevealed);
@@ -232,7 +241,9 @@ public static class StateChangePatch
             }
             else if (!_inReplayState && wasInReplayState)
             {
-                Plugin.Logger.LogInfo("Exited ReplayState");
+                Plugin.Logger.LogInfo("Exited ReplayState - triggering delayed refresh");
+                // Cuando salimos del ReplayState, necesitamos refrescar la UI después de un delay
+                Plugin.Instance.StartCoroutine(DelayedRefreshAfterExitReplayState());
             }
 
             if (AccessibilityMgr.GetFocusedUI() == null)
@@ -384,6 +395,57 @@ public static class StateChangePatch
         screen?.OnStorageToggled(isOpen);
     }
 
+    /// <summary>
+    /// Cuando termina un replay (el jugador vio el replay del combate).
+    /// </summary>
+    private static void OnReplayEnded()
+    {
+        Plugin.Logger.LogInfo("ReplayEnded - Replay finished, refreshing UI");
+        // Después del replay, la UI puede estar desactualizada
+        Plugin.Instance.StartCoroutine(DelayedRefreshAfterReplay());
+    }
+
+    private static System.Collections.IEnumerator DelayedRefreshAfterReplay()
+    {
+        // Esperar a que termine la animación
+        yield return new UnityEngine.WaitForSeconds(0.5f);
+        TriggerRefresh();
+    }
+
+    private static System.Collections.IEnumerator DelayedRefreshAfterExitReplayState()
+    {
+        // Múltiples refreshes para capturar cambios tardíos después del ReplayState
+        yield return new UnityEngine.WaitForSeconds(0.3f);
+        TriggerRefreshAndAnnounce();
+
+        yield return new UnityEngine.WaitForSeconds(0.5f);
+        TriggerRefresh();
+
+        yield return new UnityEngine.WaitForSeconds(0.5f);
+        TriggerRefresh();
+    }
+
+    /// <summary>
+    /// Cuando no hay espacio para un item.
+    /// </summary>
+    private static void OnNotEnoughSpace(Card card)
+    {
+        string name = card != null ? Gameplay.ItemReader.GetCardName(card) : "item";
+        Plugin.Logger.LogInfo($"NotEnoughSpace: {name}");
+        TolkWrapper.Speak($"No space for {name}");
+    }
+
+    /// <summary>
+    /// Cuando no hay suficiente oro para comprar.
+    /// </summary>
+    private static void OnCantAffordCard(Card card)
+    {
+        string name = card != null ? Gameplay.ItemReader.GetCardName(card) : "item";
+        int price = card != null ? Gameplay.ItemReader.GetBuyPrice(card) : 0;
+        Plugin.Logger.LogInfo($"CantAffordCard: {name} costs {price}");
+        TolkWrapper.Speak($"Cannot afford {name}");
+    }
+
     #endregion
 
     #region Public Methods
@@ -431,13 +493,13 @@ public static class StateChangePatch
         return state switch
         {
             ERunState.Choice => "Shop",
-            ERunState.Encounter => "Choose encounter",
+            ERunState.Encounter => "Encounters",
             ERunState.Combat => "Combat",
             ERunState.PVPCombat => "PvP Combat",
-            ERunState.Loot => "Choose your reward",
-            ERunState.LevelUp => "Level up - choose skill",
-            ERunState.Pedestal => "Upgrade station",
-            ERunState.EndRunVictory => "Victory!",
+            ERunState.Loot => "Loot",
+            ERunState.LevelUp => "Level up",
+            ERunState.Pedestal => "Upgrade",
+            ERunState.EndRunVictory => "Victory",
             ERunState.EndRunDefeat => "Defeat",
             ERunState.NewRun => "Starting run",
             ERunState.Shutdown => "Game ending",

@@ -7,6 +7,8 @@ using BazaarGameShared.Domain.Core.Types;
 using TheBazaar.AppFramework;
 using TheBazaar.Localization;
 
+// Para limpiar tags HTML de textos
+
 namespace BazaarAccess.Gameplay;
 
 /// <summary>
@@ -15,18 +17,20 @@ namespace BazaarAccess.Gameplay;
 public static class ItemReader
 {
     /// <summary>
-    /// Obtiene el texto localizado de un TLocalizableText.
+    /// Obtiene el texto localizado de un TLocalizableText, limpiando tags HTML.
     /// </summary>
     public static string GetLocalizedText(TLocalizableText text)
     {
         if (text == null) return string.Empty;
+
+        string result = string.Empty;
 
         try
         {
             var locService = Services.Get<LocalizationService>();
             if (locService != null && locService.TryGetText(text, out var translation))
             {
-                return translation;
+                result = translation;
             }
         }
         catch
@@ -34,7 +38,13 @@ public static class ItemReader
             // Fallback al texto por defecto
         }
 
-        return text.Text ?? string.Empty;
+        if (string.IsNullOrEmpty(result))
+        {
+            result = text.Text ?? string.Empty;
+        }
+
+        // Limpiar tags HTML
+        return TextHelper.CleanText(result);
     }
 
     /// <summary>
@@ -157,12 +167,12 @@ public static class ItemReader
         AppendStatIfPresent(sb, card, ECardAttributeType.Lifesteal, "Lifesteal");
         AppendStatIfPresent(sb, card, ECardAttributeType.Multicast, "Multicast");
 
-        // Descripción del item
-        string desc = GetDescription(card);
-        if (!string.IsNullOrEmpty(desc))
+        // Descripción del item y tooltips de habilidades
+        string fullDesc = GetFullDescription(card);
+        if (!string.IsNullOrEmpty(fullDesc))
         {
             sb.Append(". ");
-            sb.Append(desc);
+            sb.Append(fullDesc);
         }
 
         // Flavor text
@@ -305,6 +315,57 @@ public static class ItemReader
     }
 
     /// <summary>
+    /// Obtiene los tooltips de habilidades activas y pasivas de una carta.
+    /// </summary>
+    public static string GetAbilityTooltips(Card card)
+    {
+        if (card == null) return string.Empty;
+
+        var template = card.Template;
+        var tooltips = template?.Localization?.Tooltips;
+        if (tooltips == null || tooltips.Count == 0) return string.Empty;
+
+        var sb = new StringBuilder();
+
+        foreach (var tooltip in tooltips)
+        {
+            if (tooltip?.Content != null)
+            {
+                string text = GetLocalizedText(tooltip.Content);
+                if (!string.IsNullOrEmpty(text))
+                {
+                    if (sb.Length > 0) sb.Append(". ");
+                    sb.Append(text);
+                }
+            }
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Obtiene la descripción completa de una carta incluyendo tooltips de habilidades.
+    /// </summary>
+    public static string GetFullDescription(Card card)
+    {
+        if (card == null) return string.Empty;
+
+        var parts = new List<string>();
+
+        // Descripción básica
+        string desc = GetDescription(card);
+        if (!string.IsNullOrEmpty(desc))
+            parts.Add(desc);
+
+        // Tooltips de habilidades
+        string abilities = GetAbilityTooltips(card);
+        if (!string.IsNullOrEmpty(abilities))
+            parts.Add(abilities);
+
+        return string.Join(". ", parts);
+    }
+
+    /// <summary>
     /// Obtiene las líneas de detalle separadas para navegación Ctrl+Up/Down.
     /// </summary>
     public static List<string> GetDetailLines(Card card)
@@ -368,11 +429,18 @@ public static class ItemReader
         AddStatLine(lines, card, ECardAttributeType.Lifesteal, "Lifesteal");
         AddStatLine(lines, card, ECardAttributeType.Multicast, "Multicast");
 
-        // Descripción
+        // Descripción básica
         string desc = GetDescription(card);
         if (!string.IsNullOrEmpty(desc))
         {
-            lines.Add($"Effect: {desc}");
+            lines.Add($"Description: {desc}");
+        }
+
+        // Tooltips de habilidades (Active/Passive abilities)
+        string abilities = GetAbilityTooltips(card);
+        if (!string.IsNullOrEmpty(abilities))
+        {
+            lines.Add($"Ability: {abilities}");
         }
 
         // Flavor text

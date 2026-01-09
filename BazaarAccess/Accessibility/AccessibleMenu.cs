@@ -223,6 +223,7 @@ public enum AccessibleKey
     GoToHero,       // V - Ir al héroe
     GoToChoices,    // C - Ir a choices/selection
     GoToEnemy,      // F - Ir al enemigo/NPC
+    GoToStash,      // G - Ir al stash
     // Acciones del juego
     Exit,           // E - Salir del estado actual
     Reroll,         // R - Reroll/Refresh

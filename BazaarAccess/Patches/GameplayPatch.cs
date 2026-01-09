@@ -4,6 +4,7 @@ using BazaarAccess.Core;
 using BazaarAccess.Gameplay;
 using HarmonyLib;
 using TheBazaar;
+using TheBazaar.AppFramework;
 using UnityEngine;
 
 namespace BazaarAccess.Patches;
@@ -78,4 +79,135 @@ public static class GameplayPatch
     /// Obtiene la pantalla de gameplay actual.
     /// </summary>
     public static GameplayScreen GetGameplayScreen() => _gameplayScreen;
+}
+
+/// <summary>
+/// Detecta cuando se abre/cierra el stash.
+/// </summary>
+[HarmonyPatch(typeof(BoardManager), "TryToggleStorage")]
+public static class StorageTogglePatch
+{
+    [HarmonyPostfix]
+    public static void Postfix()
+    {
+        try
+        {
+            // Usar un pequeño delay para que Data.IsStorageOpen se actualice
+            Plugin.Instance.StartCoroutine(DelayedStorageCheck());
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"StorageTogglePatch error: {ex.Message}");
+        }
+    }
+
+    private static IEnumerator DelayedStorageCheck()
+    {
+        yield return new WaitForSeconds(0.1f);
+
+        bool isOpen = Data.IsStorageOpen;
+        Plugin.Logger.LogInfo($"StorageTogglePatch: Storage is now {(isOpen ? "OPEN" : "CLOSED")}");
+
+        var screen = GameplayPatch.GetGameplayScreen();
+        screen?.OnStorageToggled(isOpen);
+    }
+}
+
+/// <summary>
+/// Detecta cuando entramos en ReplayState (post-combat).
+/// </summary>
+[HarmonyPatch]
+public static class ReplayStateEnterPatch
+{
+    private static System.Reflection.MethodBase _targetMethod;
+
+    static bool Prepare()
+    {
+        try
+        {
+            var replayStateType = typeof(AppState).Assembly.GetType("TheBazaar.ReplayState");
+            if (replayStateType != null)
+            {
+                _targetMethod = replayStateType.GetMethod("OnEnter",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (_targetMethod != null)
+                {
+                    Plugin.Logger.LogInfo("ReplayStateEnterPatch: Found ReplayState.OnEnter");
+                    return true;
+                }
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"ReplayStateEnterPatch.Prepare error: {ex.Message}");
+        }
+        return false;
+    }
+
+    static System.Reflection.MethodBase TargetMethod() => _targetMethod;
+
+    [HarmonyPostfix]
+    public static void Postfix()
+    {
+        Plugin.Logger.LogInfo("ReplayStateEnterPatch: Entered ReplayState!");
+        Plugin.Instance.StartCoroutine(DelayedReplayStateEnter());
+    }
+
+    private static IEnumerator DelayedReplayStateEnter()
+    {
+        yield return new WaitForSeconds(0.3f);
+
+        var screen = GameplayPatch.GetGameplayScreen();
+        if (screen != null)
+        {
+            screen.OnReplayStateChanged(true);
+            TolkWrapper.Speak("Combat finished. Press Enter to continue, R to replay, or E for recap.");
+        }
+    }
+}
+
+/// <summary>
+/// Detecta cuando el usuario presiona Exit en ReplayState.
+/// </summary>
+[HarmonyPatch]
+public static class ReplayStateExitPatch
+{
+    private static System.Reflection.MethodBase _targetMethod;
+
+    static bool Prepare()
+    {
+        try
+        {
+            var replayStateType = typeof(AppState).Assembly.GetType("TheBazaar.ReplayState");
+            if (replayStateType != null)
+            {
+                _targetMethod = replayStateType.GetMethod("Exit",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                if (_targetMethod != null)
+                {
+                    Plugin.Logger.LogInfo("ReplayStateExitPatch: Found ReplayState.Exit");
+                    return true;
+                }
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"ReplayStateExitPatch.Prepare error: {ex.Message}");
+        }
+        return false;
+    }
+
+    static System.Reflection.MethodBase TargetMethod() => _targetMethod;
+
+    [HarmonyPostfix]
+    public static void Postfix()
+    {
+        Plugin.Logger.LogInfo("ReplayStateExitPatch: Exit called - continuing from combat");
+
+        var screen = GameplayPatch.GetGameplayScreen();
+        if (screen != null)
+        {
+            screen.OnReplayStateChanged(false);
+        }
+    }
 }

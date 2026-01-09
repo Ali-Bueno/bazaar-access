@@ -1,7 +1,10 @@
 using BazaarAccess.Core;
+using BazaarGameClient.Domain.Cards;
 using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameShared.Domain.Core.Types;
+using BazaarGameShared.Domain.Runs;
 using TheBazaar;
+using TheBazaar.AppFramework;
 
 namespace BazaarAccess.Gameplay;
 
@@ -115,23 +118,58 @@ public static class ActionHelper
             return false;
         }
 
+        // Verificar si se puede mover en el estado actual
+        if (!state.CanHandleOperation(StateOps.MoveItem))
+        {
+            TolkWrapper.Speak("Cannot move items now");
+            return false;
+        }
+
         try
         {
             var section = toStash ? EInventorySection.Stash : EInventorySection.Hand;
-
-            // Para mover, necesitamos especificar los sockets destino
-            // Por ahora usamos null para que el juego elija automáticamente
-            var desiredSockets = new System.Collections.Generic.List<EContainerSocketId>();
-            for (int i = 0; i < (int)card.Size; i++)
+            var player = Data.Run?.Player;
+            if (player == null)
             {
-                desiredSockets.Add((EContainerSocketId)i);
+                TolkWrapper.Speak("Player data not available");
+                return false;
+            }
+
+            // Verificar si hay espacio en el destino ANTES de mover
+            CardContainer targetContainer = (section == EInventorySection.Hand ?
+                player.Hand : player.Stash) as CardContainer;
+
+            if (targetContainer == null)
+            {
+                TolkWrapper.Speak("Cannot access destination");
+                return false;
+            }
+
+            if (!targetContainer.HasSpaceForCard(card))
+            {
+                string destination = toStash ? "stash" : "board";
+                TolkWrapper.Speak($"No space in {destination}");
+                Plugin.Logger.LogInfo($"MoveItem: No space for {card.Size} size card in {destination}");
+                return false;
+            }
+
+            // Obtener los sockets disponibles para este item
+            var desiredSockets = CardOperationUtility.GetAvailableSockets(card, section);
+            if (desiredSockets == null || desiredSockets.Count == 0)
+            {
+                // Fallback a sockets desde 0
+                desiredSockets = new System.Collections.Generic.List<EContainerSocketId>();
+                for (int i = 0; i < (int)card.Size; i++)
+                {
+                    desiredSockets.Add((EContainerSocketId)i);
+                }
             }
 
             state.MoveCardCommand(card, desiredSockets, section);
 
             string name = ItemReader.GetCardName(card);
-            string destination = toStash ? "Stash" : "Board";
-            TolkWrapper.Speak($"Moved {name} to {destination}");
+            string dest = toStash ? "Stash" : "Board";
+            TolkWrapper.Speak($"Moved {name} to {dest}");
 
             Plugin.Logger.LogInfo($"MoveItem: {name} to {section}");
             return true;

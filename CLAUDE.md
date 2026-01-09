@@ -262,7 +262,7 @@ El DLL se copia automáticamente a la carpeta de plugins de BepInEx.
 
 ### Tablero del Jugador
 
-- **10 slots de items** (`playerItemSockets[0-9]`)
+- **5-10 slots de items** (`playerItemSockets[0-9]`) - empieza con 5, se expande al subir de nivel
 - **4 slots de habilidades** (`playerSkillSockets[0-3]`)
 - **Stash/Almacén**: Guardar items sin efecto en batalla
 - **Prestigio**: Vida de la partida (si llega a 0, termina)
@@ -353,8 +353,8 @@ Pantalla accesible principal del gameplay que implementa `IAccessibleScreen`. Se
 - `E`: Salir del estado actual (Exit)
 - `R`: Refrescar tienda (Reroll)
 - `Espacio`: Ir al Stash
-- `Shift+Arriba`: Mover item del Stash al Board
-- `Shift+Abajo`: Mover item del Board al Stash
+- `Shift+Arriba`: Mover item al Stash
+- `Shift+Abajo`: Mover item al Board
 - `Shift+Izq/Der`: Reordenar items en el Board
 - `.` (punto): Leer último mensaje
 - `,` (coma): Leer mensaje anterior
@@ -455,16 +455,18 @@ Buffer circular de hasta 50 mensajes del juego:
 ### Estados del Juego (ERunState)
 
 ```
-Choice      → "Shop" (tienda)
-Encounter   → "Choose encounter"
-Combat      → "Combat" (PvE)
+Choice      → "Shop, X items"
+Encounter   → "X encounters"
+Combat      → "Combat"
 PVPCombat   → "PvP Combat"
-Loot        → "Choose your reward" (recompensas)
-LevelUp     → "Level up - choose skill"
-Pedestal    → "Upgrade station"
-EndRunVictory → "Victory!"
+Loot        → "X rewards"
+LevelUp     → "Level up, X skills"
+Pedestal    → "Upgrade"
+EndRunVictory → "Victory"
 EndRunDefeat  → "Defeat"
 ```
+
+Los anuncios son simplificados y no redundantes.
 
 ### Modo Combate
 
@@ -472,15 +474,17 @@ Durante el combate (`ERunState.Combat` o `ERunState.PVPCombat`):
 - **Solo V y F funcionan**: V para Hero stats, F para Enemy stats
 - **Todas las demás teclas están desactivadas**: B, C, Tab, flechas de navegación, etc.
 - El tablero está "volteado" (`IsBoardFlipped`) y no es accesible visualmente
-- Se anuncia "Combat started" al iniciar y "Combat ended" al terminar
+- Se anuncia "Entering combat" al iniciar y "Exiting combat" al terminar
 
 ### Post-Combate (ReplayState)
 
 Después del combate, se entra en `ReplayState`:
-- Se anuncia: "Combat finished. Press E to continue, R to replay, or Enter for recap."
-- **E**: Continuar (sale del ReplayState)
+- Se anuncia: "Combat finished. Press Enter to continue, R to replay, or E for recap."
+- **Enter**: Continuar (sale del ReplayState)
 - **R**: Repetir el combate (replay)
-- **Enter**: Ver resumen (recap)
+- **E**: Ver resumen (recap)
+- **V**: Ver stats del héroe
+- **F**: Ver stats del enemigo
 - Todas las demás teclas están desactivadas
 
 ### Stash (Almacén)
@@ -528,6 +532,36 @@ El anuncio indica "select to continue" cuando el estado auto-saldrá.
 
 ---
 
+## Sistema de Slots del Tablero
+
+El tablero del jugador tiene un sistema de slots que se expande conforme subes de nivel:
+
+- **Fórmula**: `boardSize = UnlockedSocketCount + 5`
+- **Inicio**: 5 slots desbloqueados
+- **Expansión**: El servidor envía `GameSimEventSocketsUnlocked` al subir de nivel
+- **Validación**: 100% servidor - el mod NO puede saltarse restricciones
+
+El mod usa los mismos comandos que el juego original:
+- `BuyItemCommand()` → valida espacio con `HasSpaceFor(card)`
+- `MoveCardCommand()` → valida slots desbloqueados con `IsSocketLocked()`
+
+## Vender Items
+
+Vender está permitido en casi todos los estados del juego (comportamiento original):
+
+| Estado | Vender permitido |
+|--------|------------------|
+| Shop (Choice) | ✅ |
+| Encounter | ✅ |
+| Loot | ✅ |
+| Level Up | ✅ |
+| Pedestal | ✅ |
+| ReplayState | ✅ |
+
+Cada estado define `AllowedOps` que incluye `StateOps.SellItem`.
+
+---
+
 ## Implementado Recientemente
 
 - ✅ Sistema de eventos nativos del juego (sin delays arbitrarios)
@@ -535,16 +569,18 @@ El anuncio indica "select to continue" cuando el estado auto-saldrá.
 - ✅ Restricción completa de teclas durante combate (B, C, Tab desactivados)
 - ✅ Información del enemigo con tecla F
 - ✅ Reordenamiento de items en el Board (Shift+Izq/Der)
-- ✅ Mover items entre Board y Stash (Shift+Arriba/Abajo)
+- ✅ Mover items entre Board y Stash (Shift+Arriba=Stash, Shift+Abajo=Board)
 - ✅ Lectura detallada línea por línea (Ctrl+Arriba/Abajo)
-- ✅ Detección de estado del Stash (abierto/cerrado)
-- ✅ Post-combate accesible (ReplayState con E/R/Enter)
+- ✅ Detección de estado del Stash (abierto/cerrado) via Harmony patch
+- ✅ Post-combate accesible (ReplayState con Enter=continuar, R=replay, E=recap)
 - ✅ Refresh de UI después de seleccionar items (CardSelected, ItemPurchased, CardDisposed)
 - ✅ Detección de auto-exit ("select to continue")
-- ✅ Mejores descripciones de estado (Loot → "Choose your reward", LevelUp → "Level up - choose skill")
+- ✅ Anuncios simplificados de estado (Shop/Encounters/Loot sin redundancia)
 - ✅ Subsecciones de Hero (Stats/Skills) con navegación Ctrl+Izq/Der
 - ✅ Navegación en Hero con Ctrl+Arriba/Abajo (en vez de flechas normales)
-- ✅ Inversión de lectura detallada (Ctrl+Arriba=siguiente, Ctrl+Abajo=anterior)
+- ✅ Anuncios de combate ("Entering combat" / "Exiting combat")
+- ✅ V y F funcionan durante ReplayState para ver stats
+- ✅ Secciones vacías no se anuncian
 
 ## Pendiente por Implementar
 
@@ -554,6 +590,5 @@ El anuncio indica "select to continue" cuando el estado auto-saldrá.
 - Cambios de prestigio
 
 ### Mejoras de Navegación
-- Localización del botón Exit (usar texto del juego)
 - Preview de sinergia de items
 - Acceso rápido a información de cooldowns en batalla

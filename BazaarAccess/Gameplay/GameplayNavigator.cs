@@ -277,6 +277,18 @@ public class GameplayNavigator
     }
 
     /// <summary>
+    /// Cambia a una sección sin anunciar (para uso interno).
+    /// </summary>
+    public void SetSectionSilent(NavigationSection section)
+    {
+        _currentSection = section;
+        _currentIndex = 0;
+        _heroStatIndex = 0;
+        _heroSubsection = HeroSubsection.Stats;
+        _heroSkillIndex = 0;
+    }
+
+    /// <summary>
     /// Va a la sección de choices/selection.
     /// </summary>
     public void GoToChoices()
@@ -602,13 +614,45 @@ public class GameplayNavigator
     }
 
     /// <summary>
-    /// Va a la sección del stash.
+    /// Abre/cierra el stash y navega a él si está abierto.
+    /// </summary>
+    public void ToggleStash()
+    {
+        try
+        {
+            var bm = GetBoardManager();
+            if (bm == null)
+            {
+                TolkWrapper.Speak("Not available");
+                return;
+            }
+
+            // Verificar si podemos interactuar
+            if (!bm.AllowInteraction)
+            {
+                TolkWrapper.Speak("Cannot open stash now");
+                return;
+            }
+
+            // Llamar al método del juego para abrir/cerrar el stash
+            bm.TryToggleStorage();
+            // El evento StorageToggled se disparará y OnStorageToggled se encargará del resto
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"ToggleStash error: {ex.Message}");
+            TolkWrapper.Speak("Cannot toggle stash");
+        }
+    }
+
+    /// <summary>
+    /// Va a la sección del stash (sin abrir/cerrar).
     /// </summary>
     public void GoToStash()
     {
         if (!_stashOpen)
         {
-            TolkWrapper.Speak("Stash is closed");
+            TolkWrapper.Speak("Stash is closed. Press Space to open.");
             return;
         }
 
@@ -670,28 +714,56 @@ public class GameplayNavigator
     {
         Refresh();
 
-        string state = GetStateDescription();
+        var runState = GetCurrentState();
         int selCount = _selectionItems.Count;
         int boardCount = _boardIndices.Count;
 
-        var parts = new List<string> { state };
+        // Contar solo cartas (no Exit/Reroll)
+        int cardCount = _selectionItems.Count(i => i.Type == NavItemType.Card);
 
-        if (selCount > 0)
+        var parts = new List<string>();
+
+        // Anuncio simplificado según el estado
+        switch (runState)
         {
-            // Contar solo cartas (no Exit/Reroll)
-            int cardCount = _selectionItems.Count(i => i.Type == NavItemType.Card);
-            if (cardCount > 0)
-            {
-                string type = GetSelectionTypeName();
-                parts.Add($"{cardCount} {type}");
+            case ERunState.Choice:
+                parts.Add("Shop");
+                if (cardCount > 0) parts.Add($"{cardCount} items");
+                break;
 
-                // Indicar si auto-sale después de seleccionar
-                if (WillAutoExit())
+            case ERunState.Encounter:
+                parts.Add($"{cardCount} encounters");
+                break;
+
+            case ERunState.Loot:
+                parts.Add($"{cardCount} rewards");
+                break;
+
+            case ERunState.LevelUp:
+                parts.Add("Level up");
+                if (cardCount > 0) parts.Add($"{cardCount} skills");
+                break;
+
+            case ERunState.Pedestal:
+                parts.Add("Upgrade");
+                break;
+
+            default:
+                parts.Add(GetStateDescription());
+                if (cardCount > 0)
                 {
-                    parts.Add("select to continue");
+                    string type = GetSelectionTypeName();
+                    parts.Add($"{cardCount} {type}");
                 }
-            }
+                break;
         }
+
+        // Indicar si auto-sale después de seleccionar
+        if (cardCount > 0 && WillAutoExit())
+        {
+            parts.Add("select to continue");
+        }
+
         if (boardCount > 0)
         {
             parts.Add($"{boardCount} items on board");
@@ -746,6 +818,11 @@ public class GameplayNavigator
             return;
         }
 
+        int count = GetCurrentSectionCount();
+
+        // No anunciar secciones vacías
+        if (count == 0) return;
+
         string name = _currentSection switch
         {
             NavigationSection.Selection => GetSelectionTypeName(),
@@ -755,10 +832,8 @@ public class GameplayNavigator
             _ => "Unknown"
         };
 
-        int count = GetCurrentSectionCount();
         TolkWrapper.Speak($"{name}, {count} items");
-
-        if (count > 0) AnnounceCurrentItem();
+        AnnounceCurrentItem();
     }
 
     public void AnnounceCurrentItem()
@@ -1223,6 +1298,22 @@ public class GameplayNavigator
     /// Verifica si hay items en la selección.
     /// </summary>
     public bool HasSelectionContent() => _selectionItems.Count > 0;
+
+    /// <summary>
+    /// Obtiene el número de items en el stash.
+    /// </summary>
+    public int GetStashItemCount() => _stashIndices.Count;
+
+    /// <summary>
+    /// Indica si el stash está abierto.
+    /// </summary>
+    public bool IsStashOpen() => _stashOpen;
+
+    /// <summary>
+    /// Obtiene el número de cartas (no acciones) en la selección.
+    /// </summary>
+    public int GetSelectionCardCount() =>
+        _selectionItems.Count(i => i.Type == NavItemType.Card);
 
     // --- Navegación detallada línea por línea ---
 

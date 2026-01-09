@@ -66,12 +66,12 @@ public class KeyboardNavigator : MonoBehaviour
             // Ctrl = lectura detallada, Shift = mover entre board/stash
             case KeyCode.UpArrow:
                 if (ctrl) return AccessibleKey.DetailUp;
-                if (shift) return AccessibleKey.MoveToBoard;
+                if (shift) return AccessibleKey.MoveToStash;
                 return AccessibleKey.Up;
 
             case KeyCode.DownArrow:
                 if (ctrl) return AccessibleKey.DetailDown;
-                if (shift) return AccessibleKey.MoveToStash;
+                if (shift) return AccessibleKey.MoveToBoard;
                 return AccessibleKey.Down;
 
             // Shift+Izq/Der = reordenar items, Ctrl+Izq/Der = cambiar subsección Hero
@@ -112,6 +112,9 @@ public class KeyboardNavigator : MonoBehaviour
 
             case KeyCode.F:
                 return AccessibleKey.GoToEnemy;
+
+            case KeyCode.G:
+                return AccessibleKey.GoToStash;
 
             // Acciones del juego
             case KeyCode.E:

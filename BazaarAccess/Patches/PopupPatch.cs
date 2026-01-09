@@ -5,6 +5,7 @@ using BazaarAccess.Core;
 using BazaarAccess.UI;
 using HarmonyLib;
 using TheBazaar;
+using TheBazaar.SequenceFramework;
 using TMPro;
 using UnityEngine;
 
@@ -110,6 +111,7 @@ public static class PopupHidePatch
 public static class TutorialDialogPatch
 {
     private static MethodBase _targetMethod;
+    private static IAccessibleUI _currentTutorialUI;
 
     static bool Prepare()
     {
@@ -140,38 +142,37 @@ public static class TutorialDialogPatch
     {
         try
         {
+            var monoBehaviour = __instance as MonoBehaviour;
+            if (monoBehaviour == null) return;
+
+            string text = "";
+
             // Obtener el componente de secuencia para extraer el texto
             var sequenceField = __instance.GetType().GetField("_nodeSequenceComponent",
                 BindingFlags.NonPublic | BindingFlags.Instance);
 
+            NodeSequenceComponent nodeSequence = null;
             if (sequenceField != null)
             {
-                var sequenceComponent = sequenceField.GetValue(__instance);
-                if (sequenceComponent != null)
+                nodeSequence = sequenceField.GetValue(__instance) as NodeSequenceComponent;
+                if (nodeSequence?.Text != null)
                 {
-                    // Obtener la propiedad Text
-                    var textProp = sequenceComponent.GetType().GetProperty("Text");
-                    if (textProp != null)
+                    var textDetail = nodeSequence.Text;
+                    var textArray = textDetail.GetType().GetProperty("Text")?.GetValue(textDetail);
+                    if (textArray is Array arr && arr.Length > 0)
                     {
-                        var textObj = textProp.GetValue(sequenceComponent);
-                        if (textObj != null)
+                        var firstText = arr.GetValue(0);
+                        var getLocalizedMethod = firstText?.GetType().GetMethod("GetLocalizedText");
+                        if (getLocalizedMethod != null)
                         {
-                            string text = textObj.ToString();
-                            if (!string.IsNullOrWhiteSpace(text))
-                            {
-                                Plugin.Logger.LogInfo($"Tutorial: {text}");
-                                MessageBuffer.Add(text);
-                                TolkWrapper.Speak(text);
-                                return;
-                            }
+                            text = getLocalizedMethod.Invoke(firstText, null) as string ?? "";
                         }
                     }
                 }
             }
 
-            // Fallback: buscar TMP_Text en el objeto
-            var monoBehaviour = __instance as MonoBehaviour;
-            if (monoBehaviour != null)
+            // Fallback: buscar TMP_Text
+            if (string.IsNullOrWhiteSpace(text))
             {
                 var tmpTexts = monoBehaviour.GetComponentsInChildren<TMP_Text>(true);
                 foreach (var tmp in tmpTexts)
@@ -182,23 +183,86 @@ public static class TutorialDialogPatch
                     {
                         if (!string.IsNullOrWhiteSpace(tmp.text))
                         {
-                            string text = tmp.text.Trim();
-                            if (!MessageBuffer.ContainsRecent(text))
-                            {
-                                Plugin.Logger.LogInfo($"Tutorial (fallback): {text}");
-                                MessageBuffer.Add(text);
-                                TolkWrapper.Speak(text);
-                            }
-                            return;
+                            text = tmp.text.Trim();
+                            break;
                         }
                     }
                 }
             }
+
+            if (string.IsNullOrWhiteSpace(text)) return;
+
+            // Limpiar tags HTML
+            text = TextHelper.CleanText(text);
+
+            Plugin.Logger.LogInfo($"Tutorial: {text}");
+
+            // Crear UI de tutorial con botón de continuar
+            Action onContinue = () => {
+                try
+                {
+                    if (nodeSequence != null)
+                    {
+                        ((INodeSequence)nodeSequence).Completed();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Logger.LogError($"Tutorial continue error: {ex.Message}");
+                }
+            };
+
+            _currentTutorialUI = new TutorialDialogUI(monoBehaviour.transform, text, onContinue);
+            AccessibilityMgr.ShowUI(_currentTutorialUI);
         }
         catch (Exception ex)
         {
             Plugin.Logger.LogError($"TutorialDialogPatch error: {ex.Message}");
         }
+    }
+
+    public static void ClearCurrentUI()
+    {
+        _currentTutorialUI = null;
+    }
+}
+
+/// <summary>
+/// Hook para detectar cuando se oculta un diálogo de tutorial.
+/// </summary>
+[HarmonyPatch]
+public static class TutorialDialogHidePatch
+{
+    private static MethodBase _targetMethod;
+
+    static bool Prepare()
+    {
+        try
+        {
+            var type = typeof(PopupBase).Assembly.GetType("TheBazaar.SequenceDialogController");
+            if (type != null)
+            {
+                _targetMethod = type.GetMethod("Hide", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (_targetMethod != null)
+                {
+                    Plugin.Logger.LogInfo("TutorialDialogHidePatch: Found SequenceDialogController.Hide");
+                    return true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogError($"TutorialDialogHidePatch.Prepare error: {ex.Message}");
+        }
+        return false;
+    }
+
+    static MethodBase TargetMethod() => _targetMethod;
+
+    static void Postfix()
+    {
+        AccessibilityMgr.PopUI();
+        TutorialDialogPatch.ClearCurrentUI();
     }
 }
 
@@ -209,6 +273,7 @@ public static class TutorialDialogPatch
 public static class ImageTutorialPatch
 {
     private static MethodBase _targetMethod;
+    private static IAccessibleUI _currentUI;
 
     static bool Prepare()
     {
@@ -231,13 +296,10 @@ public static class ImageTutorialPatch
         {
             Plugin.Logger.LogError($"ImageTutorialPatch.Prepare error: {ex.Message}");
         }
-        return false; // No aplicar este patch
+        return false;
     }
 
-    static MethodBase TargetMethod()
-    {
-        return _targetMethod;
-    }
+    static MethodBase TargetMethod() => _targetMethod;
 
     static void Postfix(object __instance)
     {
@@ -246,26 +308,88 @@ public static class ImageTutorialPatch
             var monoBehaviour = __instance as MonoBehaviour;
             if (monoBehaviour == null) return;
 
+            // Obtener NodeSequenceComponent
+            var sequenceField = __instance.GetType().GetField("_nodeSequenceComponent",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            var nodeSequence = sequenceField?.GetValue(__instance) as NodeSequenceComponent;
+
+            // Buscar texto
+            string text = "";
             var tmpTexts = monoBehaviour.GetComponentsInChildren<TMP_Text>(true);
             foreach (var tmp in tmpTexts)
             {
                 if (!string.IsNullOrWhiteSpace(tmp.text))
                 {
-                    string text = tmp.text.Trim();
-                    if (!MessageBuffer.ContainsRecent(text))
-                    {
-                        Plugin.Logger.LogInfo($"Image tutorial: {text}");
-                        MessageBuffer.Add(text);
-                        TolkWrapper.Speak(text);
-                    }
-                    return;
+                    text = TextHelper.CleanText(tmp.text);
+                    break;
                 }
             }
+
+            if (string.IsNullOrWhiteSpace(text)) return;
+
+            Plugin.Logger.LogInfo($"Image tutorial: {text}");
+
+            Action onContinue = () => {
+                try
+                {
+                    if (nodeSequence != null)
+                    {
+                        ((INodeSequence)nodeSequence).Completed();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Logger.LogError($"Image tutorial continue error: {ex.Message}");
+                }
+            };
+
+            _currentUI = new TutorialDialogUI(monoBehaviour.transform, text, onContinue);
+            AccessibilityMgr.ShowUI(_currentUI);
         }
         catch (Exception ex)
         {
             Plugin.Logger.LogError($"ImageTutorialPatch error: {ex.Message}");
         }
+    }
+
+    public static void ClearUI()
+    {
+        _currentUI = null;
+    }
+}
+
+/// <summary>
+/// Hook para detectar cuando se oculta ImageSequenceDialogController.
+/// </summary>
+[HarmonyPatch]
+public static class ImageTutorialHidePatch
+{
+    private static MethodBase _targetMethod;
+
+    static bool Prepare()
+    {
+        try
+        {
+            var type = typeof(PopupBase).Assembly.GetType("ImageSequenceDialogController");
+            if (type != null)
+            {
+                _targetMethod = type.GetMethod("Hide", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (_targetMethod != null)
+                {
+                    return true;
+                }
+            }
+        }
+        catch { }
+        return false;
+    }
+
+    static MethodBase TargetMethod() => _targetMethod;
+
+    static void Postfix()
+    {
+        AccessibilityMgr.PopUI();
+        ImageTutorialPatch.ClearUI();
     }
 }
 
@@ -314,7 +438,7 @@ public static class BaseDialogPatch
                 var dialogText = dialogTextField.GetValue(__instance) as TMP_Text;
                 if (dialogText != null && !string.IsNullOrWhiteSpace(dialogText.text))
                 {
-                    string text = dialogText.text.Trim();
+                    string text = TextHelper.CleanText(dialogText.text);
                     if (!MessageBuffer.ContainsRecent(text))
                     {
                         Plugin.Logger.LogInfo($"Dialog: {text}");
@@ -328,6 +452,174 @@ public static class BaseDialogPatch
         {
             Plugin.Logger.LogError($"BaseDialogPatch error: {ex.Message}");
         }
+    }
+}
+
+/// <summary>
+/// Hook para FullScreenPopupDialogController (tutoriales de pantalla completa con botones Next/Previous).
+/// </summary>
+[HarmonyPatch]
+public static class FullScreenTutorialPatch
+{
+    private static MethodBase _targetMethod;
+    private static IAccessibleUI _currentUI;
+
+    static bool Prepare()
+    {
+        try
+        {
+            var type = typeof(PopupBase).Assembly.GetType("TheBazaar.FullScreenPopupDialogController");
+            if (type != null)
+            {
+                _targetMethod = type.GetMethod("Show", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (_targetMethod != null)
+                {
+                    Plugin.Logger.LogInfo("FullScreenTutorialPatch: Found FullScreenPopupDialogController.Show");
+                    return true;
+                }
+            }
+            Plugin.Logger.LogWarning("FullScreenTutorialPatch: Could not find method - skipping patch");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogError($"FullScreenTutorialPatch.Prepare error: {ex.Message}");
+        }
+        return false;
+    }
+
+    static MethodBase TargetMethod() => _targetMethod;
+
+    static void Postfix(object __instance)
+    {
+        try
+        {
+            var monoBehaviour = __instance as MonoBehaviour;
+            if (monoBehaviour == null) return;
+
+            // Obtener NodeSequenceComponent
+            var sequenceField = __instance.GetType().GetField("_nodeSequenceComponent",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            var nodeSequence = sequenceField?.GetValue(__instance) as NodeSequenceComponent;
+
+            // Buscar texto principal y secundario
+            string mainText = "";
+            string bodyText = "";
+
+            var dialogTextField = __instance.GetType().GetField("_dialogText",
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+            if (dialogTextField != null)
+            {
+                var tmp = dialogTextField.GetValue(__instance) as TMP_Text;
+                if (tmp != null)
+                    mainText = TextHelper.CleanText(tmp.text);
+            }
+
+            var bodyTextField = __instance.GetType().GetField("_bodyText",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            if (bodyTextField != null)
+            {
+                var tmp = bodyTextField.GetValue(__instance) as TMP_Text;
+                if (tmp != null)
+                    bodyText = TextHelper.CleanText(tmp.text);
+            }
+
+            string fullText = string.IsNullOrWhiteSpace(bodyText) ? mainText : $"{mainText}. {bodyText}";
+            if (string.IsNullOrWhiteSpace(fullText)) return;
+
+            Plugin.Logger.LogInfo($"FullScreen tutorial: {fullText}");
+
+            // Obtener botones de navegación
+            Action onNext = null;
+            Action onPrevious = null;
+
+            var nextButtonField = __instance.GetType().GetField("_nextButton",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            var prevButtonField = __instance.GetType().GetField("_previousButton",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+
+            if (nextButtonField != null)
+            {
+                var nextBtn = nextButtonField.GetValue(__instance) as BazaarButtonController;
+                if (nextBtn != null && nextBtn.gameObject.activeInHierarchy && nextBtn.interactable)
+                {
+                    onNext = () => nextBtn.onClick?.Invoke();
+                }
+            }
+
+            if (prevButtonField != null)
+            {
+                var prevBtn = prevButtonField.GetValue(__instance) as BazaarButtonController;
+                if (prevBtn != null && prevBtn.gameObject.activeInHierarchy && prevBtn.interactable)
+                {
+                    onPrevious = () => prevBtn.onClick?.Invoke();
+                }
+            }
+
+            Action onContinue = () => {
+                try
+                {
+                    if (onNext != null)
+                    {
+                        onNext();
+                    }
+                    else if (nodeSequence != null)
+                    {
+                        ((INodeSequence)nodeSequence).Completed();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Logger.LogError($"FullScreen tutorial continue error: {ex.Message}");
+                }
+            };
+
+            _currentUI = new TutorialDialogUI(monoBehaviour.transform, fullText, onContinue, onNext, onPrevious);
+            AccessibilityMgr.ShowUI(_currentUI);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogError($"FullScreenTutorialPatch error: {ex.Message}");
+        }
+    }
+
+    public static void ClearUI()
+    {
+        _currentUI = null;
+    }
+}
+
+/// <summary>
+/// Hook para detectar cuando se oculta FullScreenPopupDialogController.
+/// </summary>
+[HarmonyPatch]
+public static class FullScreenTutorialHidePatch
+{
+    private static MethodBase _targetMethod;
+
+    static bool Prepare()
+    {
+        try
+        {
+            var type = typeof(PopupBase).Assembly.GetType("TheBazaar.FullScreenPopupDialogController");
+            if (type != null)
+            {
+                _targetMethod = type.GetMethod("Hide", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (_targetMethod != null)
+                {
+                    return true;
+                }
+            }
+        }
+        catch { }
+        return false;
+    }
+
+    static MethodBase TargetMethod() => _targetMethod;
+
+    static void Postfix()
+    {
+        AccessibilityMgr.PopUI();
+        FullScreenTutorialPatch.ClearUI();
     }
 }
 

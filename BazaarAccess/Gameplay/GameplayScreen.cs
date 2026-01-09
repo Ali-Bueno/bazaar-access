@@ -31,12 +31,12 @@ public class GameplayScreen : IAccessibleScreen
 
     public void HandleInput(AccessibleKey key)
     {
-        // En modo replay (post-combate), solo E/R/Enter
+        // En modo replay (post-combate), Enter/R/E + V/F para stats
         if (_navigator.IsInReplayMode)
         {
             switch (key)
             {
-                case AccessibleKey.Exit:
+                case AccessibleKey.Confirm:
                     TriggerReplayContinue();
                     break;
 
@@ -44,12 +44,20 @@ public class GameplayScreen : IAccessibleScreen
                     TriggerReplayReplay();
                     break;
 
-                case AccessibleKey.Confirm:
+                case AccessibleKey.Exit:
                     TriggerReplayRecap();
                     break;
 
+                case AccessibleKey.GoToHero:
+                    _navigator.ReadAllHeroStats();
+                    break;
+
+                case AccessibleKey.GoToEnemy:
+                    _navigator.ReadEnemyInfo();
+                    break;
+
                 case AccessibleKey.Back:
-                    TolkWrapper.Speak("Combat finished. Press E to continue, R to replay, or Enter for recap.");
+                    TolkWrapper.Speak("Combat finished. Press Enter to continue, R to replay, or E for recap.");
                     break;
 
                 // Ignorar todas las demás teclas durante replay mode
@@ -135,6 +143,18 @@ public class GameplayScreen : IAccessibleScreen
                 _navigator.GoToChoices();
                 break;
 
+            case AccessibleKey.GoToStash:
+                // Si el stash está cerrado, abrirlo primero
+                if (!_navigator.IsStashOpen())
+                {
+                    _navigator.ToggleStash();
+                }
+                else
+                {
+                    _navigator.GoToStash();
+                }
+                break;
+
             case AccessibleKey.GoToEnemy:
                 _navigator.ReadEnemyInfo();
                 break;
@@ -211,9 +231,9 @@ public class GameplayScreen : IAccessibleScreen
                 MessageBuffer.ReadPrevious();
                 break;
 
-            // Espacio - ir al stash
+            // Espacio - abrir/cerrar stash
             case AccessibleKey.Space:
-                _navigator.GoToStash();
+                _navigator.ToggleStash();
                 break;
 
             // Shift+Up - mover del stash al board
@@ -463,8 +483,10 @@ public class GameplayScreen : IAccessibleScreen
 
         if (_navigator.IsSelectionFree())
         {
+            // En Loot/Rewards, los items son gratuitos
             ActionHelper.BuyItem(itemCard);
-            RefreshAndAnnounce();
+            // Usar delayed refresh porque el SelectionSet tarda en actualizarse
+            Plugin.Instance.StartCoroutine(DelayedRefreshAfterLoot());
         }
         else
         {
@@ -472,10 +494,39 @@ public class GameplayScreen : IAccessibleScreen
             var ui = new ConfirmActionUI(ConfirmActionType.Buy, name, price,
                 onConfirm: () => {
                     ActionHelper.BuyItem(itemCard);
-                    RefreshAndAnnounce();
+                    Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
                 },
                 onCancel: () => TolkWrapper.Speak("Cancelled"));
             AccessibilityMgr.ShowUI(ui);
+        }
+    }
+
+    /// <summary>
+    /// Coroutine para refresh después de seleccionar loot.
+    /// </summary>
+    private System.Collections.IEnumerator DelayedRefreshAfterLoot()
+    {
+        // Esperar a que el juego procese la selección
+        yield return new WaitForSeconds(0.3f);
+        _navigator.Refresh();
+
+        // Verificar si el estado cambió automáticamente (auto-exit)
+        var currentState = StateChangePatch.GetCurrentRunState();
+        if (currentState != ERunState.Loot)
+        {
+            // El estado cambió, anunciar el nuevo estado
+            OnStateChanged(currentState, true);
+        }
+        else if (_navigator.HasSelectionContent())
+        {
+            // Aún hay más rewards, anunciar cuántos quedan
+            int remaining = _navigator.GetSelectionCardCount();
+            TolkWrapper.Speak($"{remaining} rewards remaining");
+            _navigator.AnnounceCurrentItem();
+        }
+        else
+        {
+            TolkWrapper.Speak("All rewards collected");
         }
     }
 
@@ -485,7 +536,8 @@ public class GameplayScreen : IAccessibleScreen
         if (skillCard == null) { TolkWrapper.Speak("Not a skill"); return; }
 
         ActionHelper.SelectSkill(skillCard);
-        RefreshAndAnnounce();
+        // Usar delayed refresh para dar tiempo al juego de actualizar
+        Plugin.Instance.StartCoroutine(DelayedRefreshAfterLoot());
     }
 
     private void SelectEncounterDirect(Card card)
@@ -719,11 +771,11 @@ public class GameplayScreen : IAccessibleScreen
 
         if (inCombat)
         {
-            TolkWrapper.Speak("Combat started. Press V for your stats, F for enemy stats.");
+            TolkWrapper.Speak("Entering combat. Press V for your stats, F for enemy stats.");
         }
         else
         {
-            TolkWrapper.Speak("Combat ended.");
+            TolkWrapper.Speak("Exiting combat.");
         }
     }
 
@@ -736,11 +788,37 @@ public class GameplayScreen : IAccessibleScreen
 
         if (isOpen)
         {
-            TolkWrapper.Speak("Stash opened");
+            // Usar coroutine para dar tiempo a que se actualice el stash
+            Plugin.Instance.StartCoroutine(DelayedStashAnnounce());
         }
         else
         {
             TolkWrapper.Speak("Stash closed");
+            // Volver al board automáticamente
+            _navigator.GoToBoard();
+        }
+    }
+
+    /// <summary>
+    /// Coroutine para anunciar el stash después de un pequeño delay.
+    /// </summary>
+    private System.Collections.IEnumerator DelayedStashAnnounce()
+    {
+        // Esperar a que el juego actualice el stash
+        yield return new WaitForSeconds(0.2f);
+
+        // Refrescar para obtener los items del stash
+        _navigator.Refresh();
+
+        int stashCount = _navigator.GetStashItemCount();
+        if (stashCount > 0)
+        {
+            // Navegar al stash - esto anuncia la sección y el primer item
+            _navigator.GoToSection(NavigationSection.Stash);
+        }
+        else
+        {
+            TolkWrapper.Speak("Stash opened, empty. Press Space to close.");
         }
     }
 
@@ -753,8 +831,32 @@ public class GameplayScreen : IAccessibleScreen
 
         if (inReplayState)
         {
-            TolkWrapper.Speak("Combat finished. Press E to continue, R to replay, or Enter for recap.");
+            TolkWrapper.Speak("Combat finished. Press Enter to continue, R to replay, or E for recap.");
         }
+        else
+        {
+            // Al salir del replay, refrescar la UI después de un delay
+            Plugin.Instance.StartCoroutine(DelayedRefreshAfterReplayExit());
+        }
+    }
+
+    /// <summary>
+    /// Refresca la UI después de salir del ReplayState.
+    /// </summary>
+    private System.Collections.IEnumerator DelayedRefreshAfterReplayExit()
+    {
+        // Esperar a que el juego cargue el nuevo estado
+        yield return new WaitForSeconds(0.5f);
+
+        RefreshNavigator();
+        Plugin.Logger.LogInfo($"DelayedRefreshAfterReplayExit: Refreshed, state={_navigator.GetStateDescription()}");
+
+        // Ir a la sección de selección sin anunciar (no quedarse en Hero)
+        _navigator.SetSectionSilent(NavigationSection.Selection);
+
+        // Anunciar el nuevo estado
+        yield return new WaitForSeconds(0.3f);
+        ForceAnnounceState();
     }
 
     /// <summary>
@@ -764,18 +866,39 @@ public class GameplayScreen : IAccessibleScreen
     {
         try
         {
-            // Call AppState.GetState<ReplayState>().Exit() via reflection
+            // Get the current state and check if it's ReplayState
+            var currentState = AppState.CurrentState;
+            if (currentState == null)
+            {
+                Plugin.Logger.LogWarning("TriggerReplayContinue: CurrentState is null");
+                return;
+            }
+
             var replayStateType = typeof(AppState).Assembly.GetType("TheBazaar.ReplayState");
-            if (replayStateType == null) return;
+            if (replayStateType == null)
+            {
+                Plugin.Logger.LogWarning("TriggerReplayContinue: ReplayState type not found");
+                return;
+            }
 
-            var getStateMethod = typeof(AppState).GetMethod("GetState").MakeGenericMethod(replayStateType);
-            var replayState = getStateMethod.Invoke(null, null);
-            if (replayState == null) return;
+            if (!replayStateType.IsInstanceOfType(currentState))
+            {
+                Plugin.Logger.LogInfo($"TriggerReplayContinue: Current state is {currentState.GetType().Name}, not ReplayState");
+                return;
+            }
 
+            // Call Exit() on the current ReplayState
             var exitMethod = replayStateType.GetMethod("Exit");
-            exitMethod?.Invoke(replayState, null);
-
-            TolkWrapper.Speak("Continuing");
+            if (exitMethod != null)
+            {
+                exitMethod.Invoke(currentState, null);
+                TolkWrapper.Speak("Continuing");
+                _navigator.SetReplayMode(false);
+            }
+            else
+            {
+                Plugin.Logger.LogWarning("TriggerReplayContinue: Exit method not found");
+            }
         }
         catch (System.Exception ex)
         {
@@ -790,15 +913,14 @@ public class GameplayScreen : IAccessibleScreen
     {
         try
         {
-            var replayStateType = typeof(AppState).Assembly.GetType("TheBazaar.ReplayState");
-            if (replayStateType == null) return;
+            var currentState = AppState.CurrentState;
+            if (currentState == null) return;
 
-            var getStateMethod = typeof(AppState).GetMethod("GetState").MakeGenericMethod(replayStateType);
-            var replayState = getStateMethod.Invoke(null, null);
-            if (replayState == null) return;
+            var replayStateType = typeof(AppState).Assembly.GetType("TheBazaar.ReplayState");
+            if (replayStateType == null || !replayStateType.IsInstanceOfType(currentState)) return;
 
             var replayMethod = replayStateType.GetMethod("Replay");
-            replayMethod?.Invoke(replayState, null);
+            replayMethod?.Invoke(currentState, null);
 
             TolkWrapper.Speak("Replaying combat");
         }
@@ -815,15 +937,14 @@ public class GameplayScreen : IAccessibleScreen
     {
         try
         {
-            var replayStateType = typeof(AppState).Assembly.GetType("TheBazaar.ReplayState");
-            if (replayStateType == null) return;
+            var currentState = AppState.CurrentState;
+            if (currentState == null) return;
 
-            var getStateMethod = typeof(AppState).GetMethod("GetState").MakeGenericMethod(replayStateType);
-            var replayState = getStateMethod.Invoke(null, null);
-            if (replayState == null) return;
+            var replayStateType = typeof(AppState).Assembly.GetType("TheBazaar.ReplayState");
+            if (replayStateType == null || !replayStateType.IsInstanceOfType(currentState)) return;
 
             var recapMethod = replayStateType.GetMethod("Recap");
-            recapMethod?.Invoke(replayState, null);
+            recapMethod?.Invoke(currentState, null);
 
             TolkWrapper.Speak("Showing recap");
         }
