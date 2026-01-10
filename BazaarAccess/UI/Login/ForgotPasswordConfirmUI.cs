@@ -1,13 +1,8 @@
-using BazaarAccess.Accessibility;
 using UnityEngine;
-using System.Reflection;
 
 namespace BazaarAccess.UI.Login;
 
-/// <summary>
-/// UI accesible para la pantalla de confirmación de recuperación de contraseña.
-/// </summary>
-public class ForgotPasswordConfirmUI : BaseUI
+public class ForgotPasswordConfirmUI : LoginBaseUI
 {
     private readonly object _view;
 
@@ -16,69 +11,18 @@ public class ForgotPasswordConfirmUI : BaseUI
     public ForgotPasswordConfirmUI(Transform root, object view) : base(root)
     {
         _view = view;
+        Initialize();
     }
 
     protected override void BuildMenu()
     {
-        // Continue button
-        AddBazaarButton("continueButton", "Continue");
-
-        // Resend button
-        AddBazaarButton("resendButton", "Resend Email");
-    }
-
-    private void AddBazaarButton(string fieldName, string fallbackText)
-    {
-        var field = _view.GetType().GetField(fieldName,
-            BindingFlags.NonPublic | BindingFlags.Instance);
-        var button = field?.GetValue(_view);
-        if (button == null) return;
-
-        Menu.AddOption(
-            () => GetButtonText(button) ?? fallbackText,
-            () => ClickButton(button)
-        );
-    }
-
-    private string GetButtonText(object bazaarButton)
-    {
-        if (bazaarButton == null) return null;
-
-        var buttonTextProp = bazaarButton.GetType().GetProperty("ButtonText",
-            BindingFlags.Public | BindingFlags.Instance);
-        if (buttonTextProp != null)
-        {
-            var tmpText = buttonTextProp.GetValue(bazaarButton) as TMPro.TMP_Text;
-            if (tmpText != null && !string.IsNullOrWhiteSpace(tmpText.text))
-                return tmpText.text;
-        }
-
-        if (bazaarButton is Component comp)
-        {
-            var tmpText = comp.GetComponentInChildren<TMPro.TMP_Text>();
-            if (tmpText != null && !string.IsNullOrWhiteSpace(tmpText.text))
-                return tmpText.text;
-        }
-
-        return null;
-    }
-
-    private void ClickButton(object bazaarButton)
-    {
-        if (bazaarButton == null) return;
-
-        var onClickField = bazaarButton.GetType().GetField("onClick",
-            BindingFlags.Public | BindingFlags.Instance);
-        if (onClickField != null)
-        {
-            var onClickEvent = onClickField.GetValue(bazaarButton) as UnityEngine.Events.UnityEvent;
-            onClickEvent?.Invoke();
-        }
+        AddBazaarButton(_view, "continueButton", "Continue");
+        AddBazaarButton(_view, "resendButton", "Resend Email");
     }
 
     protected override void OnBack()
     {
-        // Volver a la pantalla anterior
-        ClickButtonByName("continueButton");
+        var button = GetBazaarButton(_view, "continueButton");
+        if (button != null) ClickBazaarButton(button);
     }
 }

@@ -1,4 +1,3 @@
-using BazaarAccess.Accessibility;
 using BazaarAccess.Core;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,10 +5,7 @@ using System.Reflection;
 
 namespace BazaarAccess.UI.Login;
 
-/// <summary>
-/// UI accesible para la aceptación de términos de servicio.
-/// </summary>
-public class CreateAccountTermsUI : BaseUI
+public class CreateAccountTermsUI : LoginBaseUI
 {
     private readonly object _view;
 
@@ -18,12 +14,13 @@ public class CreateAccountTermsUI : BaseUI
     public CreateAccountTermsUI(Transform root, object view) : base(root)
     {
         _view = view;
+        Initialize();
     }
 
     protected override void BuildMenu()
     {
         // ToS toggle
-        var tosToggle = GetToggle("tosToggle");
+        var tosToggle = GetViewToggle("tosToggle");
         if (tosToggle != null)
         {
             Menu.AddOption(
@@ -35,7 +32,7 @@ public class CreateAccountTermsUI : BaseUI
         }
 
         // EULA toggle
-        var eulaToggle = GetToggle("eulaToggle");
+        var eulaToggle = GetViewToggle("eulaToggle");
         if (eulaToggle != null)
         {
             Menu.AddOption(
@@ -46,8 +43,8 @@ public class CreateAccountTermsUI : BaseUI
             );
         }
 
-        // Promo toggle (opcional)
-        var promoToggle = GetToggle("promoToggle");
+        // Promo toggle (optional)
+        var promoToggle = GetViewToggle("promoToggle");
         if (promoToggle != null)
         {
             Menu.AddOption(
@@ -59,89 +56,14 @@ public class CreateAccountTermsUI : BaseUI
         }
 
         // Continue button
-        AddBazaarButton("continueButton", "Continue");
+        AddBazaarButton(_view, "continueButton", "Continue");
     }
 
-    private Toggle GetToggle(string fieldName)
+    private Toggle GetViewToggle(string fieldName)
     {
         var field = _view.GetType().GetField(fieldName,
             BindingFlags.NonPublic | BindingFlags.Instance);
         return field?.GetValue(_view) as Toggle;
-    }
-
-    private void AddBazaarButton(string fieldName, string fallbackText)
-    {
-        var field = _view.GetType().GetField(fieldName,
-            BindingFlags.NonPublic | BindingFlags.Instance);
-        var button = field?.GetValue(_view);
-        if (button == null) return;
-
-        Menu.AddOption(
-            () =>
-            {
-                string text = GetButtonText(button) ?? fallbackText;
-                if (!IsButtonInteractable(button))
-                    text += " (disabled - accept required terms)";
-                return text;
-            },
-            () =>
-            {
-                if (IsButtonInteractable(button))
-                    ClickButton(button);
-                else
-                    TolkWrapper.Speak("Please accept Terms of Service and EULA");
-            }
-        );
-    }
-
-    private string GetButtonText(object bazaarButton)
-    {
-        if (bazaarButton == null) return null;
-
-        var buttonTextProp = bazaarButton.GetType().GetProperty("ButtonText",
-            BindingFlags.Public | BindingFlags.Instance);
-        if (buttonTextProp != null)
-        {
-            var tmpText = buttonTextProp.GetValue(bazaarButton) as TMPro.TMP_Text;
-            if (tmpText != null && !string.IsNullOrWhiteSpace(tmpText.text))
-                return tmpText.text;
-        }
-
-        if (bazaarButton is Component comp)
-        {
-            var tmpText = comp.GetComponentInChildren<TMPro.TMP_Text>();
-            if (tmpText != null && !string.IsNullOrWhiteSpace(tmpText.text))
-                return tmpText.text;
-        }
-
-        return null;
-    }
-
-    private bool IsButtonInteractable(object bazaarButton)
-    {
-        if (bazaarButton == null) return false;
-
-        var interactableProp = bazaarButton.GetType().GetProperty("interactable",
-            BindingFlags.Public | BindingFlags.Instance);
-        if (interactableProp != null)
-        {
-            return (bool)interactableProp.GetValue(bazaarButton);
-        }
-
-        return true;
-    }
-
-    private void ClickButton(object bazaarButton)
-    {
-        if (bazaarButton == null) return;
-
-        var onClickField = bazaarButton.GetType().GetField("onClick",
-            BindingFlags.Public | BindingFlags.Instance);
-        if (onClickField != null)
-        {
-            var onClickEvent = onClickField.GetValue(bazaarButton) as UnityEngine.Events.UnityEvent;
-            onClickEvent?.Invoke();
-        }
     }
 
     private void ToggleAndAnnounce(Toggle toggle)
@@ -152,6 +74,6 @@ public class CreateAccountTermsUI : BaseUI
 
     protected override void OnBack()
     {
-        // Volver a la pantalla anterior
+        // No back from terms
     }
 }

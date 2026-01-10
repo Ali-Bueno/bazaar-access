@@ -22,7 +22,11 @@ public abstract class LoginBaseUI : BaseUI
     /// </summary>
     public bool IsInEditMode => _isInEditMode;
 
-    protected LoginBaseUI(Transform root) : base(root) { }
+    /// <summary>
+    /// Constructor that delays BuildMenu() until Initialize() is called.
+    /// Subclasses should call Initialize() after assigning their fields.
+    /// </summary>
+    protected LoginBaseUI(Transform root) : base(root, buildMenuNow: false) { }
 
     public override void HandleInput(AccessibleKey key)
     {
@@ -118,42 +122,56 @@ public abstract class LoginBaseUI : BaseUI
     }
 
     /// <summary>
-    /// Intenta hacer click en un BazaarButtonController.
+    /// Clicks a BazaarButtonController.
     /// </summary>
     protected bool ClickBazaarButton(object bazaarButton)
     {
         if (bazaarButton == null) return false;
 
-        // BazaarButtonController tiene onClick que es un UnityEvent
-        var onClickField = bazaarButton.GetType().GetField("onClick",
-            BindingFlags.Public | BindingFlags.Instance);
-        if (onClickField == null)
+        // BazaarButtonController inherits from Button, so we can cast and use onClick directly
+        if (bazaarButton is Button button)
         {
-            // Intentar como propiedad
-            var onClickProp = bazaarButton.GetType().GetProperty("onClick",
-                BindingFlags.Public | BindingFlags.Instance);
-            if (onClickProp != null)
-            {
-                var onClick = onClickProp.GetValue(bazaarButton) as UnityEngine.Events.UnityEvent;
-                onClick?.Invoke();
-                return true;
-            }
-            return false;
+            button.onClick.Invoke();
+            return true;
         }
 
-        var onClickEvent = onClickField.GetValue(bazaarButton) as UnityEngine.Events.UnityEvent;
-        onClickEvent?.Invoke();
-        return true;
+        // Fallback: try as field
+        var onClickField = bazaarButton.GetType().GetField("onClick",
+            BindingFlags.Public | BindingFlags.Instance);
+        if (onClickField != null)
+        {
+            var onClickEvent = onClickField.GetValue(bazaarButton) as UnityEngine.Events.UnityEvent;
+            onClickEvent?.Invoke();
+            return true;
+        }
+
+        // Fallback: try as property
+        var onClickProp = bazaarButton.GetType().GetProperty("onClick",
+            BindingFlags.Public | BindingFlags.Instance);
+        if (onClickProp != null)
+        {
+            var onClick = onClickProp.GetValue(bazaarButton) as UnityEngine.Events.UnityEvent;
+            onClick?.Invoke();
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
-    /// Comprueba si un BazaarButtonController es interactable.
+    /// Checks if a BazaarButtonController is interactable.
     /// </summary>
     protected bool IsBazaarButtonInteractable(object bazaarButton)
     {
         if (bazaarButton == null) return false;
 
-        // Intentar obtener la propiedad interactable
+        // BazaarButtonController inherits from Selectable (via Button), so we can cast
+        if (bazaarButton is Selectable selectable)
+        {
+            return selectable.interactable;
+        }
+
+        // Fallback: try as property
         var interactableProp = bazaarButton.GetType().GetProperty("interactable",
             BindingFlags.Public | BindingFlags.Instance);
         if (interactableProp != null)
@@ -161,40 +179,42 @@ public abstract class LoginBaseUI : BaseUI
             return (bool)interactableProp.GetValue(bazaarButton);
         }
 
-        // Intentar como campo
-        var interactableField = bazaarButton.GetType().GetField("interactable",
-            BindingFlags.Public | BindingFlags.Instance);
-        if (interactableField != null)
-        {
-            return (bool)interactableField.GetValue(bazaarButton);
-        }
-
-        // Fallback: asumir que está activo
+        // Fallback: assume it's active
         return true;
     }
 
     /// <summary>
-    /// Obtiene el texto de un BazaarButtonController.
+    /// Gets the text from a BazaarButtonController.
     /// </summary>
     protected string GetBazaarButtonText(object bazaarButton)
     {
         if (bazaarButton == null) return "";
 
-        // Intentar obtener ButtonText
+        // Try to get ButtonText field (it's a public field, not a property)
+        var buttonTextField = bazaarButton.GetType().GetField("ButtonText",
+            BindingFlags.Public | BindingFlags.Instance);
+        if (buttonTextField != null)
+        {
+            var tmpText = buttonTextField.GetValue(bazaarButton) as TMP_Text;
+            if (tmpText != null && !string.IsNullOrWhiteSpace(tmpText.text))
+                return tmpText.text;
+        }
+
+        // Try as property (fallback)
         var buttonTextProp = bazaarButton.GetType().GetProperty("ButtonText",
             BindingFlags.Public | BindingFlags.Instance);
         if (buttonTextProp != null)
         {
             var tmpText = buttonTextProp.GetValue(bazaarButton) as TMP_Text;
-            if (tmpText != null)
+            if (tmpText != null && !string.IsNullOrWhiteSpace(tmpText.text))
                 return tmpText.text;
         }
 
-        // Intentar buscar TMP_Text en los hijos
+        // Try to find TMP_Text in children
         if (bazaarButton is Component comp)
         {
             var tmpText = comp.GetComponentInChildren<TMP_Text>();
-            if (tmpText != null)
+            if (tmpText != null && !string.IsNullOrWhiteSpace(tmpText.text))
                 return tmpText.text;
         }
 

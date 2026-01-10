@@ -14,6 +14,7 @@ public class LoginUI : LoginBaseUI
     public LoginUI(Transform root, object view) : base(root)
     {
         _view = view;
+        Initialize();
     }
 
     protected override void BuildMenu()

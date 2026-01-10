@@ -646,6 +646,12 @@ Cada estado define `AllowedOps` que incluye `StateOps.SellItem`.
 - ✅ **Anuncios de victoria/derrota**: "Victory! X wins" al ganar, "Defeat! Lost X prestige" al perder
 - ✅ **I key para propiedades**: Presiona I para escuchar descripciones de tags y keywords del item
 - ✅ **Código en inglés**: Todos los mensajes y comentarios del mod están en inglés
+- ✅ **BaseUI initialization pattern**: Delayed BuildMenu() for UIs that need view fields (buildMenuNow: false + Initialize())
+- ✅ **BazaarButtonController access fix**: Correct reflection for ButtonText (field not property) and Button/Selectable casting
+- ✅ **Password validation display**: Shows validation status (too short, needs letter, needs number)
+- ✅ **Username validation display**: Shows (available) or (not available) status
+- ✅ **Validation summary in Create Account**: Shows "Requirements: X of 5. Missing: ..." for account creation
+- ✅ **All Login UIs inherit from LoginBaseUI**: Consistent initialization and BazaarButton handling
 
 ---
 

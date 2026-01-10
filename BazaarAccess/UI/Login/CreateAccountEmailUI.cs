@@ -14,6 +14,7 @@ public class CreateAccountEmailUI : LoginBaseUI
     public CreateAccountEmailUI(Transform root, object view) : base(root)
     {
         _view = view;
+        Initialize();
     }
 
     protected override void BuildMenu()

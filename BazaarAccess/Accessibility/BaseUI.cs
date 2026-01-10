@@ -15,10 +15,26 @@ public abstract class BaseUI : IAccessibleUI
 
     public abstract string UIName { get; }
 
-    protected BaseUI(Transform root)
+    protected BaseUI(Transform root) : this(root, buildMenuNow: true)
+    {
+    }
+
+    protected BaseUI(Transform root, bool buildMenuNow)
     {
         Root = root;
         Menu = new AccessibleMenu(UIName, OnBack);
+        if (buildMenuNow)
+        {
+            BuildMenu();
+        }
+    }
+
+    /// <summary>
+    /// Call this after setting up fields in subclass constructors when using buildMenuNow: false.
+    /// </summary>
+    protected void Initialize()
+    {
+        Menu.Clear();
         BuildMenu();
     }
 

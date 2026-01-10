@@ -14,6 +14,7 @@ public class ForgotPasswordUI : LoginBaseUI
     public ForgotPasswordUI(Transform root, object view) : base(root)
     {
         _view = view;
+        Initialize();
     }
 
     protected override void BuildMenu()
