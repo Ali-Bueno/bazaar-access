@@ -461,10 +461,19 @@ public class GameplayScreen : IAccessibleScreen
 
     private void HandleConfirm()
     {
-        // Si estamos en Hero, leer toda la info
+        // Si estamos en Hero, manejar según la subsección
         if (_navigator.IsInHeroSection)
         {
-            _navigator.ReadAllHeroStats();
+            if (_navigator.CurrentHeroSubsection == HeroSubsection.Skills)
+            {
+                // En Skills, leer detalles de la skill actual
+                _navigator.ReadHeroSkillDetails();
+            }
+            else
+            {
+                // En Stats, leer todos los stats
+                _navigator.ReadAllHeroStats();
+            }
             return;
         }
 
@@ -696,6 +705,7 @@ public class GameplayScreen : IAccessibleScreen
         ActionHelper.MoveItem(card, false); // false = to board
         TolkWrapper.Speak($"Moved {name} to board");
         RefreshAndAnnounce();
+        _navigator.TriggerVisualSelection();
     }
 
     private void HandleMoveToStash()
@@ -724,6 +734,7 @@ public class GameplayScreen : IAccessibleScreen
         ActionHelper.MoveItem(card, true); // true = to stash
         TolkWrapper.Speak($"Moved {name} to stash");
         RefreshAndAnnounce();
+        _navigator.TriggerVisualSelection();
     }
 
     private void HandleReorder(int direction)
@@ -766,6 +777,8 @@ public class GameplayScreen : IAccessibleScreen
             _navigator.GoToBoardSlot(newSlot);
             // Anunciar el item (que es el mismo que movimos)
             _navigator.AnnounceCurrentItem();
+            // Activar selección visual
+            _navigator.TriggerVisualSelection();
         }
     }
 
@@ -773,6 +786,7 @@ public class GameplayScreen : IAccessibleScreen
     {
         _navigator.Refresh();
         _navigator.AnnounceCurrentItem();
+        _navigator.TriggerVisualSelection();
     }
 
     /// <summary>

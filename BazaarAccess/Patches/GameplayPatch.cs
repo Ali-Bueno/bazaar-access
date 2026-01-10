@@ -81,37 +81,8 @@ public static class GameplayPatch
     public static GameplayScreen GetGameplayScreen() => _gameplayScreen;
 }
 
-/// <summary>
-/// Detecta cuando se abre/cierra el stash.
-/// </summary>
-[HarmonyPatch(typeof(BoardManager), "TryToggleStorage")]
-public static class StorageTogglePatch
-{
-    [HarmonyPostfix]
-    public static void Postfix()
-    {
-        try
-        {
-            // Usar un pequeño delay para que Data.IsStorageOpen se actualice
-            Plugin.Instance.StartCoroutine(DelayedStorageCheck());
-        }
-        catch (System.Exception ex)
-        {
-            Plugin.Logger.LogError($"StorageTogglePatch error: {ex.Message}");
-        }
-    }
-
-    private static IEnumerator DelayedStorageCheck()
-    {
-        yield return new WaitForSeconds(0.1f);
-
-        bool isOpen = Data.IsStorageOpen;
-        Plugin.Logger.LogInfo($"StorageTogglePatch: Storage is now {(isOpen ? "OPEN" : "CLOSED")}");
-
-        var screen = GameplayPatch.GetGameplayScreen();
-        screen?.OnStorageToggled(isOpen);
-    }
-}
+// NOTA: El evento StorageToggled se maneja en StateChangePatch.cs via Events.StorageToggled
+// No usar un patch aquí para evitar duplicados
 
 /// <summary>
 /// Detecta cuando entramos en ReplayState (post-combat).

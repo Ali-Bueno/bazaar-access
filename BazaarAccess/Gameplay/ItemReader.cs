@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using BazaarAccess.Core;
@@ -207,6 +208,52 @@ public static class ItemReader
     {
         if (card == null) return 0;
         return card.GetAttributeValue(ECardAttributeType.SellPrice) ?? 0;
+    }
+
+    /// <summary>
+    /// Tags que son relevantes para el usuario (tipos de item).
+    /// Excluye tags técnicos como Unsellable, Unstashable, etc.
+    /// </summary>
+    private static readonly HashSet<ECardTag> RelevantTags = new HashSet<ECardTag>
+    {
+        ECardTag.Weapon,
+        ECardTag.Property,
+        ECardTag.Food,
+        ECardTag.Potion,
+        ECardTag.Tool,
+        ECardTag.Vehicle,
+        ECardTag.Aquatic,
+        ECardTag.Friend,
+        ECardTag.Core,
+        ECardTag.Ray,
+        ECardTag.Dinosaur,
+        ECardTag.Apparel,
+        ECardTag.Toy,
+        ECardTag.Tech,
+        ECardTag.Dragon,
+        ECardTag.Ingredient,
+        ECardTag.Relic,
+        ECardTag.Reagent,
+        ECardTag.Map,
+        ECardTag.Key,
+        ECardTag.Drone
+    };
+
+    /// <summary>
+    /// Obtiene los tags/tipos de una carta (ej: "Aquatic, Friend").
+    /// Solo devuelve tags relevantes para el usuario.
+    /// </summary>
+    public static string GetTags(Card card)
+    {
+        if (card == null || card.Tags == null || card.Tags.Count == 0)
+            return string.Empty;
+
+        var relevantTags = card.Tags
+            .Where(t => RelevantTags.Contains(t))
+            .Select(t => t.ToString())
+            .ToList();
+
+        return string.Join(", ", relevantTags);
     }
 
     /// <summary>
@@ -530,6 +577,7 @@ public static class ItemReader
 
     /// <summary>
     /// Obtiene las líneas de detalle separadas para navegación Ctrl+Up/Down.
+    /// Sin prefijos innecesarios para una lectura más limpia.
     /// </summary>
     public static List<string> GetDetailLines(Card card)
     {
@@ -537,30 +585,37 @@ public static class ItemReader
         if (card == null) return lines;
 
         // Nombre
-        lines.Add($"Name: {GetCardName(card)}");
+        lines.Add(GetCardName(card));
 
         // Tier
-        lines.Add($"Tier: {GetTierName(card)}");
+        lines.Add(GetTierName(card));
+
+        // Tags/Tipos (Aquatic, Friend, Weapon, etc.)
+        string tags = GetTags(card);
+        if (!string.IsNullOrEmpty(tags))
+        {
+            lines.Add(tags);
+        }
 
         // Tamaño
         var template = card.Template;
         if (template != null)
         {
-            lines.Add($"Size: {(int)template.Size}");
+            lines.Add($"Size {(int)template.Size}");
         }
 
         // Precio de compra
         int buyPrice = GetBuyPrice(card);
         if (buyPrice > 0)
         {
-            lines.Add($"Buy price: {buyPrice} gold");
+            lines.Add($"Buy {buyPrice} gold");
         }
 
         // Precio de venta
         int sellPrice = GetSellPrice(card);
         if (sellPrice > 0)
         {
-            lines.Add($"Sell price: {sellPrice} gold");
+            lines.Add($"Sell {sellPrice} gold");
         }
 
         // Cooldown
@@ -568,7 +623,7 @@ public static class ItemReader
         if (cooldown.HasValue && cooldown.Value > 0)
         {
             float seconds = cooldown.Value / 1000f;
-            lines.Add($"Cooldown: {seconds:F1} seconds");
+            lines.Add($"Cooldown {seconds:F1} seconds");
         }
 
         // Stats de combate
@@ -592,25 +647,25 @@ public static class ItemReader
         AddStatLine(lines, card, ECardAttributeType.Lifesteal, "Lifesteal");
         AddStatLine(lines, card, ECardAttributeType.Multicast, "Multicast");
 
-        // Descripción básica
+        // Descripción básica (sin prefijo)
         string desc = GetDescription(card);
         if (!string.IsNullOrEmpty(desc))
         {
-            lines.Add($"Description: {desc}");
+            lines.Add(desc);
         }
 
-        // Tooltips de habilidades (Active/Passive abilities)
+        // Tooltips de habilidades (sin prefijo)
         string abilities = GetAbilityTooltips(card);
         if (!string.IsNullOrEmpty(abilities))
         {
-            lines.Add($"Ability: {abilities}");
+            lines.Add(abilities);
         }
 
-        // Flavor text
+        // Flavor text (sin prefijo)
         string flavor = GetFlavorText(card);
         if (!string.IsNullOrEmpty(flavor))
         {
-            lines.Add($"Lore: {flavor}");
+            lines.Add(flavor);
         }
 
         return lines;

@@ -44,7 +44,8 @@ BazaarAccess/
 │   ├── OptionsUI.cs              # Diálogo de opciones (main + gameplay settings)
 │   ├── FightMenuUI.cs            # Menú de pausa durante gameplay
 │   ├── ConfirmActionUI.cs        # Popup de confirmación compra/venta
-│   └── GenericPopupUI.cs         # Popups genéricos (tutoriales, mensajes)
+│   ├── GenericPopupUI.cs         # Popups genéricos (tutoriales, mensajes)
+│   └── TutorialUI.cs             # UI accesible para el tutorial (FTUE)
 └── Patches/
     ├── ViewControllerPatch.cs    # Detecta cambios de vista
     ├── PopupPatch.cs             # Popups genéricos
@@ -52,7 +53,9 @@ BazaarAccess/
     ├── FightMenuPatch.cs         # Menú de pausa y opciones durante gameplay
     ├── HeroChangedPatch.cs       # Cambio de héroe
     ├── GameplayPatch.cs          # Detecta entrada al gameplay (BoardManager.OnAwake)
-    └── StateChangePatch.cs       # Suscripción a eventos del juego en tiempo real
+    ├── StateChangePatch.cs       # Suscripción a eventos del juego en tiempo real
+    ├── TutorialPatch.cs          # Accesibilidad del tutorial (FTUE)
+    └── EndOfRunPatch.cs          # Pantalla de fin de partida
 ```
 
 ## Arquitectura: Screens y UIs
@@ -413,6 +416,7 @@ enum NavItemType { Card, Exit, Reroll }
 Lee información localizada de las cartas con resolución de tokens:
 - `GetCardName()`: Nombre traducido
 - `GetTierName()`: Bronze/Silver/Gold/Diamond/Legendary
+- `GetTags()`: Tipos de item (Aquatic, Friend, Weapon, Food, etc.)
 - `GetBuyPrice()`, `GetSellPrice()`: Precios
 - `GetDetailedDescription()`: Info completa con stats y efectos
 - `GetDescription()`: Descripción con tokens resueltos (ej: `{DamageAmount}` → "25")
@@ -420,6 +424,9 @@ Lee información localizada de las cartas con resolución de tokens:
 - `GetEncounterInfo()`: Nombre + tipo de encuentro (para PvP: "NombreJugador (Héroe), PvP")
 - `GetEncounterDetailedInfo()`: Para PvP incluye: nombre, héroe, nivel, victorias, prestigio
 - `GetFlavorText()`: Texto narrativo
+- `GetDetailLines()`: Líneas de detalle sin prefijos ("Description:", etc.) para lectura limpia
+
+**Tipos de Items (ECardTag)**: Weapon, Property, Food, Potion, Tool, Vehicle, Aquatic, Friend, Core, Ray, Dinosaur, Apparel, Toy, Tech, Dragon, Ingredient, Relic, Reagent, Map, Key, Drone.
 
 **Resolución de tokens**: Los textos del juego usan tokens como `{DamageAmount}`, `{Cooldown}`, etc. que se reemplazan automáticamente con los valores reales de la carta. Los tiempos (Cooldown, Haste, etc.) se convierten de milisegundos a segundos (ej: "4.5s").
 
@@ -588,7 +595,7 @@ Cada estado define `AllowedOps` que incluye `StateOps.SellItem`.
 - ✅ Reordenamiento de items en el Board (Shift+Izq/Der) - el navegador sigue al item movido
 - ✅ Mover items entre Board y Stash (Shift+Arriba=Stash, Shift+Abajo=Board)
 - ✅ Lectura detallada línea por línea (Ctrl+Arriba/Abajo)
-- ✅ Detección de estado del Stash (abierto/cerrado) via Harmony patch
+- ✅ Detección de estado del Stash (abierto/cerrado) via Events.StorageToggled
 - ✅ Post-combate accesible (ReplayState con Enter=continuar, R=replay, E=recap)
 - ✅ Refresh de UI después de seleccionar items (CardSelected, ItemPurchased, CardDisposed)
 - ✅ Detección de auto-exit ("select to continue")
@@ -607,6 +614,13 @@ Cada estado define `AllowedOps` que incluye `StateOps.SellItem`.
 - ✅ **Resolución de tokens**: Tooltips muestran valores reales (`{DamageAmount}` → "25")
 - ✅ **Sistema de debounce**: Reduce spam en transiciones agrupando anuncios (0.4s delay)
 - ✅ **Reordenamiento mejorado**: Al mover con Shift+flechas, el navegador sigue al item
+- ✅ **Tipos de items**: Tooltips muestran tipos (Aquatic, Friend, Weapon, etc.) via `GetTags()`
+- ✅ **Tooltips limpios**: Sin prefijos innecesarios ("Description:", "Ability:", etc.)
+- ✅ **Feedback visual**: Al navegar con teclado, las cartas muestran hover visual
+- ✅ **Skills con descripción**: En Hero subsección Skills, se lee nombre + descripción
+- ✅ **Tutorial (FTUE) accesible**: Lee diálogos del tutorial, Enter para continuar
+- ✅ **Mensajes del tutorial en buffer**: Releer con punto/coma
+- ✅ **Fix duplicados**: Eliminados mensajes duplicados (stash, end of run)
 
 ---
 
@@ -662,6 +676,61 @@ Se anuncia "critical" cuando `IsCrit == true` en el efecto.
 
 - **PvP**: Usa el nombre del jugador oponente (`Data.SimPvpOpponent.Name`)
 - **PvE**: Usa "Enemy" (fallback)
+
+---
+
+---
+
+## Tutorial (FTUE) Accesible
+
+El tutorial del juego (First Time User Experience) es accesible mediante `TutorialPatch.cs` y `TutorialUI.cs`.
+
+### Funcionamiento
+
+- Detecta diálogos de tutorial (`SequenceDialogController`, `FullScreenPopupDialogController`)
+- Lee automáticamente el texto cuando aparece un diálogo
+- Los mensajes se añaden al `MessageBuffer` para poder releerlos
+
+### Controles del Tutorial
+
+- **Enter**: Continuar al siguiente paso
+- **Flechas**: Navegar Previous/Next (solo en popups fullscreen)
+- **. (punto)**: Leer último mensaje del buffer
+- **, (coma)**: Leer mensaje anterior del buffer
+- **F1**: Ayuda
+
+### Importante: Conflictos de Teclas
+
+**NO usar estas teclas en UIs porque el juego las intercepta:**
+- **Espacio**: Abre/cierra el stash
+- **Escape**: Abre el menú de opciones
+
+El sistema de accesibilidad tiene prioridad correcta (UI > Screen), pero el juego nativo tiene su propio sistema de keybinds que funciona en paralelo.
+
+---
+
+## Feedback Visual
+
+Al navegar con el teclado, las cartas muestran feedback visual (hover) para que espectadores puedan seguir la navegación.
+
+### Implementación
+
+- `GameplayNavigator.TriggerVisualSelection()`: Activa el efecto hover en la carta actual
+- Usa `CardController.HoverMove()` para levantar la carta y mostrar tooltips
+- `FindCardController()` usa `Data.CardAndSkillLookup.GetCardController(card)` para encontrar cualquier tipo de carta
+
+### Lugares con Feedback Visual
+
+- ✅ Navegar items en tienda (Selection)
+- ✅ Navegar items en board
+- ✅ Navegar items en stash
+- ✅ Navegar skills
+- ✅ Navegar encounters
+- ✅ Reordenar items (Shift+flechas)
+- ✅ Mover items entre board y stash
+- ✅ Navegar items del enemigo (modo F)
+- ✅ Cambiar de sección
+- ✅ Anunciar estado
 
 ---
 

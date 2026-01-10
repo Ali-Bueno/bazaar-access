@@ -8,6 +8,7 @@ using BazaarGameShared.Domain.Core.Types;
 using BazaarGameShared.Domain.Runs;
 using TheBazaar;
 using TheBazaar.AppFramework;
+using UnityEngine.EventSystems;
 
 namespace BazaarAccess.Gameplay;
 
@@ -419,7 +420,7 @@ public class GameplayNavigator
     }
 
     /// <summary>
-    /// Anuncia la skill actual del héroe.
+    /// Anuncia la skill actual del héroe con su descripción.
     /// </summary>
     private void AnnounceHeroSkill()
     {
@@ -437,7 +438,61 @@ public class GameplayNavigator
         }
 
         string name = ItemReader.GetCardName(skill);
-        TolkWrapper.Speak($"{name}, {_heroSkillIndex + 1} of {_playerSkills.Count}");
+        string desc = ItemReader.GetFullDescription(skill);
+
+        if (!string.IsNullOrEmpty(desc))
+        {
+            TolkWrapper.Speak($"{name}: {desc}, {_heroSkillIndex + 1} of {_playerSkills.Count}");
+        }
+        else
+        {
+            TolkWrapper.Speak($"{name}, {_heroSkillIndex + 1} of {_playerSkills.Count}");
+        }
+
+        // Activar selección visual de la skill
+        TriggerVisualSelectionForHeroSkill();
+    }
+
+    /// <summary>
+    /// Activa la selección visual para la skill actual del héroe.
+    /// </summary>
+    private void TriggerVisualSelectionForHeroSkill()
+    {
+        try
+        {
+            if (_heroSubsection != HeroSubsection.Skills) return;
+
+            var bm = GetBoardManager();
+            if (bm?.playerSkillSockets == null) return;
+
+            // Resetear todas las selecciones
+            ResetAllCardSelections(bm);
+
+            // Encontrar el socket de skill que corresponde al índice actual
+            if (_heroSkillIndex >= 0 && _heroSkillIndex < bm.playerSkillSockets.Length)
+            {
+                var controller = bm.playerSkillSockets[_heroSkillIndex]?.CardController;
+                controller?.HoverMove();
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogWarning($"TriggerVisualSelectionForHeroSkill error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Lee información detallada de la skill actual del héroe.
+    /// </summary>
+    public void ReadHeroSkillDetails()
+    {
+        if (_heroSubsection != HeroSubsection.Skills) return;
+        if (_heroSkillIndex < 0 || _heroSkillIndex >= _playerSkills.Count) return;
+
+        var skill = _playerSkills[_heroSkillIndex];
+        if (skill == null) return;
+
+        TolkWrapper.Speak(ItemReader.GetDetailedDescription(skill));
     }
 
     /// <summary>
@@ -731,6 +786,7 @@ public class GameplayNavigator
         int totalItems = _enemyItemIndices.Count + _enemySkillIndices.Count;
         int pos = _enemyItemIndex + 1;
 
+        CardController controller = null;
         Card card = null;
         string prefix = "";
 
@@ -738,7 +794,8 @@ public class GameplayNavigator
         if (_enemyItemIndex < _enemyItemIndices.Count)
         {
             int idx = _enemyItemIndices[_enemyItemIndex];
-            card = bm.opponentItemSockets[idx]?.CardController?.CardData;
+            controller = bm.opponentItemSockets[idx]?.CardController;
+            card = controller?.CardData;
         }
         else
         {
@@ -746,7 +803,8 @@ public class GameplayNavigator
             if (skillIdx < _enemySkillIndices.Count)
             {
                 int idx = _enemySkillIndices[skillIdx];
-                card = bm.opponentSkillSockets[idx]?.CardController?.CardData;
+                controller = bm.opponentSkillSockets[idx]?.CardController;
+                card = controller?.CardData;
                 prefix = "Skill: ";
             }
         }
@@ -759,6 +817,13 @@ public class GameplayNavigator
 
         string name = ItemReader.GetCardName(card);
         TolkWrapper.Speak($"{prefix}{name}, {pos} of {totalItems}");
+
+        // Activar selección visual del item del enemigo
+        if (controller != null)
+        {
+            ResetAllCardSelections(bm);
+            controller.HoverMove();
+        }
     }
 
     /// <summary>
@@ -879,6 +944,7 @@ public class GameplayNavigator
         if (count == 0) return;
         _currentIndex = (_currentIndex + 1) % count;
         AnnounceCurrentItem();
+        TriggerVisualSelection();
     }
 
     public void Previous()
@@ -890,6 +956,7 @@ public class GameplayNavigator
         if (count == 0) return;
         _currentIndex = (_currentIndex - 1 + count) % count;
         AnnounceCurrentItem();
+        TriggerVisualSelection();
     }
 
     // --- Anuncios ---
@@ -920,6 +987,12 @@ public class GameplayNavigator
         };
 
         TolkWrapper.Speak(announcement);
+
+        // Activar selección visual del primer item (si no estamos en combate)
+        if (runState != ERunState.Combat && runState != ERunState.PVPCombat)
+        {
+            TriggerVisualSelection();
+        }
     }
 
     private string GetSelectionTypeName()
@@ -979,6 +1052,7 @@ public class GameplayNavigator
 
         TolkWrapper.Speak($"{name}, {count} items");
         AnnounceCurrentItem();
+        TriggerVisualSelection();
     }
 
     public void AnnounceCurrentItem()
@@ -1450,6 +1524,191 @@ public class GameplayNavigator
     {
         try { return Singleton<BoardManager>.Instance; }
         catch { return null; }
+    }
+
+    /// <summary>
+    /// Obtiene el CardController de la carta actual y activa su efecto de hover visual.
+    /// Esto hace que la carta se destaque visualmente como si el ratón estuviera sobre ella.
+    /// </summary>
+    public void TriggerVisualSelection()
+    {
+        try
+        {
+            var bm = GetBoardManager();
+            if (bm == null) return;
+
+            CardController controller = null;
+
+            switch (_currentSection)
+            {
+                case NavigationSection.Selection:
+                    // Los items en selección están en los sockets del merchant
+                    // Obtener el CardController del SelectionSet
+                    var navItem = GetCurrentNavItem();
+                    if (navItem?.Type == NavItemType.Card && navItem.Card != null)
+                    {
+                        controller = FindCardController(navItem.Card, bm);
+                    }
+                    break;
+
+                case NavigationSection.Board:
+                    if (_currentIndex < _boardIndices.Count)
+                    {
+                        int idx = _boardIndices[_currentIndex];
+                        controller = bm.playerItemSockets[idx]?.CardController;
+                    }
+                    break;
+
+                case NavigationSection.Stash:
+                    if (_currentIndex < _stashIndices.Count)
+                    {
+                        int idx = _stashIndices[_currentIndex];
+                        controller = bm.playerStorageSockets?[idx]?.CardController;
+                    }
+                    break;
+
+                case NavigationSection.Skills:
+                    if (_currentIndex < _playerSkills.Count)
+                    {
+                        // Skills del jugador están en playerSkillSockets
+                        if (bm.playerSkillSockets != null && _currentIndex < bm.playerSkillSockets.Length)
+                        {
+                            controller = bm.playerSkillSockets[_currentIndex]?.CardController;
+                        }
+                    }
+                    break;
+            }
+
+            if (controller != null)
+            {
+                // Primero resetear cualquier carta previamente seleccionada
+                ResetAllCardSelections(bm);
+
+                // Activar el hover visual en la carta actual
+                // Crear un PointerEventData falso para simular hover
+                controller.HoverMove();
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogWarning($"TriggerVisualSelection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Busca el CardController de una carta usando el lookup del juego.
+    /// Funciona para todos los tipos de cartas: items, skills, encounters.
+    /// </summary>
+    private CardController FindCardController(Card card, BoardManager bm)
+    {
+        if (card == null) return null;
+
+        try
+        {
+            // Usar el lookup nativo del juego que funciona para todos los tipos de cartas
+            var lookup = Data.CardAndSkillLookup;
+            if (lookup != null)
+            {
+                var controller = lookup.GetCardController(card);
+                if (controller != null) return controller;
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogWarning($"FindCardController lookup failed: {ex.Message}");
+        }
+
+        // Fallback: buscar manualmente en los sockets
+        if (bm == null) return null;
+
+        // Buscar en sockets del oponente (donde están los items a la venta)
+        if (bm.opponentItemSockets != null)
+        {
+            foreach (var socket in bm.opponentItemSockets)
+            {
+                if (socket?.CardController?.CardData == card)
+                    return socket.CardController;
+            }
+        }
+
+        // Buscar en skill sockets del oponente (skills disponibles para elegir)
+        if (bm.opponentSkillSockets != null)
+        {
+            foreach (var socket in bm.opponentSkillSockets)
+            {
+                if (socket?.CardController?.CardData == card)
+                    return socket.CardController;
+            }
+        }
+
+        // También buscar en sockets del jugador por si acaso
+        if (bm.playerItemSockets != null)
+        {
+            foreach (var socket in bm.playerItemSockets)
+            {
+                if (socket?.CardController?.CardData == card)
+                    return socket.CardController;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Resetea el estado de hover de todas las cartas.
+    /// </summary>
+    private void ResetAllCardSelections(BoardManager bm)
+    {
+        try
+        {
+            // Resetear cartas del jugador
+            if (bm.playerItemSockets != null)
+            {
+                foreach (var socket in bm.playerItemSockets)
+                {
+                    socket?.CardController?.ResetPosition(hideTooltips: true);
+                }
+            }
+
+            // Resetear cartas del oponente
+            if (bm.opponentItemSockets != null)
+            {
+                foreach (var socket in bm.opponentItemSockets)
+                {
+                    socket?.CardController?.ResetPosition(hideTooltips: true);
+                }
+            }
+
+            // Resetear skills
+            if (bm.playerSkillSockets != null)
+            {
+                foreach (var socket in bm.playerSkillSockets)
+                {
+                    socket?.CardController?.ResetPosition(hideTooltips: true);
+                }
+            }
+
+            if (bm.opponentSkillSockets != null)
+            {
+                foreach (var socket in bm.opponentSkillSockets)
+                {
+                    socket?.CardController?.ResetPosition(hideTooltips: true);
+                }
+            }
+
+            // Resetear stash
+            if (bm.playerStorageSockets != null)
+            {
+                foreach (var socket in bm.playerStorageSockets)
+                {
+                    socket?.CardController?.ResetPosition(hideTooltips: true);
+                }
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogWarning($"ResetAllCardSelections error: {ex.Message}");
+        }
     }
 
     // --- Verificación de contenido ---

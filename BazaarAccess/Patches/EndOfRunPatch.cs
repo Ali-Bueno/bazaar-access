@@ -72,8 +72,7 @@ public static class EndOfRunPatch
         {
             _currentUI = new EndOfRunUI(controller.transform);
             AccessibilityMgr.SetScreen(_currentUI);
-
-            TolkWrapper.Speak("End of run. Press Enter to continue.");
+            // El mensaje se anuncia en OnFocus() del UI
         }
         catch (Exception ex)
         {
