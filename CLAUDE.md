@@ -443,7 +443,7 @@ Lee información localizada de las cartas con resolución de tokens:
 
 **Tipos de Items (ECardTag)**: Weapon, Property, Food, Potion, Tool, Vehicle, Aquatic, Friend, Core, Ray, Dinosaur, Apparel, Toy, Tech, Dragon, Ingredient, Relic, Reagent, Map, Key, Drone.
 
-**Resolución de tokens**: Los textos del juego usan tokens como `{DamageAmount}`, `{Cooldown}`, etc. que se reemplazan automáticamente con los valores reales de la carta. Los tiempos (Cooldown, Haste, etc.) se convierten de milisegundos a segundos (ej: "4.5s").
+**Resolución de tokens**: Los textos del juego usan tokens como `{DamageAmount}`, `{Cooldown}`, `{ability.0}`, etc. que se reemplazan automáticamente con los valores reales de la carta. Usa el sistema nativo `TooltipBuilder` del juego para resolver tokens de abilities (ej: `{ability.0}` busca la ability con ID "0" en el template). Los tiempos (Cooldown, Haste, etc.) se convierten de milisegundos a segundos (ej: "4.5s").
 
 ### ActionHelper
 
@@ -638,6 +638,7 @@ Cada estado define `AllowedOps` que incluye `StateOps.SellItem`.
 - ✅ **Fix duplicados**: Eliminados mensajes duplicados (stash, end of run)
 - ✅ **Sistema de Login Accesible**: Menús de inicio de sesión y creación de cuenta
 - ✅ **FTUE no bloquea gameplay**: Tutorial permite navegación normal mientras muestra diálogos
+- ✅ **Fix tokens de abilities**: Tooltips resuelven `{ability.0}`, `{ability.1}` usando TooltipBuilder del juego
 
 ---
 

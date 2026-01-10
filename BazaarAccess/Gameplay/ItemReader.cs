@@ -5,8 +5,10 @@ using System.Text;
 using System.Text.RegularExpressions;
 using BazaarAccess.Core;
 using BazaarGameClient.Domain.Models.Cards;
+using BazaarGameClient.Domain.Tooltips;
 using BazaarGameShared.Domain.Core;
 using BazaarGameShared.Domain.Core.Types;
+using BazaarGameShared.Domain.Values;
 using TheBazaar;
 using TheBazaar.AppFramework;
 using TheBazaar.Localization;
@@ -108,6 +110,7 @@ public static class ItemReader
 
     /// <summary>
     /// Obtiene el texto localizado con los tokens resueltos usando los valores de la carta.
+    /// Usa el sistema de tooltips del juego para resolver tokens como {ability.0}, {DamageAmount}, etc.
     /// </summary>
     public static string GetLocalizedTextWithValues(TLocalizableText text, Card card)
     {
@@ -115,11 +118,40 @@ public static class ItemReader
         if (string.IsNullOrEmpty(localizedText) || card == null)
             return localizedText;
 
+        // Primero intentar usar el sistema de tooltips del juego para resolver tokens de abilities
+        try
+        {
+            var run = Data.Run;
+            if (run != null)
+            {
+                var valueContext = new ValueContext(run, card, null);
+                var tooltipContext = new TooltipContext
+                {
+                    Instance = card,
+                    Template = card.Template,
+                    ValueContext = valueContext
+                };
+
+                var builder = TooltipBuilder.Create(tooltipContext, localizedText);
+                string resolved = builder.Render(true);
+                if (!string.IsNullOrEmpty(resolved))
+                {
+                    return resolved;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogDebug($"TooltipBuilder failed, falling back to regex: {ex.Message}");
+        }
+
+        // Fallback al sistema regex si el TooltipBuilder no funciona
         return ResolveTokens(localizedText, card);
     }
 
     /// <summary>
     /// Resuelve los tokens {X} en el texto con los valores reales de los atributos de la carta.
+    /// Este es el fallback cuando el TooltipBuilder del juego no está disponible.
     /// </summary>
     private static string ResolveTokens(string text, Card card)
     {
