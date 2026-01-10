@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using BazaarAccess.Core;
 using BazaarAccess.Patches;
+using BazaarGameClient.Domain.Models;
 using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameShared.Domain.Core.Types;
 using BazaarGameShared.Domain.Runs;
@@ -69,7 +70,7 @@ public class GameplayNavigator
     private List<NavItem> _selectionItems = new List<NavItem>();  // SelectionSet + Exit/Reroll
     private List<int> _boardIndices = new List<int>();        // Slots ocupados del tablero
     private List<int> _stashIndices = new List<int>();        // Slots ocupados del stash
-    private List<int> _skillIndices = new List<int>();        // Slots ocupados de skills
+    private List<SkillCard> _playerSkills = new List<SkillCard>();  // Skills equipadas del jugador
 
     // Stats del héroe para navegación
     private int _heroStatIndex = 0;
@@ -146,7 +147,7 @@ public class GameplayNavigator
             {
                 _currentSection = NavigationSection.Board;
             }
-            else if (_skillIndices.Count > 0)
+            else if (_playerSkills.Count > 0)
             {
                 _currentSection = NavigationSection.Skills;
             }
@@ -241,14 +242,20 @@ public class GameplayNavigator
 
     private void RefreshSkills()
     {
-        _skillIndices.Clear();
-        var bm = GetBoardManager();
-        if (bm?.playerSkillSockets == null) return;
-
-        for (int i = 0; i < bm.playerSkillSockets.Length; i++)
+        _playerSkills.Clear();
+        try
         {
-            if (bm.playerSkillSockets[i]?.CardController?.CardData != null)
-                _skillIndices.Add(i);
+            // Usar Data.Run.Player.Skills que se actualiza inmediatamente al equipar
+            var skills = Data.Run?.Player?.Skills;
+            if (skills != null)
+            {
+                _playerSkills.AddRange(skills);
+                Plugin.Logger.LogInfo($"RefreshSkills: Found {_playerSkills.Count} skills from Player.Skills");
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"RefreshSkills error: {ex.Message}");
         }
     }
 
@@ -347,7 +354,7 @@ public class GameplayNavigator
 
         if (_heroSubsection == HeroSubsection.Stats)
         {
-            if (_skillIndices.Count > 0)
+            if (_playerSkills.Count > 0)
             {
                 _heroSubsection = HeroSubsection.Skills;
                 _heroSkillIndex = 0;
@@ -381,7 +388,7 @@ public class GameplayNavigator
         }
         else
         {
-            if (_skillIndices.Count > 0)
+            if (_playerSkills.Count > 0)
             {
                 _heroSubsection = HeroSubsection.Skills;
                 _heroSkillIndex = 0;
@@ -406,7 +413,7 @@ public class GameplayNavigator
         }
         else
         {
-            TolkWrapper.Speak($"Hero skills, {_skillIndices.Count} skills");
+            TolkWrapper.Speak($"Hero skills, {_playerSkills.Count} skills");
             AnnounceHeroSkill();
         }
     }
@@ -416,25 +423,21 @@ public class GameplayNavigator
     /// </summary>
     private void AnnounceHeroSkill()
     {
-        if (_heroSkillIndex < 0 || _heroSkillIndex >= _skillIndices.Count)
+        if (_heroSkillIndex < 0 || _heroSkillIndex >= _playerSkills.Count)
         {
             TolkWrapper.Speak("No skill");
             return;
         }
 
-        var bm = GetBoardManager();
-        if (bm?.playerSkillSockets == null) return;
-
-        int idx = _skillIndices[_heroSkillIndex];
-        var card = bm.playerSkillSockets[idx]?.CardController?.CardData;
-        if (card == null)
+        var skill = _playerSkills[_heroSkillIndex];
+        if (skill == null)
         {
             TolkWrapper.Speak("Empty slot");
             return;
         }
 
-        string name = ItemReader.GetCardName(card);
-        TolkWrapper.Speak($"{name}, {_heroSkillIndex + 1} of {_skillIndices.Count}");
+        string name = ItemReader.GetCardName(skill);
+        TolkWrapper.Speak($"{name}, {_heroSkillIndex + 1} of {_playerSkills.Count}");
     }
 
     /// <summary>
@@ -451,8 +454,8 @@ public class GameplayNavigator
         }
         else
         {
-            if (_skillIndices.Count == 0) return;
-            _heroSkillIndex = (_heroSkillIndex + 1) % _skillIndices.Count;
+            if (_playerSkills.Count == 0) return;
+            _heroSkillIndex = (_heroSkillIndex + 1) % _playerSkills.Count;
             AnnounceHeroSkill();
         }
     }
@@ -471,8 +474,8 @@ public class GameplayNavigator
         }
         else
         {
-            if (_skillIndices.Count == 0) return;
-            _heroSkillIndex = (_heroSkillIndex - 1 + _skillIndices.Count) % _skillIndices.Count;
+            if (_playerSkills.Count == 0) return;
+            _heroSkillIndex = (_heroSkillIndex - 1 + _playerSkills.Count) % _playerSkills.Count;
             AnnounceHeroSkill();
         }
     }
@@ -483,13 +486,9 @@ public class GameplayNavigator
     public Card GetCurrentHeroSkill()
     {
         if (_heroSubsection != HeroSubsection.Skills) return null;
-        if (_heroSkillIndex < 0 || _heroSkillIndex >= _skillIndices.Count) return null;
+        if (_heroSkillIndex < 0 || _heroSkillIndex >= _playerSkills.Count) return null;
 
-        var bm = GetBoardManager();
-        if (bm?.playerSkillSockets == null) return null;
-
-        int idx = _skillIndices[_heroSkillIndex];
-        return bm.playerSkillSockets[idx]?.CardController?.CardData;
+        return _playerSkills[_heroSkillIndex];
     }
 
     /// <summary>
@@ -866,7 +865,7 @@ public class GameplayNavigator
         if (_boardIndices.Count > 0) list.Add(NavigationSection.Board);
         // Solo incluir Stash si está abierto
         if (_stashOpen && _stashIndices.Count > 0) list.Add(NavigationSection.Stash);
-        if (_skillIndices.Count > 0) list.Add(NavigationSection.Skills);
+        if (_playerSkills.Count > 0) list.Add(NavigationSection.Skills);
         list.Add(NavigationSection.Hero); // Hero siempre disponible
         return list;
     }
@@ -1380,10 +1379,9 @@ public class GameplayNavigator
                 break;
 
             case NavigationSection.Skills:
-                if (_currentIndex < _skillIndices.Count && bm != null)
+                if (_currentIndex < _playerSkills.Count)
                 {
-                    int idx = _skillIndices[_currentIndex];
-                    return bm.playerSkillSockets[idx]?.CardController?.CardData;
+                    return _playerSkills[_currentIndex];
                 }
                 break;
         }
@@ -1404,6 +1402,27 @@ public class GameplayNavigator
         if (_currentSection != NavigationSection.Board) return -1;
         if (_currentIndex < 0 || _currentIndex >= _boardIndices.Count) return -1;
         return _boardIndices[_currentIndex];
+    }
+
+    /// <summary>
+    /// Ajusta el índice del navegador para apuntar al slot especificado del board.
+    /// Usado después de reordenar para seguir al item movido.
+    /// </summary>
+    /// <param name="targetSlot">El slot al que queremos navegar</param>
+    /// <returns>True si se encontró el slot</returns>
+    public bool GoToBoardSlot(int targetSlot)
+    {
+        if (_currentSection != NavigationSection.Board) return false;
+
+        for (int i = 0; i < _boardIndices.Count; i++)
+        {
+            if (_boardIndices[i] == targetSlot)
+            {
+                _currentIndex = i;
+                return true;
+            }
+        }
+        return false;
     }
 
     public bool HasContent() => GetCurrentSectionCount() > 0;
@@ -1433,7 +1452,7 @@ public class GameplayNavigator
         NavigationSection.Selection => _selectionItems.Count,
         NavigationSection.Board => _boardIndices.Count,
         NavigationSection.Stash => _stashIndices.Count,
-        NavigationSection.Skills => _skillIndices.Count,
+        NavigationSection.Skills => _playerSkills.Count,
         NavigationSection.Hero => HeroStats.Length,
         _ => 0
     };

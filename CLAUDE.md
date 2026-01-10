@@ -410,14 +410,18 @@ enum NavItemType { Card, Exit, Reroll }
 
 ### ItemReader
 
-Lee información localizada de las cartas:
+Lee información localizada de las cartas con resolución de tokens:
 - `GetCardName()`: Nombre traducido
 - `GetTierName()`: Bronze/Silver/Gold/Diamond/Legendary
 - `GetBuyPrice()`, `GetSellPrice()`: Precios
 - `GetDetailedDescription()`: Info completa con stats y efectos
+- `GetDescription()`: Descripción con tokens resueltos (ej: `{DamageAmount}` → "25")
+- `GetAbilityTooltips()`: Tooltips de habilidades con valores reales
 - `GetEncounterInfo()`: Nombre + tipo de encuentro (para PvP: "NombreJugador (Héroe), PvP")
 - `GetEncounterDetailedInfo()`: Para PvP incluye: nombre, héroe, nivel, victorias, prestigio
 - `GetFlavorText()`: Texto narrativo
+
+**Resolución de tokens**: Los textos del juego usan tokens como `{DamageAmount}`, `{Cooldown}`, etc. que se reemplazan automáticamente con los valores reales de la carta. Los tiempos (Cooldown, Haste, etc.) se convierten de milisegundos a segundos (ej: "4.5s").
 
 ### ActionHelper
 
@@ -430,7 +434,9 @@ Ejecuta acciones del juego sin drag-drop:
 
 ### StateChangePatch
 
-Suscripción a eventos nativos del juego (sin delays arbitrarios):
+Suscripción a eventos nativos del juego con sistema de debounce para evitar spam:
+
+**Sistema de Debounce**: Cuando múltiples eventos se disparan casi simultáneamente (transiciones, cartas reveladas, etc.), los anuncios se agrupan en uno solo con un delay de 0.4 segundos. El refresh de datos es inmediato, solo el anuncio se agrupa.
 
 **Eventos de TheBazaar.Events:**
 - `StateChanged`: Cambios de estado del juego
@@ -439,6 +445,7 @@ Suscripción a eventos nativos del juego (sin delays arbitrarios):
 - `ItemCardsRevealed` / `SkillCardsRevealed`: Cuando se revelan cartas (después de animación)
 - `CombatStarted` / `CombatEnded`: Inicio y fin de combate
 - `CardPurchasedSimEvent` / `CardSoldSimEvent`: Compra/venta
+- `PlayerSkillEquippedSimEvent`: Cuando una skill es equipada
 
 **Eventos de AppState:**
 - `StateExited`: Cuando se sale de un estado
@@ -578,7 +585,7 @@ Cada estado define `AllowedOps` que incluye `StateOps.SellItem`.
 - ✅ Modo combate simplificado (solo Hero y Enemy con V/F)
 - ✅ Restricción completa de teclas durante combate (B, C, Tab desactivados)
 - ✅ Información del enemigo con tecla F
-- ✅ Reordenamiento de items en el Board (Shift+Izq/Der)
+- ✅ Reordenamiento de items en el Board (Shift+Izq/Der) - el navegador sigue al item movido
 - ✅ Mover items entre Board y Stash (Shift+Arriba=Stash, Shift+Abajo=Board)
 - ✅ Lectura detallada línea por línea (Ctrl+Arriba/Abajo)
 - ✅ Detección de estado del Stash (abierto/cerrado) via Harmony patch
@@ -596,6 +603,10 @@ Cada estado define `AllowedOps` que incluye `StateOps.SellItem`.
 - ✅ No se anuncia tablero al entrar en combate
 - ✅ **Combat Describer**: Narración del combate en tiempo real
 - ✅ Fix de sliders en opciones (ahora muestran 0-100% correctamente)
+- ✅ **Skills en Hero**: Usa `Data.Run.Player.Skills` (actualización inmediata al equipar)
+- ✅ **Resolución de tokens**: Tooltips muestran valores reales (`{DamageAmount}` → "25")
+- ✅ **Sistema de debounce**: Reduce spam en transiciones agrupando anuncios (0.4s delay)
+- ✅ **Reordenamiento mejorado**: Al mover con Shift+flechas, el navegador sigue al item
 
 ---
 

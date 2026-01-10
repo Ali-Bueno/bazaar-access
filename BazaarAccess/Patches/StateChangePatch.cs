@@ -6,6 +6,7 @@ using BazaarAccess.Core;
 using BazaarAccess.Gameplay;
 using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameShared.Domain.Runs;
+using BazaarGameShared.Domain.Core.Types;
 using BazaarGameShared.Infra.Messages.GameSimEvents;
 using TheBazaar;
 using UnityEngine;
@@ -28,6 +29,10 @@ public static class StateChangePatch
     private static bool _inReplayState = false;
     private static Type _eventsType;
     private static Type _replayStateType;
+
+    // Debounce para evitar spam de anuncios
+    private static Coroutine _announceCoroutine = null;
+    private const float ANNOUNCE_DEBOUNCE_DELAY = 0.4f; // Segundos de espera antes de anunciar
 
     public static bool IsInCombat => _inCombat;
     public static bool IsInReplayState => _inReplayState;
@@ -78,6 +83,10 @@ public static class StateChangePatch
                 (Action<GameSimEventCardPurchased>)OnCardPurchased);
             SubscribeToEvent("CardSoldSimEvent", typeof(Action<GameSimEventCardSold>),
                 (Action<GameSimEventCardSold>)OnCardSold);
+
+            // === Evento de skill equipada (se dispara cuando una skill es añadida al jugador) ===
+            SubscribeToEvent("PlayerSkillEquippedSimEvent", typeof(Action<GameSimEventPlayerSkillEquipped>),
+                (Action<GameSimEventPlayerSkillEquipped>)OnSkillEquipped);
 
             // === Eventos de cartas (disposed = removed from selection after buy) ===
             SubscribeToEvent("CardDisposedSimEvent", typeof(Action<List<Card>>),
@@ -396,6 +405,24 @@ public static class StateChangePatch
         TriggerRefreshAndAnnounce();
     }
 
+    private static void OnSkillEquipped(GameSimEventPlayerSkillEquipped evt)
+    {
+        // Solo refrescar si la skill es del jugador, no del oponente
+        if (evt.Owner == ECombatantId.Player)
+        {
+            Plugin.Logger.LogInfo($"Skill equipped: {evt.InstanceId}");
+            // Pequeño delay para asegurar que Player.Skills ya fue actualizado
+            Plugin.Instance.StartCoroutine(DelayedRefreshAfterSkillEquipped());
+        }
+    }
+
+    private static System.Collections.IEnumerator DelayedRefreshAfterSkillEquipped()
+    {
+        // Delay corto - Player.Skills ya debería estar actualizado
+        yield return new UnityEngine.WaitForSeconds(0.1f);
+        TriggerRefresh();
+    }
+
     private static void OnCardDisposed(List<Card> cards)
     {
         Plugin.Logger.LogInfo($"Cards disposed: {cards?.Count ?? 0}");
@@ -504,11 +531,64 @@ public static class StateChangePatch
     }
 
     /// <summary>
-    /// Dispara un refresh y anuncia el estado actual.
+    /// Dispara un refresh y anuncia el estado actual con debounce.
+    /// Múltiples llamadas en un corto período se agrupan en un solo anuncio.
     /// </summary>
     public static void TriggerRefreshAndAnnounce()
     {
         if (AccessibilityMgr.GetFocusedUI() != null) return;
+
+        // Siempre hacer refresh inmediatamente
+        var screen = AccessibilityMgr.GetCurrentScreen() as GameplayScreen;
+        screen?.RefreshNavigator();
+
+        // Debounce del anuncio
+        if (_announceCoroutine != null)
+        {
+            // Ya hay un anuncio pendiente, se actualizará con el estado más reciente
+            Plugin.Logger.LogInfo("TriggerRefreshAndAnnounce: Debouncing, waiting for previous announce");
+            return;
+        }
+
+        // Iniciar coroutine con debounce
+        _announceCoroutine = Plugin.Instance.StartCoroutine(DebouncedAnnounce());
+    }
+
+    /// <summary>
+    /// Coroutine que espera un poco antes de anunciar para agrupar eventos.
+    /// </summary>
+    private static System.Collections.IEnumerator DebouncedAnnounce()
+    {
+        yield return new UnityEngine.WaitForSeconds(ANNOUNCE_DEBOUNCE_DELAY);
+
+        _announceCoroutine = null;
+
+        if (AccessibilityMgr.GetFocusedUI() != null) yield break;
+
+        var screen = AccessibilityMgr.GetCurrentScreen() as GameplayScreen;
+        if (screen != null)
+        {
+            // Refresh final antes de anunciar
+            screen.RefreshNavigator();
+            screen.ForceAnnounceState();
+            Plugin.Logger.LogInfo("DebouncedAnnounce: State announced");
+        }
+    }
+
+    /// <summary>
+    /// Dispara un refresh y anuncia inmediatamente (sin debounce).
+    /// Usar solo cuando el anuncio es crítico y no debe agruparse.
+    /// </summary>
+    public static void TriggerRefreshAndAnnounceImmediate()
+    {
+        if (AccessibilityMgr.GetFocusedUI() != null) return;
+
+        // Cancelar cualquier anuncio pendiente
+        if (_announceCoroutine != null)
+        {
+            Plugin.Instance.StopCoroutine(_announceCoroutine);
+            _announceCoroutine = null;
+        }
 
         var screen = AccessibilityMgr.GetCurrentScreen() as GameplayScreen;
         if (screen != null)

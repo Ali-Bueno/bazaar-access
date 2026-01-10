@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 using BazaarAccess.Core;
 using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameShared.Domain.Core;
@@ -17,6 +19,61 @@ namespace BazaarAccess.Gameplay;
 /// </summary>
 public static class ItemReader
 {
+    // Regex para tokens como {DamageAmount}, {Cooldown}, etc.
+    private static readonly Regex TokenRegex = new Regex(
+        @"\{(\w+)(?::(\w+))?\}",
+        RegexOptions.Compiled);
+
+    // Mapeo de nombres de token a tipos de atributo
+    private static readonly Dictionary<string, ECardAttributeType> TokenToAttribute = new Dictionary<string, ECardAttributeType>(StringComparer.OrdinalIgnoreCase)
+    {
+        { "DamageAmount", ECardAttributeType.DamageAmount },
+        { "Damage", ECardAttributeType.DamageAmount },
+        { "HealAmount", ECardAttributeType.HealAmount },
+        { "Heal", ECardAttributeType.HealAmount },
+        { "ShieldApplyAmount", ECardAttributeType.ShieldApplyAmount },
+        { "Shield", ECardAttributeType.ShieldApplyAmount },
+        { "PoisonApplyAmount", ECardAttributeType.PoisonApplyAmount },
+        { "Poison", ECardAttributeType.PoisonApplyAmount },
+        { "BurnApplyAmount", ECardAttributeType.BurnApplyAmount },
+        { "Burn", ECardAttributeType.BurnApplyAmount },
+        { "Cooldown", ECardAttributeType.Cooldown },
+        { "CooldownMax", ECardAttributeType.CooldownMax },
+        { "Ammo", ECardAttributeType.Ammo },
+        { "AmmoMax", ECardAttributeType.AmmoMax },
+        { "HasteAmount", ECardAttributeType.HasteAmount },
+        { "Haste", ECardAttributeType.HasteAmount },
+        { "SlowAmount", ECardAttributeType.SlowAmount },
+        { "Slow", ECardAttributeType.SlowAmount },
+        { "FreezeAmount", ECardAttributeType.FreezeAmount },
+        { "Freeze", ECardAttributeType.FreezeAmount },
+        { "ChargeAmount", ECardAttributeType.ChargeAmount },
+        { "Charge", ECardAttributeType.ChargeAmount },
+        { "CritChance", ECardAttributeType.CritChance },
+        { "Crit", ECardAttributeType.CritChance },
+        { "Lifesteal", ECardAttributeType.Lifesteal },
+        { "Multicast", ECardAttributeType.Multicast },
+        { "RegenApplyAmount", ECardAttributeType.RegenApplyAmount },
+        { "Regen", ECardAttributeType.RegenApplyAmount },
+        { "JoyApplyAmount", ECardAttributeType.JoyApplyAmount },
+        { "Joy", ECardAttributeType.JoyApplyAmount },
+        { "Counter", ECardAttributeType.Counter },
+        { "BuyPrice", ECardAttributeType.BuyPrice },
+        { "SellPrice", ECardAttributeType.SellPrice },
+        { "ReloadAmount", ECardAttributeType.ReloadAmount },
+    };
+
+    // Atributos que están en milisegundos y necesitan conversión a segundos
+    private static readonly HashSet<ECardAttributeType> MillisecondAttributes = new HashSet<ECardAttributeType>
+    {
+        ECardAttributeType.Cooldown,
+        ECardAttributeType.CooldownMax,
+        ECardAttributeType.HasteAmount,
+        ECardAttributeType.SlowAmount,
+        ECardAttributeType.FreezeAmount,
+        ECardAttributeType.ChargeAmount
+    };
+
     /// <summary>
     /// Obtiene el texto localizado de un TLocalizableText, limpiando tags HTML.
     /// </summary>
@@ -46,6 +103,55 @@ public static class ItemReader
 
         // Limpiar tags HTML
         return TextHelper.CleanText(result);
+    }
+
+    /// <summary>
+    /// Obtiene el texto localizado con los tokens resueltos usando los valores de la carta.
+    /// </summary>
+    public static string GetLocalizedTextWithValues(TLocalizableText text, Card card)
+    {
+        string localizedText = GetLocalizedText(text);
+        if (string.IsNullOrEmpty(localizedText) || card == null)
+            return localizedText;
+
+        return ResolveTokens(localizedText, card);
+    }
+
+    /// <summary>
+    /// Resuelve los tokens {X} en el texto con los valores reales de los atributos de la carta.
+    /// </summary>
+    private static string ResolveTokens(string text, Card card)
+    {
+        if (string.IsNullOrEmpty(text) || card == null)
+            return text;
+
+        return TokenRegex.Replace(text, match =>
+        {
+            string tokenName = match.Groups[1].Value;
+            string format = match.Groups[2].Success ? match.Groups[2].Value : null;
+
+            // Buscar el atributo correspondiente
+            if (TokenToAttribute.TryGetValue(tokenName, out var attrType))
+            {
+                var value = card.GetAttributeValue(attrType);
+                if (value.HasValue)
+                {
+                    float displayValue = value.Value;
+
+                    // Convertir milisegundos a segundos si es necesario
+                    if (MillisecondAttributes.Contains(attrType))
+                    {
+                        displayValue = value.Value / 1000f;
+                        return displayValue.ToString("F1") + "s";
+                    }
+
+                    return displayValue.ToString();
+                }
+            }
+
+            // Si no encontramos el atributo, devolver el token original
+            return match.Value;
+        });
     }
 
     /// <summary>
@@ -356,7 +462,7 @@ public static class ItemReader
     }
 
     /// <summary>
-    /// Obtiene la descripción de una carta.
+    /// Obtiene la descripción de una carta con valores resueltos.
     /// </summary>
     public static string GetDescription(Card card)
     {
@@ -365,14 +471,14 @@ public static class ItemReader
         var template = card.Template;
         if (template?.Localization?.Description != null)
         {
-            return GetLocalizedText(template.Localization.Description);
+            return GetLocalizedTextWithValues(template.Localization.Description, card);
         }
 
         return string.Empty;
     }
 
     /// <summary>
-    /// Obtiene los tooltips de habilidades activas y pasivas de una carta.
+    /// Obtiene los tooltips de habilidades activas y pasivas de una carta con valores resueltos.
     /// </summary>
     public static string GetAbilityTooltips(Card card)
     {
@@ -388,7 +494,7 @@ public static class ItemReader
         {
             if (tooltip?.Content != null)
             {
-                string text = GetLocalizedText(tooltip.Content);
+                string text = GetLocalizedTextWithValues(tooltip.Content, card);
                 if (!string.IsNullOrEmpty(text))
                 {
                     if (sb.Length > 0) sb.Append(". ");

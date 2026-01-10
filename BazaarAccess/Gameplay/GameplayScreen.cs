@@ -765,9 +765,17 @@ public class GameplayScreen : IAccessibleScreen
             return;
         }
 
+        // Calcular el nuevo slot donde estará el item
+        int newSlot = currentSlot + direction;
+
         if (ActionHelper.ReorderItem(card, currentSlot, direction))
         {
-            RefreshAndAnnounce();
+            // Refrescar primero para actualizar _boardIndices
+            _navigator.Refresh();
+            // Ahora mover el índice del navegador al nuevo slot para seguir al item
+            _navigator.GoToBoardSlot(newSlot);
+            // Anunciar el item (que es el mismo que movimos)
+            _navigator.AnnounceCurrentItem();
         }
     }
 
