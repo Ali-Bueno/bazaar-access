@@ -34,7 +34,8 @@ BazaarAccess/
 │   ├── GameplayNavigator.cs      # Navegador principal por secciones
 │   ├── BoardNavigator.cs         # Navegación alternativa por zonas
 │   ├── ItemReader.cs             # Lectura de info de cartas/items
-│   └── ActionHelper.cs           # Comprar/vender/mover sin drag-drop
+│   ├── ActionHelper.cs           # Comprar/vender/mover sin drag-drop
+│   └── CombatDescriber.cs        # Narración del combate en tiempo real
 ├── Core/
 │   ├── TolkWrapper.cs            # Wrapper para Tolk (screen reader)
 │   ├── KeyboardNavigator.cs      # Manejo de entrada de teclado
@@ -593,16 +594,67 @@ Cada estado define `AllowedOps` que incluye `StateOps.SellItem`.
 - ✅ Modo enemigo: navegar items del oponente fuera de combate (F + Ctrl+flechas)
 - ✅ PvP encounters muestran nombre del jugador + héroe (no solo el héroe)
 - ✅ No se anuncia tablero al entrar en combate
+- ✅ **Combat Describer**: Narración del combate en tiempo real
+- ✅ Fix de sliders en opciones (ahora muestran 0-100% correctamente)
+
+---
+
+## Combat Describer (CombatDescriber.cs)
+
+Narra el combate en tiempo real para accesibilidad. Se activa automáticamente cuando empieza un combate y se detiene cuando termina.
+
+### Formato de Mensajes
+
+**Activación de items:**
+```
+"[Dueño]: [Item]: [Cantidad] [Efecto]. [Crítico]. [Estado]."
+```
+Ejemplos:
+- "You: Water Dagger: 10 damage."
+- "You: Fire Sword: 25 damage. critical."
+- "Enemy: Healing Potion: 15 heal."
+- "You: Frost Wand: 8 damage. slow."
+
+**Anuncio de vida (cada 5 segundos):**
+```
+"You: [vida] health, [escudo] shield. [Enemy]: [vida] health."
+```
+
+### Eventos Suscritos
+
+- `Events.EffectTriggered`: Cuando un item/skill activa un efecto
+- `Events.PlayerHealthChanged`: Cuando cambia la vida de jugador/enemigo
+
+### ActionTypes Narrados
+
+**Daño/Curación:**
+- `PlayerDamage` → "X damage"
+- `PlayerHeal` → "X heal"
+- `PlayerShieldApply` → "X shield"
+
+**Efectos de estado:**
+- `PlayerBurnApply` → "X burn"
+- `PlayerPoisonApply` → "X poison"
+- `PlayerRegenApply` → "regen"
+- `PlayerJoyApply` → "joy"
+
+**Efectos en cartas:**
+- `CardSlow` → "slow"
+- `CardHaste` → "haste"
+- `CardFreeze` → "freeze"
+
+### Críticos
+
+Se anuncia "critical" cuando `IsCrit == true` en el efecto.
+
+### Nombre del Enemigo
+
+- **PvP**: Usa el nombre del jugador oponente (`Data.SimPvpOpponent.Name`)
+- **PvE**: Usa "Enemy" (fallback)
+
+---
 
 ## Pendiente por Implementar
-
-### Combat Describer (Próximo)
-Narrar el combate en tiempo real con el lector de pantalla:
-- Activación de items/skills
-- Daño recibido/infligido
-- Efectos aplicados (poison, burn, heal, shield)
-- Cambios de vida/escudo
-- Victoria/Derrota
 
 ### Anuncios de Eventos
 - Subida de nivel
@@ -612,3 +664,7 @@ Narrar el combate en tiempo real con el lector de pantalla:
 ### Mejoras de Navegación
 - Preview de sinergia de items
 - Acceso rápido a información de cooldowns en batalla
+
+### Combat Describer Mejoras
+- Obtener nombre real del monstruo en PvE
+- Agrupar efectos del mismo item en un solo anuncio

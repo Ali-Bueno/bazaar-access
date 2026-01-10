@@ -379,7 +379,8 @@ public class OptionsUI : BaseUI
         if (slider == null) return name;
 
         string label = GetSliderLabel(name);
-        int percent = Mathf.RoundToInt(slider.value * 100);
+        // Usar normalizedValue para obtener el porcentaje correcto (0-100%)
+        int percent = Mathf.RoundToInt(slider.normalizedValue * 100);
         return $"{label}: {percent}%";
     }
 
@@ -422,10 +423,11 @@ public class OptionsUI : BaseUI
         var slider = FindSlider(name);
         if (slider == null) return;
 
+        // Usar normalizedValue para ajustar correctamente en el rango del slider
         float step = 0.1f;
-        slider.value = Mathf.Clamp01(slider.value + (step * direction));
+        slider.normalizedValue = Mathf.Clamp01(slider.normalizedValue + (step * direction));
 
-        int percent = Mathf.RoundToInt(slider.value * 100);
+        int percent = Mathf.RoundToInt(slider.normalizedValue * 100);
         Core.TolkWrapper.Speak($"{percent}%");
     }
 

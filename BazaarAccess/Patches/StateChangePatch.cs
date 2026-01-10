@@ -10,6 +10,10 @@ using BazaarGameShared.Infra.Messages.GameSimEvents;
 using TheBazaar;
 using UnityEngine;
 
+// For combat describer events
+using EffectTriggeredEvent = TheBazaar.EffectTriggeredEvent;
+using PlayerHealthChangedEvent = TheBazaar.PlayerHealthChangedEvent;
+
 namespace BazaarAccess.Patches;
 
 /// <summary>
@@ -62,6 +66,12 @@ public static class StateChangePatch
             // === Eventos de combate ===
             SubscribeToEventNoParam("CombatStarted", OnCombatStarted);
             SubscribeToEventNoParam("CombatEnded", OnCombatEnded);
+
+            // === Eventos de narración de combate ===
+            SubscribeToEvent("EffectTriggered", typeof(Action<EffectTriggeredEvent>),
+                (Action<EffectTriggeredEvent>)CombatDescriber.OnEffectTriggered);
+            SubscribeToEvent("PlayerHealthChanged", typeof(Action<PlayerHealthChangedEvent>),
+                (Action<PlayerHealthChangedEvent>)CombatDescriber.OnPlayerHealthChanged);
 
             // === Eventos de compra/venta ===
             SubscribeToEvent("CardPurchasedSimEvent", typeof(Action<GameSimEventCardPurchased>),
@@ -117,7 +127,9 @@ public static class StateChangePatch
     {
         try
         {
-            var eventField = _eventsType.GetField(eventName, BindingFlags.Public | BindingFlags.Static);
+            // Buscar en campos públicos y no públicos (Events es internal)
+            var eventField = _eventsType.GetField(eventName,
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
             if (eventField == null)
             {
                 Plugin.Logger.LogWarning($"StateChangePatch: No se encontró Events.{eventName}");
@@ -131,13 +143,21 @@ public static class StateChangePatch
                 return;
             }
 
+            // Buscar AddListener con el tipo de handler específico
             var addMethod = eventObj.GetType().GetMethod("AddListener",
-                new Type[] { handlerType, typeof(MonoBehaviour) });
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                null,
+                new Type[] { handlerType, typeof(MonoBehaviour) },
+                null);
 
             if (addMethod != null)
             {
                 addMethod.Invoke(eventObj, new object[] { handler, null });
                 Plugin.Logger.LogInfo($"StateChangePatch: Suscrito a Events.{eventName}");
+            }
+            else
+            {
+                Plugin.Logger.LogWarning($"StateChangePatch: No se encontró AddListener para Events.{eventName}");
             }
         }
         catch (Exception ex)
@@ -150,19 +170,35 @@ public static class StateChangePatch
     {
         try
         {
-            var eventField = _eventsType.GetField(eventName, BindingFlags.Public | BindingFlags.Static);
-            if (eventField == null) return;
+            var eventField = _eventsType.GetField(eventName,
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+            if (eventField == null)
+            {
+                Plugin.Logger.LogWarning($"StateChangePatch: No se encontró Events.{eventName} (NoParam)");
+                return;
+            }
 
             var eventObj = eventField.GetValue(null);
-            if (eventObj == null) return;
+            if (eventObj == null)
+            {
+                Plugin.Logger.LogWarning($"StateChangePatch: Events.{eventName} es null (NoParam)");
+                return;
+            }
 
             var addMethod = eventObj.GetType().GetMethod("AddListener",
-                new Type[] { typeof(Action), typeof(MonoBehaviour) });
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                null,
+                new Type[] { typeof(Action), typeof(MonoBehaviour) },
+                null);
 
             if (addMethod != null)
             {
                 addMethod.Invoke(eventObj, new object[] { handler, null });
                 Plugin.Logger.LogInfo($"StateChangePatch: Suscrito a Events.{eventName}");
+            }
+            else
+            {
+                Plugin.Logger.LogWarning($"StateChangePatch: No se encontró AddListener para Events.{eventName} (NoParam)");
             }
         }
         catch (Exception ex)
@@ -326,6 +362,9 @@ public static class StateChangePatch
         Plugin.Logger.LogInfo("CombatStarted");
         _inCombat = true;
 
+        // Iniciar narración del combate
+        CombatDescriber.StartDescribing();
+
         var screen = AccessibilityMgr.GetCurrentScreen() as GameplayScreen;
         screen?.OnCombatStateChanged(true);
     }
@@ -337,6 +376,9 @@ public static class StateChangePatch
     {
         Plugin.Logger.LogInfo("CombatEnded");
         _inCombat = false;
+
+        // Detener narración del combate
+        CombatDescriber.StopDescribing();
 
         var screen = AccessibilityMgr.GetCurrentScreen() as GameplayScreen;
         screen?.OnCombatStateChanged(false);

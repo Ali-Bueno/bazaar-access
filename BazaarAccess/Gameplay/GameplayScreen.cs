@@ -955,6 +955,8 @@ public class GameplayScreen : IAccessibleScreen
             if (!replayStateType.IsInstanceOfType(currentState))
             {
                 Plugin.Logger.LogInfo($"TriggerReplayContinue: Current state is {currentState.GetType().Name}, not ReplayState");
+                // No estamos en ReplayState, forzar salir del modo replay
+                _navigator.SetReplayMode(false);
                 return;
             }
 
@@ -962,9 +964,9 @@ public class GameplayScreen : IAccessibleScreen
             var exitMethod = replayStateType.GetMethod("Exit");
             if (exitMethod != null)
             {
-                exitMethod.Invoke(currentState, null);
                 TolkWrapper.Speak("Continuing");
-                _navigator.SetReplayMode(false);
+                exitMethod.Invoke(currentState, null);
+                // NO llamar a SetReplayMode(false) aquí - OnReplayStateChanged lo hará cuando el estado cambie
             }
             else
             {
@@ -988,12 +990,20 @@ public class GameplayScreen : IAccessibleScreen
             if (currentState == null) return;
 
             var replayStateType = typeof(AppState).Assembly.GetType("TheBazaar.ReplayState");
-            if (replayStateType == null || !replayStateType.IsInstanceOfType(currentState)) return;
+            if (replayStateType == null || !replayStateType.IsInstanceOfType(currentState))
+            {
+                // No estamos en ReplayState
+                _navigator.SetReplayMode(false);
+                return;
+            }
 
             var replayMethod = replayStateType.GetMethod("Replay");
-            replayMethod?.Invoke(currentState, null);
-
-            TolkWrapper.Speak("Replaying combat");
+            if (replayMethod != null)
+            {
+                TolkWrapper.Speak("Replaying combat");
+                replayMethod.Invoke(currentState, null);
+                // NO salir del modo replay - seguimos en ReplayState durante el replay
+            }
         }
         catch (System.Exception ex)
         {
@@ -1012,12 +1022,20 @@ public class GameplayScreen : IAccessibleScreen
             if (currentState == null) return;
 
             var replayStateType = typeof(AppState).Assembly.GetType("TheBazaar.ReplayState");
-            if (replayStateType == null || !replayStateType.IsInstanceOfType(currentState)) return;
+            if (replayStateType == null || !replayStateType.IsInstanceOfType(currentState))
+            {
+                // No estamos en ReplayState
+                _navigator.SetReplayMode(false);
+                return;
+            }
 
             var recapMethod = replayStateType.GetMethod("Recap");
-            recapMethod?.Invoke(currentState, null);
-
-            TolkWrapper.Speak("Showing recap");
+            if (recapMethod != null)
+            {
+                TolkWrapper.Speak("Showing recap");
+                recapMethod.Invoke(currentState, null);
+                // NO salir del modo replay - seguimos en ReplayState durante el recap
+            }
         }
         catch (System.Exception ex)
         {
