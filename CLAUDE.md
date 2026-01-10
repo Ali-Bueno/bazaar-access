@@ -366,11 +366,19 @@ Pantalla accesible principal del gameplay que implementa `IAccessibleScreen`. Se
 - `Ctrl+Izquierda`: Cambiar subsección (Skills → Stats)
 - `Enter`: Leer todos los stats resumidos
 
+**Modo Enemigo (F)**:
+Fuera de combate, presionar F activa el "modo enemigo":
+- Muestra stats del enemigo + número de items/skills
+- `Ctrl+Arriba/Abajo`: Navegar items del enemigo
+- `Enter`: Leer detalles del item actual del enemigo
+- `Escape` o cualquier otra tecla: Salir del modo enemigo
+
 **Modo Combate**:
 Durante el combate, la navegación se simplifica:
 - Solo está disponible la sección Hero (V) con Ctrl+flechas
-- Usa `F` para ver los stats del enemigo (vida, escudo)
-- El combate se anuncia automáticamente al iniciar y terminar
+- Usa `F` para ver los stats del enemigo (vida, escudo) - sin navegación de items
+- Se anuncia "Entering combat" al iniciar y "Exiting combat" al terminar
+- No se anuncia el tablero ni número de items al entrar en combate
 
 ### GameplayNavigator
 
@@ -406,7 +414,8 @@ Lee información localizada de las cartas:
 - `GetTierName()`: Bronze/Silver/Gold/Diamond/Legendary
 - `GetBuyPrice()`, `GetSellPrice()`: Precios
 - `GetDetailedDescription()`: Info completa con stats y efectos
-- `GetEncounterInfo()`: Nombre + tipo de encuentro
+- `GetEncounterInfo()`: Nombre + tipo de encuentro (para PvP: "NombreJugador (Héroe), PvP")
+- `GetEncounterDetailedInfo()`: Para PvP incluye: nombre, héroe, nivel, victorias, prestigio
 - `GetFlavorText()`: Texto narrativo
 
 ### ActionHelper
@@ -581,8 +590,19 @@ Cada estado define `AllowedOps` que incluye `StateOps.SellItem`.
 - ✅ Anuncios de combate ("Entering combat" / "Exiting combat")
 - ✅ V y F funcionan durante ReplayState para ver stats
 - ✅ Secciones vacías no se anuncian
+- ✅ Modo enemigo: navegar items del oponente fuera de combate (F + Ctrl+flechas)
+- ✅ PvP encounters muestran nombre del jugador + héroe (no solo el héroe)
+- ✅ No se anuncia tablero al entrar en combate
 
 ## Pendiente por Implementar
+
+### Combat Describer (Próximo)
+Narrar el combate en tiempo real con el lector de pantalla:
+- Activación de items/skills
+- Daño recibido/infligido
+- Efectos aplicados (poison, burn, heal, shield)
+- Cambios de vida/escudo
+- Victoria/Derrota
 
 ### Anuncios de Eventos
 - Subida de nivel

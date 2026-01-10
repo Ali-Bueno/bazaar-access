@@ -4,6 +4,7 @@ using BazaarAccess.Core;
 using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameShared.Domain.Core;
 using BazaarGameShared.Domain.Core.Types;
+using TheBazaar;
 using TheBazaar.AppFramework;
 using TheBazaar.Localization;
 
@@ -223,26 +224,82 @@ public static class ItemReader
 
     /// <summary>
     /// Obtiene información básica de un encuentro.
+    /// Para PvP, usa el nombre del jugador si está disponible.
     /// </summary>
     public static string GetEncounterInfo(Card card)
     {
         if (card == null) return "Empty";
 
-        string name = GetCardName(card);
+        string name;
         string type = GetEncounterTypeName(card.Type);
+
+        // Para PvP, intentar obtener el nombre del jugador real
+        if (card.Type == ECardType.PvpEncounter)
+        {
+            var pvpOpponent = Data.SimPvpOpponent;
+            if (pvpOpponent != null && !string.IsNullOrEmpty(pvpOpponent.Name))
+            {
+                // Mostrar nombre del jugador + héroe
+                string heroName = GetCardName(card);
+                name = $"{pvpOpponent.Name} ({heroName})";
+            }
+            else
+            {
+                name = GetCardName(card);
+            }
+        }
+        else
+        {
+            name = GetCardName(card);
+        }
 
         return $"{name}, {type}";
     }
 
     /// <summary>
     /// Obtiene información detallada de un encuentro.
-    /// Incluye descripción y FlavorText.
+    /// Para PvP, incluye nombre del jugador, héroe, nivel, victorias, etc.
     /// </summary>
     public static string GetEncounterDetailedInfo(Card card)
     {
         if (card == null) return "Empty";
 
         var sb = new StringBuilder();
+
+        // Para PvP, mostrar información del jugador
+        if (card.Type == ECardType.PvpEncounter)
+        {
+            var pvpOpponent = Data.SimPvpOpponent;
+            if (pvpOpponent != null)
+            {
+                // Nombre del jugador
+                if (!string.IsNullOrEmpty(pvpOpponent.Name))
+                {
+                    sb.Append(pvpOpponent.Name);
+                }
+                else
+                {
+                    sb.Append(GetCardName(card));
+                }
+
+                // Héroe
+                sb.Append(", playing ");
+                sb.Append(GetCardName(card));
+
+                // Nivel
+                sb.Append($", Level {pvpOpponent.Level}");
+
+                // Victorias
+                sb.Append($", {pvpOpponent.Victories} wins");
+
+                // Prestigio
+                sb.Append($", {pvpOpponent.Prestige} prestige");
+
+                return sb.ToString();
+            }
+        }
+
+        // Para otros encuentros, comportamiento normal
         sb.Append(GetCardName(card));
         sb.Append(", ");
         sb.Append(GetEncounterTypeName(card.Type));

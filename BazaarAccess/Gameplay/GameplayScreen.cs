@@ -73,9 +73,42 @@ public class GameplayScreen : IAccessibleScreen
                         currentState == ERunState.Combat ||
                         currentState == ERunState.PVPCombat;
 
-        // En modo combate, solo permitir V (Hero), F (Enemy) y Ctrl+flechas para navegar Hero
+        // En modo combate, solo permitir V (Hero), F (Enemy) y Ctrl+flechas para navegar Hero/Enemy
         if (inCombat)
         {
+            // Si estamos en modo enemigo durante combate
+            if (_navigator.IsInEnemyMode)
+            {
+                switch (key)
+                {
+                    case AccessibleKey.DetailUp:
+                        _navigator.EnemyNext();
+                        return;
+
+                    case AccessibleKey.DetailDown:
+                        _navigator.EnemyPrevious();
+                        return;
+
+                    case AccessibleKey.Confirm:
+                        _navigator.ReadCurrentEnemyItemDetails();
+                        return;
+
+                    case AccessibleKey.GoToEnemy:
+                        _navigator.ReadEnemyInfo();
+                        return;
+
+                    case AccessibleKey.GoToHero:
+                        _navigator.ExitEnemyMode();
+                        _navigator.GoToHero();
+                        return;
+
+                    case AccessibleKey.Back:
+                        _navigator.ExitEnemyMode();
+                        TolkWrapper.Speak("Exited enemy view");
+                        return;
+                }
+            }
+
             switch (key)
             {
                 case AccessibleKey.GoToHero:
@@ -122,6 +155,40 @@ public class GameplayScreen : IAccessibleScreen
                     break;
             }
             return;
+        }
+
+        // Si estamos en modo enemigo, manejar navegación de items del enemigo
+        if (_navigator.IsInEnemyMode)
+        {
+            switch (key)
+            {
+                case AccessibleKey.DetailUp:
+                    _navigator.EnemyNext();
+                    return;
+
+                case AccessibleKey.DetailDown:
+                    _navigator.EnemyPrevious();
+                    return;
+
+                case AccessibleKey.Confirm:
+                    _navigator.ReadCurrentEnemyItemDetails();
+                    return;
+
+                case AccessibleKey.GoToEnemy:
+                    // F de nuevo relee los stats del enemigo
+                    _navigator.ReadEnemyInfo();
+                    return;
+
+                case AccessibleKey.Back:
+                    _navigator.ExitEnemyMode();
+                    TolkWrapper.Speak("Exited enemy view");
+                    return;
+
+                default:
+                    // Cualquier otra tecla sale del modo enemigo
+                    _navigator.ExitEnemyMode();
+                    break;
+            }
         }
 
         switch (key)
@@ -288,6 +355,13 @@ public class GameplayScreen : IAccessibleScreen
         bool stateChanged = newState != _lastState;
         _lastState = newState;
 
+        // Durante combate, no anunciar nada aquí (OnCombatStateChanged lo hará)
+        bool isCombatState = newState == ERunState.Combat || newState == ERunState.PVPCombat;
+        if (isCombatState)
+        {
+            return; // El anuncio de combate se hace en OnCombatStateChanged
+        }
+
         // Anunciar el cambio de estado
         if (announceChange && stateChanged)
         {
@@ -360,11 +434,8 @@ public class GameplayScreen : IAccessibleScreen
 
             case ERunState.Combat:
             case ERunState.PVPCombat:
-                // En combate, ir al board del jugador
-                if (_navigator.HasBoardContent())
-                {
-                    _navigator.GoToSection(NavigationSection.Board);
-                }
+                // En combate, solo ir a Hero silenciosamente (no anunciar board)
+                _navigator.SetSectionSilent(NavigationSection.Hero);
                 break;
 
             default:
