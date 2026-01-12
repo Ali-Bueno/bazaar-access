@@ -249,5 +249,9 @@ public enum AccessibleKey
     // Additional information
     Info,           // I - Property/keyword info for the item
     // Upgrade
-    Upgrade         // Shift+U - Upgrade item at pedestal
+    Upgrade,        // Shift+U - Upgrade item at pedestal
+    // Board info
+    BoardInfo,      // T - Board capacity info (slots used/total)
+    // Challenges
+    Challenges      // Q - Read current challenges
 }

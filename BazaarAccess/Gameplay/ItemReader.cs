@@ -674,11 +674,19 @@ public static class ItemReader
             lines.Add(tags);
         }
 
-        // Tamaño
+        // Tamaño con nombre descriptivo
         var template = card.Template;
         if (template != null)
         {
-            lines.Add($"Size {(int)template.Size}");
+            int size = (int)template.Size;
+            string sizeName = template.Size switch
+            {
+                ECardSize.Small => "Small",
+                ECardSize.Medium => "Medium",
+                ECardSize.Large => "Large",
+                _ => ""
+            };
+            lines.Add($"Size: {size} slots ({sizeName})");
         }
 
         // Precio de compra

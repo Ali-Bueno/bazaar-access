@@ -332,6 +332,16 @@ public class GameplayScreen : IAccessibleScreen
             case AccessibleKey.Upgrade:
                 HandleUpgrade();
                 break;
+
+            // T - Board capacity info
+            case AccessibleKey.BoardInfo:
+                _navigator.AnnounceBoardCapacity();
+                break;
+
+            // Q - Read challenges
+            case AccessibleKey.Challenges:
+                _navigator.ReadChallenges();
+                break;
         }
     }
 
@@ -870,6 +880,15 @@ public class GameplayScreen : IAccessibleScreen
     public void RefreshNavigator()
     {
         _navigator.Refresh();
+    }
+
+    /// <summary>
+    /// Clears the detail line cache (called when cards are enchanted/upgraded).
+    /// This ensures the next Ctrl+Up/Down read shows updated stats.
+    /// </summary>
+    public void ClearDetailCache()
+    {
+        _navigator.ClearDetailCache();
     }
 
     /// <summary>

@@ -172,6 +172,14 @@ public class KeyboardNavigator : MonoBehaviour
                 if (shift) return AccessibleKey.Upgrade;
                 return AccessibleKey.None;
 
+            // Board info
+            case KeyCode.T:
+                return AccessibleKey.BoardInfo;
+
+            // Challenges
+            case KeyCode.Q:
+                return AccessibleKey.Challenges;
+
             default:
                 return AccessibleKey.None;
         }

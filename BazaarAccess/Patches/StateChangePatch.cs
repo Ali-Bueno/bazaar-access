@@ -9,6 +9,7 @@ using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameShared.Domain.Runs;
 using BazaarGameShared.Domain.Core.Types;
 using BazaarGameShared.Infra.Messages.GameSimEvents;
+using BazaarGameShared.Domain.Cards.Enchantments;
 using TheBazaar;
 using UnityEngine;
 
@@ -142,6 +143,12 @@ public static class StateChangePatch
             // === AppState events ===
             SubscribeToAppStateEvent("StateExited", OnStateExited);
             SubscribeToAppStateEvent("EncounterEntered", OnEncounterEntered);
+
+            // === Card modification events (enchant/upgrade) ===
+            SubscribeToEvent("CardEnchantedSimEvent", typeof(Action<GameSimEventCardEnchanted>),
+                (Action<GameSimEventCardEnchanted>)OnCardEnchanted);
+            SubscribeToEvent("CardUpgradedSimEvent", typeof(Action<GameSimEventCardUpgraded>),
+                (Action<GameSimEventCardUpgraded>)OnCardUpgraded);
 
             Plugin.Logger.LogInfo("StateChangePatch: Subscribed to game events");
         }
@@ -687,6 +694,38 @@ public static class StateChangePatch
         int price = card != null ? Gameplay.ItemReader.GetBuyPrice(card) : 0;
         Plugin.Logger.LogInfo($"CantAffordCard: {name} costs {price}");
         TolkWrapper.Speak($"Cannot afford {name}");
+    }
+
+    /// <summary>
+    /// When a card is enchanted.
+    /// Clears the detail cache so updated stats are read correctly.
+    /// </summary>
+    private static void OnCardEnchanted(GameSimEventCardEnchanted evt)
+    {
+        Plugin.Logger.LogInfo($"Card enchanted: {evt.InstanceId}, type={evt.EnchantmentType}");
+
+        // Clear the detail cache in GameplayNavigator
+        var screen = AccessibilityMgr.GetCurrentScreen() as GameplayScreen;
+        screen?.ClearDetailCache();
+
+        // Refresh to pick up new attributes
+        TriggerRefresh();
+    }
+
+    /// <summary>
+    /// When a card is upgraded (tier increased).
+    /// Clears the detail cache so updated stats are read correctly.
+    /// </summary>
+    private static void OnCardUpgraded(GameSimEventCardUpgraded evt)
+    {
+        Plugin.Logger.LogInfo($"Card upgraded: {evt.InstanceId}, newTier={evt.NewTier}");
+
+        // Clear the detail cache in GameplayNavigator
+        var screen = AccessibilityMgr.GetCurrentScreen() as GameplayScreen;
+        screen?.ClearDetailCache();
+
+        // Refresh to pick up new attributes
+        TriggerRefresh();
     }
 
     #endregion

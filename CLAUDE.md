@@ -116,6 +116,13 @@ Opción de menú con delegados para máxima flexibilidad:
 - **Escape**: Volver/cerrar
 - **F1**: Ayuda
 
+### Controles en Hero Select
+
+- **Flechas arriba/abajo**: Navegar entre héroes y botones
+- **Enter**: Seleccionar héroe (o abrir diálogo de compra si está bloqueado)
+- **Ctrl+Arriba/Abajo**: Leer detalles del héroe (nombre, título, descripción, estado)
+- **Escape**: Volver
+
 ## Menús durante Gameplay
 
 ### Menú de Pausa (FightMenuPatch.cs)
@@ -379,6 +386,8 @@ Pantalla accesible principal del gameplay que implementa `IAccessibleScreen`. Se
 - `,` (coma): Leer mensaje anterior
 - `I`: Ver propiedades/keywords del item (tags, descripciones)
 - `Shift+U`: Upgradear item en el Pedestal
+- `T`: Ver capacidad del tablero (slots usados/disponibles)
+- `Q`: Leer desafíos actuales (con progreso en tiempo real)
 
 **Controles en Hero (V)**:
 - `Ctrl+Arriba`: Siguiente stat o skill
@@ -676,6 +685,11 @@ Cada estado define `AllowedOps` que incluye `StateOps.SellItem`.
 - ✅ **Fix stash close behavior**: Only switches to Board if user was in Stash section, otherwise stays in current section
 - ✅ **Fix sell navigation**: Refresh() no longer auto-switches sections when current section is empty (keeps user in place)
 - ✅ **Improved visual feedback**: TriggerVisualSelection now calls OnPointerEnter + HoverMove for full feedback (sounds + tooltips + animation)
+- ✅ **Challenges reading (Q key)**: Press Q during gameplay to read current challenges with real-time progress (uses `RefreshPlayerChallengesData(forceRefresh: true)`)
+- ✅ **Board capacity info (T key)**: Press T to hear "Board: X of Y capacity used, Z items, W slots free"
+- ✅ **Hero description reading**: In Hero Select screen, use Ctrl+Up/Down to read hero details (name, title, description, lock status)
+- ✅ **Fix enchanted/upgraded items**: Card detail cache now clears on `CardEnchantedSimEvent` and `CardUpgradedSimEvent` - shows updated stats
+- ✅ **Fix hero selection position**: After selecting a hero, menu stays on the same option instead of returning to start
 
 ---
 
