@@ -534,7 +534,13 @@ public class HeroSelectScreen : BaseScreen
         try
         {
             string description = heroSO.Description;
-            if (!string.IsNullOrEmpty(description))
+
+            // Check if the description is a placeholder (some heroes have "Description" as placeholder)
+            bool isPlaceholder = string.IsNullOrEmpty(description) ||
+                                 description.Equals("Description", System.StringComparison.OrdinalIgnoreCase) ||
+                                 description.Equals("Title", System.StringComparison.OrdinalIgnoreCase);
+
+            if (!isPlaceholder)
             {
                 // Split description into sentences for easier reading
                 var sentences = description.Split(new[] { ". " }, System.StringSplitOptions.RemoveEmptyEntries);
