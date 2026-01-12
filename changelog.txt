@@ -5,6 +5,8 @@
 ## January 12, 2026
 
 ### Bug Fixes
+- Fixed shield being added to health in combat announcements (now shows separately)
+- Fixed enemy effects announcing item names (now only announces the effect received)
 - Fixed enchanted items not showing enchantment name and properties (e.g., "Radiant Water Dagger" with Crit Chance)
 - Fixed chest rewards popup getting stuck (only Enter closes it now)
 - Fixed heroes with placeholder descriptions showing "Description" instead of nothing (Vanessa)
@@ -13,6 +15,7 @@
 - Fixed PvP encounters in menu always showing the previous opponent's name
 
 ### Improvements
+- Enemy effects are now aggregated: multiple hits announced as total damage (e.g., "13 damage received" instead of spam)
 - Menus now read current item at limits instead of "Start/End of list" (Board section keeps limit messages)
 - Enchanted items show "Enchanted: Type" line in detail view (Ctrl+Up/Down)
 - Keyboard navigation now plays the same hover sounds as mouse navigation

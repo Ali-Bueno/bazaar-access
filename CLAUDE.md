@@ -769,6 +769,10 @@ Cada estado define `AllowedOps` que incluye `StateOps.SellItem`.
   - `GetDetailLines()` shows "Enchanted: Type" line in Ctrl+Up/Down navigation
 - ✅ **Simplified menu limits**: Menus read current item at limits instead of "Start/End of list"
   - Only Board section during gameplay keeps limit messages
+- ✅ **Combat Describer improvements**: Reduced spam and clearer announcements
+  - Shield no longer added to health (announced separately)
+  - Enemy effects use passive voice ("5 damage received" instead of "Enemy: Item: 5 damage")
+  - Enemy effects aggregated over 0.8 seconds ("13 damage received" instead of multiple announcements)
 
 ---
 
@@ -856,20 +860,29 @@ Narra el combate en tiempo real para accesibilidad. Se activa automáticamente c
 
 ### Formato de Mensajes
 
-**Activación de items:**
+**Items del jugador (inmediato):**
 ```
-"[Dueño]: [Item]: [Cantidad] [Efecto]. [Crítico]. [Estado]."
+"You: [Item]: [Efecto]. [Crítico]."
 ```
 Ejemplos:
 - "You: Water Dagger: 10 damage."
 - "You: Fire Sword: 25 damage. critical."
-- "Enemy: Healing Potion: 15 heal."
-- "You: Frost Wand: 8 damage. slow."
+
+**Items del enemigo (agregado):**
+Los efectos del enemigo se acumulan durante 0.8 segundos y se anuncian juntos en formato pasivo:
+```
+"[Total] damage received, poisoned for [Total]"
+```
+Ejemplos:
+- "13 damage received" (en vez de "5 damage, 5 damage, 3 damage")
+- "8 damage received, burned for 5"
+- "poisoned for 10. critical hit"
 
 **Anuncio de vida (cada 5 segundos):**
 ```
 "You: [vida] health, [escudo] shield. [Enemy]: [vida] health."
 ```
+Nota: Shield se anuncia separado de health (nunca sumados).
 
 ### Eventos Suscritos
 
@@ -878,25 +891,26 @@ Ejemplos:
 
 ### ActionTypes Narrados
 
-**Daño/Curación:**
+**Items del jugador (activo):**
 - `PlayerDamage` → "X damage"
 - `PlayerHeal` → "X heal"
 - `PlayerShieldApply` → "X shield"
-
-**Efectos de estado:**
 - `PlayerBurnApply` → "X burn"
 - `PlayerPoisonApply` → "X poison"
-- `PlayerRegenApply` → "regen"
-- `PlayerJoyApply` → "joy"
 
-**Efectos en cartas:**
-- `CardSlow` → "slow"
-- `CardHaste` → "haste"
-- `CardFreeze` → "freeze"
+**Items del enemigo (pasivo):**
+- `PlayerDamage` → "X damage received"
+- `PlayerHeal` → "X healed"
+- `PlayerShieldApply` → "X shield gained"
+- `PlayerBurnApply` → "burned for X"
+- `PlayerPoisonApply` → "poisoned for X"
+- `CardSlow` → "slowed"
+- `CardFreeze` → "frozen"
 
 ### Críticos
 
-Se anuncia "critical" cuando `IsCrit == true` en el efecto.
+- Items del jugador: "critical"
+- Items del enemigo: "critical hit"
 
 ### Nombre del Enemigo
 
@@ -1083,4 +1097,3 @@ También se detectan con anuncios básicos:
 
 ### Combat Describer Mejoras
 - Obtener nombre real del monstruo en PvE
-- Agrupar efectos del mismo item en un solo anuncio
