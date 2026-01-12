@@ -672,6 +672,10 @@ Cada estado define `AllowedOps` que incluye `StateOps.SellItem`.
   - `AccessibleMenu.StartReading()` only announces menu name, not first option
   - `RefreshAndAnnounce()` now only refreshes, doesn't announce (avoids StateChangePatch conflict)
   - `TolkWrapper.Speak()` has global 0.3s deduplication as safety net
+- ✅ **Fix move item error messages**: ActionHelper.MoveItem already speaks, GameplayScreen no longer duplicates
+- ✅ **Fix stash close behavior**: Only switches to Board if user was in Stash section, otherwise stays in current section
+- ✅ **Fix sell navigation**: Refresh() no longer auto-switches sections when current section is empty (keeps user in place)
+- ✅ **Improved visual feedback**: TriggerVisualSelection now calls OnPointerEnter + HoverMove for full feedback (sounds + tooltips + animation)
 
 ---
 

@@ -138,26 +138,19 @@ public class GameplayNavigator
         RefreshStash();
         RefreshSkills();
 
-        // Si la sección actual está vacía, cambiar a una con contenido
-        if (GetCurrentSectionCount() == 0)
+        // Don't auto-switch sections when current section is empty
+        // This prevents unwanted navigation changes when user sells/moves items
+        // Section changes should be explicit (via AutoFocusForState, GoToSection, etc.)
+
+        // Just adjust index if out of range
+        int count = GetCurrentSectionCount();
+        if (count == 0)
         {
-            if (_selectionItems.Count > 0)
-            {
-                _currentSection = NavigationSection.Selection;
-            }
-            else if (_boardIndices.Count > 0)
-            {
-                _currentSection = NavigationSection.Board;
-            }
-            else if (_playerSkills.Count > 0)
-            {
-                _currentSection = NavigationSection.Skills;
-            }
             _currentIndex = 0;
         }
-        else if (_currentIndex >= GetCurrentSectionCount())
+        else if (_currentIndex >= count)
         {
-            _currentIndex = 0;
+            _currentIndex = count - 1; // Stay on last item instead of jumping to first
         }
     }
 
@@ -473,7 +466,17 @@ public class GameplayNavigator
             if (_heroSkillIndex >= 0 && _heroSkillIndex < bm.playerSkillSockets.Length)
             {
                 var controller = bm.playerSkillSockets[_heroSkillIndex]?.CardController;
-                controller?.HoverMove();
+                if (controller != null)
+                {
+                    // Simular evento de puntero para sonidos y tooltips
+                    var eventSystem = EventSystem.current;
+                    var pointerData = new PointerEventData(eventSystem)
+                    {
+                        position = UnityEngine.Input.mousePosition
+                    };
+                    controller.OnPointerEnter(pointerData);
+                    controller.HoverMove();
+                }
             }
         }
         catch (System.Exception ex)
@@ -598,28 +601,9 @@ public class GameplayNavigator
         }
         else
         {
-            // Si el stash se cierra y estamos navegando en él, salir
-            if (_currentSection == NavigationSection.Stash)
-            {
-                _stashIndices.Clear();
-                // Ir al board o selección
-                if (_boardIndices.Count > 0)
-                {
-                    GoToSection(NavigationSection.Board);
-                }
-                else if (_selectionItems.Count > 0)
-                {
-                    GoToSection(NavigationSection.Selection);
-                }
-                else
-                {
-                    GoToSection(NavigationSection.Hero);
-                }
-            }
-            else
-            {
-                _stashIndices.Clear();
-            }
+            // Stash closed - just clear the stash indices
+            // Section change is handled by GameplayScreen.OnStorageToggled
+            _stashIndices.Clear();
         }
     }
 
@@ -823,6 +807,13 @@ public class GameplayNavigator
         if (controller != null)
         {
             ResetAllCardSelections(bm);
+            // Simular evento de puntero para sonidos y tooltips
+            var eventSystem = EventSystem.current;
+            var pointerData = new PointerEventData(eventSystem)
+            {
+                position = UnityEngine.Input.mousePosition
+            };
+            controller.OnPointerEnter(pointerData);
             controller.HoverMove();
         }
     }
@@ -1613,8 +1604,19 @@ public class GameplayNavigator
                 // Primero resetear cualquier carta previamente seleccionada
                 ResetAllCardSelections(bm);
 
-                // Activar el hover visual en la carta actual
-                // Crear un PointerEventData falso para simular hover
+                // Simular un evento de puntero para activar la selección completa
+                // Esto dispara: animación de hover + sonidos + tooltips
+                var eventSystem = EventSystem.current;
+                var pointerData = new PointerEventData(eventSystem)
+                {
+                    position = UnityEngine.Input.mousePosition
+                };
+
+                // Llamar a OnPointerEnter que activa Select() internamente
+                // Esto incluye sonidos y tooltips
+                controller.OnPointerEnter(pointerData);
+
+                // Asegurarnos de que la animación de hover se ejecute
                 controller.HoverMove();
             }
         }

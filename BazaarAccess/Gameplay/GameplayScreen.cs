@@ -735,12 +735,12 @@ public class GameplayScreen : IAccessibleScreen
         }
 
         bool toStash = _navigator.CurrentSection == NavigationSection.Board;
-        string destination = toStash ? "stash" : "board";
-        string name = ItemReader.GetCardName(card);
 
-        ActionHelper.MoveItem(card, toStash);
-        TolkWrapper.Speak($"Moved {name} to {destination}");
-        RefreshAndAnnounce();
+        // ActionHelper.MoveItem already speaks success/failure messages
+        if (ActionHelper.MoveItem(card, toStash))
+        {
+            RefreshAndAnnounce();
+        }
     }
 
     private void HandleMoveToBoard()
@@ -765,11 +765,12 @@ public class GameplayScreen : IAccessibleScreen
             return;
         }
 
-        string name = ItemReader.GetCardName(card);
-        ActionHelper.MoveItem(card, false); // false = to board
-        TolkWrapper.Speak($"Moved {name} to board");
-        RefreshAndAnnounce();
-        _navigator.TriggerVisualSelection();
+        // ActionHelper.MoveItem already speaks success/failure messages
+        if (ActionHelper.MoveItem(card, false)) // false = to board
+        {
+            RefreshAndAnnounce();
+            _navigator.TriggerVisualSelection();
+        }
     }
 
     private void HandleMoveToStash()
@@ -794,11 +795,12 @@ public class GameplayScreen : IAccessibleScreen
             return;
         }
 
-        string name = ItemReader.GetCardName(card);
-        ActionHelper.MoveItem(card, true); // true = to stash
-        TolkWrapper.Speak($"Moved {name} to stash");
-        RefreshAndAnnounce();
-        _navigator.TriggerVisualSelection();
+        // ActionHelper.MoveItem already speaks success/failure messages
+        if (ActionHelper.MoveItem(card, true)) // true = to stash
+        {
+            RefreshAndAnnounce();
+            _navigator.TriggerVisualSelection();
+        }
     }
 
     private void HandleReorder(int direction)
@@ -938,8 +940,13 @@ public class GameplayScreen : IAccessibleScreen
         else
         {
             TolkWrapper.Speak("Stash closed");
-            // Volver al board automáticamente
-            _navigator.GoToBoard();
+            // If user was navigating the stash, move to board
+            // Otherwise stay in current section
+            if (_navigator.CurrentSection == NavigationSection.Stash)
+            {
+                _navigator.SetSectionSilent(NavigationSection.Board);
+                _navigator.Refresh();
+            }
         }
     }
 
