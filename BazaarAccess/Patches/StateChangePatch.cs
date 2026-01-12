@@ -34,6 +34,10 @@ public static class StateChangePatch
     // Track if we already announced the combat result to avoid duplicates
     private static bool _combatResultAnnounced = false;
 
+    // Last valid state (not fallback) - used when Data.CurrentState is temporarily unavailable
+    private static ERunState _lastValidState = ERunState.Choice;
+    private static bool _hasValidState = false;
+
     // Throttle to avoid announcement spam
     private static Coroutine _announceCoroutine = null;
     private static float _lastAnnounceTime = 0f;
@@ -790,10 +794,33 @@ public static class StateChangePatch
     {
         try
         {
-            return Data.CurrentState?.StateName ?? ERunState.Choice;
+            var currentState = Data.CurrentState;
+            if (currentState != null)
+            {
+                var stateName = currentState.StateName;
+                // Update last valid state when we have real data
+                _lastValidState = stateName;
+                _hasValidState = true;
+                return stateName;
+            }
+
+            // Data.CurrentState is null - use last valid state if we have one
+            if (_hasValidState)
+            {
+                Plugin.Logger.LogInfo($"GetCurrentRunState: Data.CurrentState null, using last valid: {_lastValidState}");
+                return _lastValidState;
+            }
+
+            // No valid state yet, return fallback
+            return ERunState.Choice;
         }
         catch
         {
+            // On error, use last valid state if available
+            if (_hasValidState)
+            {
+                return _lastValidState;
+            }
             return ERunState.Choice;
         }
     }
