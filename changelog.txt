@@ -1,0 +1,42 @@
+# Bazaar Access - Changelog
+
+---
+
+## January 12, 2026
+
+### Bug Fixes
+- Fixed chest rewards popup getting stuck (only Enter closes it now)
+- Fixed heroes with placeholder descriptions showing "Description" instead of nothing (Vanessa)
+- Fixed combat describing events from previous combats
+- Fixed pressing F during combat showing names from previous opponents
+- Fixed PvP encounters in menu always showing the previous opponent's name
+
+### Improvements
+- Keyboard navigation now plays the same hover sounds as mouse navigation
+- Upgrading items with Shift+U now triggers full visual/audio feedback like mouse drag-drop
+
+---
+
+## January 11, 2026
+
+### New Features
+- Fast Navigation Keys: Home/End to jump to first/last, Page Up/Down to move 10 items
+- No Wrap-Around Navigation: Lists announce "Start of list" or "End of list" at limits
+- Collection Screen: Navigate categories and items, equip with Enter
+- Chest Opening: Navigate chest types, open single or 10 at once, rewards announced
+- Battle Pass Screen: Challenges and Tiers sections, claim rewards with Enter
+- Hero Select: Game mode selection, Ctrl+Up/Down for hero details
+- Board Capacity: Press T to hear slots used/available
+- Board Reorder Feedback: Announces when item can't move further left/right
+- Jules Hero Support: Items announce Heated/Chilled state after tier name
+
+### Bug Fixes
+- Fixed duplicate/triple announcements across the entire mod
+- Fixed incorrect "Shop" announcement at game start
+- Fixed stash close only switching to Board if user was in Stash section
+- Fixed duplicate move item error messages
+- Fixed enchanted/upgraded items not showing updated stats
+
+### Improvements
+- Back button now shows "Back" instead of "Button Large"
+- Marketplace button hidden until accessible implementation is ready

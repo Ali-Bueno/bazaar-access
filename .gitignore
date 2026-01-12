@@ -24,6 +24,3 @@ Thumbs.db
 
 # BepInEx logs
 LogOutput.log
-
-# Release notes (local only)
-changelog.txt

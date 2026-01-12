@@ -285,6 +285,14 @@ El DLL se copia automáticamente a la carpeta de plugins de BepInEx.
 - Las referencias de Tolk están en `references/` (no incluido en git)
 - Plugin.Instance está disponible para iniciar coroutines desde cualquier lugar
 
+## Changelog
+
+El archivo `changelog.txt` documenta los cambios del mod. **Formato importante**:
+- Ordenar de más reciente a más antiguo (las entradas más nuevas van arriba)
+- Agrupar por fecha (ej: "## January 12, 2026")
+- Cada fecha tiene secciones: "### New Features", "### Bug Fixes", "### Improvements"
+- No mencionar nombres de archivos de código, solo describir qué se arregló o añadió
+
 ---
 
 ## Gameplay - Estructura del Juego

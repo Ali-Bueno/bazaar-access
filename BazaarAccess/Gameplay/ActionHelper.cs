@@ -1,3 +1,4 @@
+using System.Reflection;
 using BazaarAccess.Core;
 using BazaarAccess.Patches;
 using BazaarGameClient.Domain.Cards;
@@ -6,6 +7,7 @@ using BazaarGameShared.Domain.Core.Types;
 using BazaarGameShared.Domain.Runs;
 using TheBazaar;
 using TheBazaar.AppFramework;
+using TheBazaar.Utilities;
 
 namespace BazaarAccess.Gameplay;
 
@@ -394,6 +396,19 @@ public static class ActionHelper
             string currentTier = ItemReader.GetTierName(card);
             string nextTier = GetNextTierName(card.Tier);
 
+            // Trigger the same events as mouse drag-drop for full visual/audio feedback
+            var controller = Data.CardAndSkillLookup?.GetCardController(card) as ItemController;
+            if (controller != null)
+            {
+                TriggerItemDroppedOnPedestalEvent(controller);
+            }
+
+            // Mark that an upgrade process is starting
+            if (Singleton<BoardManager>.Instance != null)
+            {
+                Singleton<BoardManager>.Instance.MarkUpgradeOrFuseOrEnchantProcessing();
+            }
+
             state.CommitToPedestalCommand(card.InstanceId);
 
             TolkWrapper.Speak($"Upgrading {name} from {currentTier} to {nextTier}");
@@ -437,5 +452,52 @@ public static class ActionHelper
             return false;
 
         return state.CanHandleOperation(StateOps.CommitToPedestal);
+    }
+
+    /// <summary>
+    /// Triggers Events.ItemDroppedOnPedestal via reflection since Events is internal.
+    /// </summary>
+    private static void TriggerItemDroppedOnPedestalEvent(ItemController controller)
+    {
+        try
+        {
+            // Get the Events class from TheBazaar assembly
+            var eventsType = typeof(Data).Assembly.GetType("TheBazaar.Events");
+            if (eventsType == null)
+            {
+                Plugin.Logger.LogWarning("TriggerItemDroppedOnPedestalEvent: Events type not found");
+                return;
+            }
+
+            // Get the ItemDroppedOnPedestal field
+            var eventField = eventsType.GetField("ItemDroppedOnPedestal",
+                BindingFlags.Public | BindingFlags.Static);
+            if (eventField == null)
+            {
+                Plugin.Logger.LogWarning("TriggerItemDroppedOnPedestalEvent: ItemDroppedOnPedestal field not found");
+                return;
+            }
+
+            // Get the event instance
+            var eventInstance = eventField.GetValue(null);
+            if (eventInstance == null)
+            {
+                Plugin.Logger.LogWarning("TriggerItemDroppedOnPedestalEvent: Event instance is null");
+                return;
+            }
+
+            // Call Trigger method
+            var triggerMethod = eventInstance.GetType().GetMethod("Trigger",
+                BindingFlags.Public | BindingFlags.Instance);
+            if (triggerMethod != null)
+            {
+                triggerMethod.Invoke(eventInstance, new object[] { controller });
+                Plugin.Logger.LogInfo("TriggerItemDroppedOnPedestalEvent: Event triggered successfully");
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"TriggerItemDroppedOnPedestalEvent failed: {ex.Message}");
+        }
     }
 }
