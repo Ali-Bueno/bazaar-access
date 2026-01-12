@@ -38,14 +38,15 @@ public static class ChestSceneStartPatch
 // ===== COLLECTIONS SCREEN =====
 
 /// <summary>
-/// Detects when the collections screen is initialized.
+/// Detects when the collection UI controller starts.
+/// This is the main entry point for the collection scene.
 /// </summary>
-[HarmonyPatch(typeof(CollectionsScreenController), "OnEnable")]
-public static class CollectionsScreenEnablePatch
+[HarmonyPatch(typeof(TheBazaar.UI.CollectionUIController), "Start")]
+public static class CollectionUIControllerStartPatch
 {
-    static void Postfix(CollectionsScreenController __instance)
+    static void Postfix(TheBazaar.UI.CollectionUIController __instance)
     {
-        Plugin.Logger.LogInfo("CollectionsScreenController.OnEnable - Creating accessible collection screen");
+        Plugin.Logger.LogInfo("CollectionUIController.Start - Creating accessible collection screen");
         var screen = new CollectionScreen(__instance.transform, __instance);
         AccessibilityMgr.SetScreen(screen);
     }

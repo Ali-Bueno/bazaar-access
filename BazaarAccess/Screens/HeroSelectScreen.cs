@@ -4,6 +4,7 @@ using BazaarAccess.Accessibility;
 using BazaarAccess.Core;
 using BazaarGameShared.Domain.Core.Types;
 using TheBazaar;
+using TheBazaar.UI;
 using UnityEngine;
 
 namespace BazaarAccess.Screens;
@@ -51,20 +52,214 @@ public class HeroSelectScreen : BaseScreen
             AddButtonIfExists("PlayButton", "PlayButtonController");
         }
 
-        // Game mode buttons
-        AddButtonIfExists("Btn_Casual", "_casualButton");
-        AddButtonIfExists("Btn_Ranked", "_rankedButton");
+        // Game mode buttons with selection state
+        AddGameModeButtons();
 
         // Ready button (for starting the run)
-        AddButtonIfExists("Btn_Ready", "ReadyButton");
+        AddReadyButton();
 
-        // Back button
-        AddButtonIfExists("Btn_Back", "BackButton", "backButton");
+        // Back button - use custom method because it's a ButtonCustom without text
+        AddBackButton();
 
         // Fallback if no buttons found
         if (Menu.OptionCount == 0)
         {
             TryAddGenericButtons();
+        }
+    }
+
+    /// <summary>
+    /// Adds game mode buttons (Casual and Ranked) with selection state.
+    /// </summary>
+    private void AddGameModeButtons()
+    {
+        // Find PlaymodeSelectionViewComponent
+        var playmodeView = Object.FindObjectOfType<PlaymodeSelectionViewComponent>();
+        if (playmodeView == null)
+        {
+            Plugin.Logger.LogInfo("HeroSelectScreen: PlaymodeSelectionViewComponent not found");
+            // Fallback to standard buttons
+            AddButtonIfExists("Btn_Casual", "_casualButton");
+            AddButtonIfExists("Btn_Ranked", "_rankedButton");
+            return;
+        }
+
+        // Get the buttons via reflection
+        var casualButtonField = typeof(PlaymodeSelectionViewComponent).GetField("_casualButton",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var rankedButtonField = typeof(PlaymodeSelectionViewComponent).GetField("_rankedButton",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+        var casualButton = casualButtonField?.GetValue(playmodeView) as BazaarButtonController;
+        var rankedButton = rankedButtonField?.GetValue(playmodeView) as BazaarButtonController;
+
+        // Add Casual button
+        if (casualButton != null && casualButton.gameObject.activeInHierarchy)
+        {
+            var btn = casualButton;
+            Menu.AddOption(
+                () => GetCasualButtonText(),
+                () =>
+                {
+                    int currentIndex = Menu.CurrentIndex;
+                    btn.onClick.Invoke();
+                    // Rebuild to update selection state but keep position
+                    Menu.Clear();
+                    BuildMenu();
+                    Menu.SetIndex(currentIndex);
+                    TolkWrapper.Speak("Casual selected");
+                });
+        }
+
+        // Add Ranked button
+        if (rankedButton != null && rankedButton.gameObject.activeInHierarchy)
+        {
+            var btn = rankedButton;
+            Menu.AddOption(
+                () => GetRankedButtonText(),
+                () =>
+                {
+                    int currentIndex = Menu.CurrentIndex;
+                    btn.onClick.Invoke();
+                    // Rebuild to update selection state but keep position
+                    Menu.Clear();
+                    BuildMenu();
+                    Menu.SetIndex(currentIndex);
+                    TolkWrapper.Speak("Ranked selected");
+                });
+        }
+    }
+
+    private string GetCasualButtonText()
+    {
+        try
+        {
+            if (Data.RunConfiguration != null && Data.RunConfiguration.RunType == EPlayMode.Unranked)
+            {
+                return "Casual, selected";
+            }
+        }
+        catch { }
+        return "Casual";
+    }
+
+    private string GetRankedButtonText()
+    {
+        try
+        {
+            if (Data.RunConfiguration != null && Data.RunConfiguration.RunType == EPlayMode.Ranked)
+            {
+                return "Ranked, selected";
+            }
+        }
+        catch { }
+        return "Ranked";
+    }
+
+    /// <summary>
+    /// Adds the Ready/Resume button with contextual text.
+    /// </summary>
+    private void AddReadyButton()
+    {
+        var readyButtonComponent = Object.FindObjectOfType<PlaymodeReadyButtonComponent>();
+        if (readyButtonComponent == null)
+        {
+            // Fallback
+            AddButtonIfExists("Btn_Ready", "ReadyButton");
+            return;
+        }
+
+        var readyButton = readyButtonComponent.ReadyButton;
+        if (readyButton == null || !readyButton.gameObject.activeInHierarchy)
+        {
+            return;
+        }
+
+        var btn = readyButton;
+        Menu.AddOption(
+            () => GetReadyButtonText(readyButtonComponent),
+            () => btn.onClick.Invoke());
+    }
+
+    /// <summary>
+    /// Gets the ready button text with context (Resume, Ready, etc.)
+    /// </summary>
+    private string GetReadyButtonText(PlaymodeReadyButtonComponent component)
+    {
+        // Try to get the button text
+        var textField = typeof(PlaymodeReadyButtonComponent).GetField("_readyButtonText",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+        if (textField != null)
+        {
+            var tmpText = textField.GetValue(component) as TMPro.TextMeshProUGUI;
+            if (tmpText != null && !string.IsNullOrEmpty(tmpText.text))
+            {
+                return tmpText.text;
+            }
+        }
+
+        // Fallback based on game state
+        if (Data.HasActiveRun)
+        {
+            return "Resume";
+        }
+
+        return "Ready";
+    }
+
+    /// <summary>
+    /// Adds the back button with a fixed "Back" label.
+    /// The back button is a ButtonCustom that may not have visible text.
+    /// </summary>
+    private void AddBackButton()
+    {
+        // First try standard button names
+        string[] standardNames = { "Btn_Back", "BackButton" };
+        foreach (var name in standardNames)
+        {
+            string text = GetButtonTextByName(name);
+            if (!string.IsNullOrEmpty(text) && text != name && !text.ToLower().Contains("button"))
+            {
+                var buttonName = name;
+                Menu.AddOption(
+                    () => GetButtonTextByName(buttonName),
+                    () => ClickButtonByName(buttonName));
+                return;
+            }
+        }
+
+        // Look for ButtonCustom named backButton (like in HeroSelectView)
+        var buttonCustoms = Object.FindObjectsOfType<ButtonCustom>();
+        foreach (var bc in buttonCustoms)
+        {
+            string goName = bc.gameObject.name.ToLower();
+            if (goName.Contains("back") && bc.gameObject.activeInHierarchy)
+            {
+                var button = bc; // Capture for closure
+                Menu.AddOption(
+                    () => "Back",
+                    () => button.OnMouseClickCustom());
+                Plugin.Logger.LogInfo($"HeroSelectScreen: Added back ButtonCustom: {bc.gameObject.name}");
+                return;
+            }
+        }
+
+        // Last resort: look for any button that might be a back button by searching all buttons
+        var allButtons = Object.FindObjectsOfType<UnityEngine.UI.Button>();
+        foreach (var btn in allButtons)
+        {
+            string goName = btn.gameObject.name.ToLower();
+            if ((goName.Contains("back") || goName.Contains("return") || goName.Contains("home"))
+                && btn.gameObject.activeInHierarchy && btn.interactable)
+            {
+                var button = btn;
+                Menu.AddOption(
+                    () => "Back",
+                    () => button.onClick.Invoke());
+                Plugin.Logger.LogInfo($"HeroSelectScreen: Added back button: {btn.gameObject.name}");
+                return;
+            }
         }
     }
 
@@ -167,7 +362,8 @@ public class HeroSelectScreen : BaseScreen
         foreach (var name in possibleNames)
         {
             string text = GetButtonTextByName(name);
-            if (!string.IsNullOrEmpty(text) && text != name)
+            // Skip if text is empty, same as name, or a generic button name
+            if (!string.IsNullOrEmpty(text) && text != name && !IsGenericButtonName(text))
             {
                 var buttonName = name; // Capture for closure
                 Menu.AddOption(
@@ -176,6 +372,32 @@ public class HeroSelectScreen : BaseScreen
                 return;
             }
         }
+    }
+
+    /// <summary>
+    /// Checks if a button text is a generic/useless name like "Button Large".
+    /// </summary>
+    private bool IsGenericButtonName(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return true;
+
+        string lower = text.ToLower().Trim();
+
+        // List of generic button names that don't provide useful information
+        string[] genericNames = {
+            "button", "button large", "button small", "button medium",
+            "btn", "click", "press", "submit"
+        };
+
+        foreach (var generic in genericNames)
+        {
+            if (lower == generic || lower.StartsWith(generic + " ") || lower.EndsWith(" " + generic))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void TryAddGenericButtons()
@@ -203,7 +425,8 @@ public class HeroSelectScreen : BaseScreen
             foreach (var name in names)
             {
                 string text = GetButtonTextByName(name);
-                if (!string.IsNullOrEmpty(text) && text != name)
+                // Skip generic button names
+                if (!string.IsNullOrEmpty(text) && text != name && !IsGenericButtonName(text))
                 {
                     var buttonName = name;
                     Menu.AddOption(

@@ -705,6 +705,21 @@ Cada estado define `AllowedOps` que incluye `StateOps.SellItem`.
   - Tiers mode: Navigate through all tiers with reward info
   - Claim completed challenges with Enter
 - ✅ **Marketplace hidden**: Button hidden from main menu until accessible implementation
+- ✅ **Collection Screen accessible**: Full cosmetics browsing with keyboard
+  - Navigate categories with left/right (Hero Skins, Boards, Card Skins, Carpets, Card Backs, Albums)
+  - Navigate items with up/down arrows
+  - Read item details with Ctrl+Up/Down (name, type, description, equipped status)
+  - Equip items with Enter
+  - Uses `CollectionManager.GetPlayerCollectables()` for real player data
+  - Supports `ButtonCustom` for back navigation via reflection
+- ✅ **Hero Select back button fix**: Back button now shows "Back" instead of "Button Large"
+  - Added `IsGenericButtonName()` filter to skip useless button names
+  - Added `AddBackButton()` method to find ButtonCustom back buttons
+- ✅ **Hero Select game mode selection**: Shows Casual/Ranked with selection state
+  - "Casual, selected" or "Ranked, selected" to indicate current mode
+  - Ready button shows contextual text (Ready, Resume)
+  - Menu position preserved when switching modes (doesn't jump to start)
+  - Uses `PlaymodeSelectionViewComponent` and `PlaymodeReadyButtonComponent`
 
 ---
 
@@ -947,13 +962,14 @@ Accesible mediante `MenuPatches.cs` cuando se abre la escena de baúles.
 
 ### Pantalla de Colección (CollectionScreen)
 
-Accesible mediante `MenuPatches.cs` cuando se abre el menú de colección.
+Accesible mediante `MenuPatches.cs` cuando se abre el menú de colección. Se activa al patchear `CollectionUIController.Start()`.
 
 **Controles:**
-- **Flechas arriba/abajo**: Navegar opciones
 - **Flechas izq/der**: Cambiar categoría de colección
-- **Enter**: Seleccionar categoría/item
-- **Escape**: Volver al menú anterior
+- **Flechas arriba/abajo**: Navegar items dentro de la categoría
+- **Ctrl+Arriba/Abajo**: Leer detalles del item línea por línea
+- **Enter**: Equipar el item seleccionado
+- **Backspace**: Salir del modo items / volver al menú principal
 
 **Categorías disponibles:**
 - Hero Skins
@@ -961,7 +977,18 @@ Accesible mediante `MenuPatches.cs` cuando se abre el menú de colección.
 - Card Skins
 - Carpets
 - Card Backs
-- Album
+- Albums
+
+**Información anunciada:**
+- Al entrar: "Hero Skins, X items"
+- Al navegar items: "Nombre, Rareza, equipped, X of Y"
+- Detalles: nombre, tipo (ej: "Legendary Vanessa Hero Skin"), descripción, estado
+
+**Funcionalidades:**
+- Obtiene items del jugador via `CollectionManager.GetPlayerCollectables()`
+- Incluye items por defecto (default skins, etc.)
+- Permite equipar items con Enter
+- Muestra estado de equipado
 
 ### Pantalla de Pase de Temporada (BattlePassScreen)
 
