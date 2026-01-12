@@ -415,9 +415,10 @@ public class GameplayScreen : IAccessibleScreen
     /// <summary>
     /// Llamado cuando cambia el estado del juego.
     /// </summary>
-    public void OnStateChanged(ERunState newState, bool announceChange = true)
+    /// <param name="newState">El nuevo estado del juego</param>
+    /// <param name="stateActuallyChanged">True si el estado realmente cambió (calculado por StateChangePatch)</param>
+    public void OnStateChanged(ERunState newState, bool stateActuallyChanged = true)
     {
-        bool stateChanged = newState != _lastState;
         _lastState = newState;
 
         // Durante combate, no anunciar nada aquí (OnCombatStateChanged lo hará)
@@ -430,8 +431,9 @@ public class GameplayScreen : IAccessibleScreen
         // No anunciar aquí - el sistema de debounce en StateChangePatch lo hará
         // Esto evita duplicados
 
-        // Hacer refresh y auto-focus
-        Plugin.Instance.StartCoroutine(RefreshAndAutoFocus(newState, stateChanged));
+        // Hacer refresh y auto-focus SOLO si el estado realmente cambió
+        // Use the parameter from StateChangePatch, don't recalculate
+        Plugin.Instance.StartCoroutine(RefreshAndAutoFocus(newState, stateActuallyChanged));
     }
 
     private System.Collections.IEnumerator RefreshAndAutoFocus(ERunState state, bool stateChanged)
