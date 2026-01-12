@@ -968,6 +968,44 @@ public class GameplayNavigator
     // --- Anuncios ---
 
     /// <summary>
+    /// Verifies that the reported state matches the actual content.
+    /// Fixes cases where the game reports Choice/Shop but content is encounters.
+    /// </summary>
+    private ERunState VerifyStateMatchesContent(ERunState reportedState)
+    {
+        // Only verify if state says Choice (Shop) - this is the problematic case
+        if (reportedState != ERunState.Choice)
+        {
+            return reportedState;
+        }
+
+        // Check what's actually in the selection
+        var cards = _selectionItems.Where(i => i.Type == NavItemType.Card).ToList();
+        if (cards.Count == 0)
+        {
+            return reportedState; // No cards, trust the state
+        }
+
+        // Check if content is encounters
+        var firstCard = cards[0].Card;
+        if (IsEncounterCard(firstCard))
+        {
+            Plugin.Logger.LogInfo($"VerifyStateMatchesContent: State says Choice but content is encounters, correcting to Encounter");
+            return ERunState.Encounter;
+        }
+
+        // Check if content is skills (LevelUp)
+        if (firstCard.Type == ECardType.Skill)
+        {
+            Plugin.Logger.LogInfo($"VerifyStateMatchesContent: State says Choice but content is skills, correcting to LevelUp");
+            return ERunState.LevelUp;
+        }
+
+        // Content is items, Choice/Shop is correct
+        return reportedState;
+    }
+
+    /// <summary>
     /// Anuncia el estado actual de forma muy simple.
     /// Solo dice el nombre del estado, sin detalles extras.
     /// </summary>
@@ -976,6 +1014,9 @@ public class GameplayNavigator
         Refresh();
 
         var runState = GetCurrentState();
+
+        // Verify state matches actual content - fix for incorrect "Shop" announcements
+        runState = VerifyStateMatchesContent(runState);
 
         // Anuncio simplificado con información relevante
         string announcement;
