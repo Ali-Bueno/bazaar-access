@@ -177,10 +177,6 @@ public class KeyboardNavigator : MonoBehaviour
             case KeyCode.T:
                 return AccessibleKey.BoardInfo;
 
-            // Challenges
-            case KeyCode.Q:
-                return AccessibleKey.Challenges;
-
             // Fast navigation
             case KeyCode.Home:
                 return AccessibleKey.Home;

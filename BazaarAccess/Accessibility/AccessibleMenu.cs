@@ -403,8 +403,6 @@ public enum AccessibleKey
     Upgrade,        // Shift+U - Upgrade item at pedestal
     // Board info
     BoardInfo,      // T - Board capacity info (slots used/total)
-    // Challenges
-    Challenges,     // Q - Read current challenges
     // Fast navigation
     Home,           // Home - Go to first element
     End,            // End - Go to last element

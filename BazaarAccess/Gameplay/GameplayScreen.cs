@@ -354,11 +354,6 @@ public class GameplayScreen : IAccessibleScreen
             case AccessibleKey.BoardInfo:
                 _navigator.AnnounceBoardCapacity();
                 break;
-
-            // Q - Read challenges
-            case AccessibleKey.Challenges:
-                _navigator.ReadChallenges();
-                break;
         }
     }
 
