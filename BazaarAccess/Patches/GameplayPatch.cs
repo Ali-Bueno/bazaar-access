@@ -41,7 +41,31 @@ public static class GameplayPatch
     private static IEnumerator DelayedInitialize()
     {
         // Esperar inicial para que el juego arranque
-        yield return new WaitForSeconds(1.5f);
+        yield return new WaitForSeconds(1.0f);
+        if (_gameplayScreen == null) yield break;
+
+        // Esperar a que Data.CurrentState esté disponible (no sea null)
+        // Esto asegura que el estado real esté cargado antes de anunciar
+        float waitTime = 0f;
+        const float maxWaitTime = 5f;
+        while (Data.CurrentState == null && waitTime < maxWaitTime)
+        {
+            yield return new WaitForSeconds(0.2f);
+            waitTime += 0.2f;
+            Plugin.Logger.LogInfo($"DelayedInitialize: Waiting for Data.CurrentState... ({waitTime:F1}s)");
+        }
+
+        if (Data.CurrentState == null)
+        {
+            Plugin.Logger.LogWarning("DelayedInitialize: Data.CurrentState still null after max wait");
+        }
+        else
+        {
+            Plugin.Logger.LogInfo($"DelayedInitialize: Data.CurrentState ready = {Data.CurrentState.StateName}");
+        }
+
+        // Pequeño delay adicional para que el contenido se cargue
+        yield return new WaitForSeconds(0.5f);
         if (_gameplayScreen == null) yield break;
 
         // Primer refresh
@@ -57,10 +81,6 @@ public static class GameplayPatch
         }
 
         // Esperar un poco más y hacer más refreshes
-        yield return new WaitForSeconds(0.5f);
-        if (_gameplayScreen == null) yield break;
-        _gameplayScreen.RefreshNavigator();
-
         yield return new WaitForSeconds(0.5f);
         if (_gameplayScreen == null) yield break;
         _gameplayScreen.RefreshNavigator();
