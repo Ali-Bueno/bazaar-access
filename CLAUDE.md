@@ -551,11 +551,25 @@ Durante el combate (`ERunState.Combat` o `ERunState.PVPCombat`):
 Después del combate, se entra en `ReplayState`:
 - Se anuncia: "Combat finished. Press Enter to continue, R to replay, or E for recap."
 - **Enter**: Continuar (sale del ReplayState)
-- **R**: Repetir el combate (replay)
-- **E**: Ver resumen (recap)
+- **R**: Repetir el combate (replay animado con Combat Describer)
+- **E**: Ver Recap (vista estática de ambos tableros, SIN Combat Describer)
 - **V**: Ver stats del héroe
 - **F**: Ver stats del enemigo
-- Todas las demás teclas están desactivadas
+- **G**: Ver tablero del oponente (Backspace para salir)
+- Otras teclas están desactivadas
+
+**Navegación del tablero del oponente (G):**
+- **Flechas izq/der**: Navegar items o skills
+- **Ctrl+Izq/Der**: Cambiar subsección (Items ↔ Skills)
+- **Ctrl+Arriba/Abajo**: Leer detalles línea por línea
+- **Enter**: Leer descripción completa
+- **Backspace**: Salir del modo oponente
+- **Recomendado**: Usar E (Recap) primero, luego G para navegar sin interrupciones
+- Si R (Replay) está activo, G sugiere usar E en su lugar
+
+**Diferencia entre Replay y Recap:**
+- **Replay (R)**: Reproduce la batalla con animaciones. El Combat Describer narra los efectos.
+- **Recap (E)**: Vista estática de los tableros. Sin animaciones ni narración. Ideal para revisar builds.
 
 ### Stash (Almacén)
 
@@ -753,10 +767,10 @@ Cada estado define `AllowedOps` que incluye `StateOps.SellItem`.
   - ChestSceneScreen now delegates rewards to ChestRewardsUI via CollectionsPopulated event
   - ChestRewardsUI only accepts Enter to close (not Escape, Space, or Backspace)
   - Properly returns to chest selection state after dismissing rewards
-- ✅ **Fix PvP/PvE opponent name confusion**: `Data.SimPvpOpponent` persists from previous combat
-  - ItemReader.GetEncounterInfo() no longer uses SimPvpOpponent for menu (only shows hero name)
-  - ItemReader.GetEncounterDetailedInfo() same fix
-  - GameplayNavigator.ReadEnemyInfo() now checks `ERunState.PVPCombat` before using SimPvpOpponent
+- ✅ **Fix PvP/PvE opponent name confusion**: `Data.SimPvpOpponent` now correctly used for PvP encounters
+  - ItemReader.GetEncounterInfo() shows opponent name for PvP encounters in selection menu
+  - ItemReader.GetEncounterDetailedInfo() shows opponent name, level, wins, prestige
+  - GameplayNavigator.ReadEnemyInfo() checks `ERunState.PVPCombat` for enemy stats during combat
   - CombatDescriber.OnEffectTriggered() verifies game state to ignore late events from previous combat
 - ✅ **Hover sounds for keyboard navigation**: Cards now play hover sounds when navigating with keyboard
   - EncounterController: plays `SoundPortraitHover` via `soundPortraitHandler`
@@ -773,6 +787,19 @@ Cada estado define `AllowedOps` que incluye `StateOps.SellItem`.
   - Shield no longer added to health (announced separately)
   - Enemy effects use passive voice ("5 damage received" instead of "Enemy: Item: 5 damage")
   - Enemy effects aggregated over 0.8 seconds ("13 damage received" instead of multiple announcements)
+- ✅ **PvP encounter shows opponent name**: In encounter selection, PvP shows player name before hero
+  - "PlayerName, Vanessa, PvP" instead of just "Vanessa, PvP"
+  - Detailed info shows level, wins, and prestige
+  - During combat, name is hidden to reduce Combat Describer spam
+- ✅ **Opponent board in ReplayState (G key)**: View opponent's items after combat
+  - Same navigation as your own board (consistent UX)
+  - Left/Right arrows: Navigate items or skills
+  - Ctrl+Left/Right: Switch between Items and Skills subsections
+  - Ctrl+Up/Down: Read item details line by line
+  - Enter: Read full description
+  - Backspace: Exit opponent board
+  - If Replay animation is active, suggests using Recap (E) instead
+  - Best used during Recap for static view without Combat Describer
 
 ---
 

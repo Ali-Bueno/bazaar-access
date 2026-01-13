@@ -36,6 +36,15 @@ public enum HeroSubsection
 }
 
 /// <summary>
+/// Subsecciones dentro del modo enemigo.
+/// </summary>
+public enum EnemySubsection
+{
+    Items,      // Items del enemigo
+    Skills      // Skills del enemigo
+}
+
+/// <summary>
 /// Tipos de items navegables (cartas o acciones).
 /// </summary>
 public enum NavItemType
@@ -102,6 +111,13 @@ public class GameplayNavigator
     private List<int> _enemyItemIndices = new List<int>();
     private List<int> _enemySkillIndices = new List<int>();
     private int _enemyItemIndex = 0;
+    private int _enemySkillIndex = 0;
+    private EnemySubsection _enemySubsection = EnemySubsection.Items;
+
+    // Detail reading for enemy items
+    private List<string> _enemyDetailLines = new List<string>();
+    private int _enemyDetailIndex = -1;
+    private Card _enemyDetailCard = null;
     private static readonly EPlayerAttributeType[] HeroStats = new[]
     {
         EPlayerAttributeType.Health,
@@ -122,6 +138,7 @@ public class GameplayNavigator
     public bool IsInHeroSection => _currentSection == NavigationSection.Hero;
     public HeroSubsection CurrentHeroSubsection => _heroSubsection;
     public bool IsInEnemyMode => _enemyMode;
+    public EnemySubsection CurrentEnemySubsection => _enemySubsection;
 
     public ERunState GetCurrentState()
     {
@@ -773,111 +790,396 @@ public class GameplayNavigator
     {
         _enemyMode = false;
         _enemyItemIndex = 0;
+        _enemySkillIndex = 0;
+        _enemySubsection = EnemySubsection.Items;
+        ClearEnemyDetailReading();
     }
 
     /// <summary>
-    /// Navega al siguiente item del enemigo (Ctrl+Up en modo enemigo).
+    /// Clears the detail reading state for enemy items.
     /// </summary>
-    public void EnemyNext()
+    private void ClearEnemyDetailReading()
+    {
+        _enemyDetailLines.Clear();
+        _enemyDetailIndex = -1;
+        _enemyDetailCard = null;
+    }
+
+    /// <summary>
+    /// Entra directamente al modo de navegación del tablero del oponente.
+    /// Usado durante ReplayMode con la tecla G.
+    /// Best used during Recap (E) for static view without Combat Describer.
+    /// </summary>
+    public void EnterOpponentBoardMode()
+    {
+        try
+        {
+            // Check if Replay is actively running (combat animation playing)
+            var bm = GetBoardManager();
+            bool isReplayRunning = IsReplayAnimationActive();
+
+            if (isReplayRunning)
+            {
+                TolkWrapper.Speak("Replay in progress. Press E for Recap to view opponent board without interruptions.");
+                return;
+            }
+
+            RefreshEnemyItems();
+
+            if (_enemyItemIndices.Count == 0 && _enemySkillIndices.Count == 0)
+            {
+                TolkWrapper.Speak("No opponent items");
+                return;
+            }
+
+            _enemyMode = true;
+            _enemyItemIndex = 0;
+            _enemySkillIndex = 0;
+            _enemySubsection = EnemySubsection.Items;
+            ClearEnemyDetailReading();
+
+            // Get opponent name if available
+            string opponentName = "Opponent";
+            var pvpOpponent = Data.SimPvpOpponent;
+            if (pvpOpponent != null && !string.IsNullOrEmpty(pvpOpponent.Name))
+            {
+                opponentName = pvpOpponent.Name;
+            }
+
+            // Announce board - start in Items subsection
+            var parts = new List<string>();
+            parts.Add($"{opponentName}'s board");
+            parts.Add($"Items: {_enemyItemIndices.Count}");
+            if (_enemySkillIndices.Count > 0)
+            {
+                parts.Add($"Skills: {_enemySkillIndices.Count}");
+            }
+
+            TolkWrapper.Speak(string.Join(", ", parts));
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"EnterOpponentBoardMode error: {ex.Message}");
+            TolkWrapper.Speak("Cannot access opponent board");
+        }
+    }
+
+    /// <summary>
+    /// Checks if the replay animation is currently playing.
+    /// </summary>
+    private bool IsReplayAnimationActive()
+    {
+        try
+        {
+            var currentState = AppState.CurrentState;
+            if (currentState == null) return false;
+
+            var replayStateType = typeof(AppState).Assembly.GetType("TheBazaar.ReplayState");
+            if (replayStateType == null || !replayStateType.IsInstanceOfType(currentState))
+                return false;
+
+            // Check IsReplaying property
+            var isReplayingProp = replayStateType.GetProperty("IsReplaying");
+            if (isReplayingProp != null)
+            {
+                return (bool)isReplayingProp.GetValue(currentState);
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"IsReplayAnimationActive error: {ex.Message}");
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Navigate to next item in current enemy subsection (Right arrow).
+    /// </summary>
+    public void EnemyNavigateRight()
     {
         if (!_enemyMode) return;
+        ClearEnemyDetailReading();
 
-        int totalItems = _enemyItemIndices.Count + _enemySkillIndices.Count;
-        if (totalItems == 0)
+        if (_enemySubsection == EnemySubsection.Items)
         {
-            TolkWrapper.Speak("No enemy items");
-            return;
+            if (_enemyItemIndices.Count == 0)
+            {
+                TolkWrapper.Speak("No items");
+                return;
+            }
+            if (_enemyItemIndex >= _enemyItemIndices.Count - 1)
+            {
+                AnnounceCurrentEnemyItem(); // Read current at limit
+                return;
+            }
+            _enemyItemIndex++;
         }
-
-        // No wrap - stay at end
-        if (_enemyItemIndex >= totalItems - 1)
+        else // Skills
         {
-            TolkWrapper.Speak("End of list");
-            return;
+            if (_enemySkillIndices.Count == 0)
+            {
+                TolkWrapper.Speak("No skills");
+                return;
+            }
+            if (_enemySkillIndex >= _enemySkillIndices.Count - 1)
+            {
+                AnnounceCurrentEnemyItem();
+                return;
+            }
+            _enemySkillIndex++;
         }
-
-        _enemyItemIndex++;
         AnnounceCurrentEnemyItem();
     }
 
     /// <summary>
-    /// Navega al item anterior del enemigo (Ctrl+Down en modo enemigo).
+    /// Navigate to previous item in current enemy subsection (Left arrow).
     /// </summary>
-    public void EnemyPrevious()
+    public void EnemyNavigateLeft()
     {
         if (!_enemyMode) return;
+        ClearEnemyDetailReading();
 
-        int totalItems = _enemyItemIndices.Count + _enemySkillIndices.Count;
-        if (totalItems == 0)
+        if (_enemySubsection == EnemySubsection.Items)
         {
-            TolkWrapper.Speak("No enemy items");
-            return;
+            if (_enemyItemIndices.Count == 0)
+            {
+                TolkWrapper.Speak("No items");
+                return;
+            }
+            if (_enemyItemIndex <= 0)
+            {
+                AnnounceCurrentEnemyItem();
+                return;
+            }
+            _enemyItemIndex--;
         }
-
-        // No wrap - stay at start
-        if (_enemyItemIndex <= 0)
+        else // Skills
         {
-            TolkWrapper.Speak("Start of list");
-            return;
+            if (_enemySkillIndices.Count == 0)
+            {
+                TolkWrapper.Speak("No skills");
+                return;
+            }
+            if (_enemySkillIndex <= 0)
+            {
+                AnnounceCurrentEnemyItem();
+                return;
+            }
+            _enemySkillIndex--;
         }
-
-        _enemyItemIndex--;
         AnnounceCurrentEnemyItem();
     }
 
     /// <summary>
-    /// Anuncia el item actual del enemigo.
+    /// Switch to next enemy subsection (Ctrl+Right: Items -> Skills).
+    /// </summary>
+    public void EnemyNextSubsection()
+    {
+        if (!_enemyMode) return;
+        ClearEnemyDetailReading();
+
+        if (_enemySubsection == EnemySubsection.Items && _enemySkillIndices.Count > 0)
+        {
+            _enemySubsection = EnemySubsection.Skills;
+            _enemySkillIndex = 0;
+            TolkWrapper.Speak($"Skills, {_enemySkillIndices.Count}");
+        }
+        else
+        {
+            TolkWrapper.Speak(_enemySubsection == EnemySubsection.Items ? "Items" : "Skills");
+        }
+    }
+
+    /// <summary>
+    /// Switch to previous enemy subsection (Ctrl+Left: Skills -> Items).
+    /// </summary>
+    public void EnemyPreviousSubsection()
+    {
+        if (!_enemyMode) return;
+        ClearEnemyDetailReading();
+
+        if (_enemySubsection == EnemySubsection.Skills && _enemyItemIndices.Count > 0)
+        {
+            _enemySubsection = EnemySubsection.Items;
+            _enemyItemIndex = 0;
+            TolkWrapper.Speak($"Items, {_enemyItemIndices.Count}");
+        }
+        else
+        {
+            TolkWrapper.Speak(_enemySubsection == EnemySubsection.Items ? "Items" : "Skills");
+        }
+    }
+
+    /// <summary>
+    /// Read next detail line of current enemy item (Ctrl+Up).
+    /// </summary>
+    public void EnemyDetailNext()
+    {
+        if (!_enemyMode) return;
+
+        var card = GetCurrentEnemyCard();
+        if (card == null)
+        {
+            TolkWrapper.Speak("No item selected");
+            return;
+        }
+
+        // Refresh detail lines if card changed
+        if (_enemyDetailCard != card)
+        {
+            _enemyDetailLines = ItemReader.GetDetailLines(card);
+            _enemyDetailIndex = -1;
+            _enemyDetailCard = card;
+        }
+
+        if (_enemyDetailLines.Count == 0)
+        {
+            TolkWrapper.Speak("No details");
+            return;
+        }
+
+        // Advance to next line (no wrap)
+        if (_enemyDetailIndex >= _enemyDetailLines.Count - 1)
+        {
+            TolkWrapper.Speak(_enemyDetailLines[_enemyDetailLines.Count - 1]); // Read last
+            return;
+        }
+
+        _enemyDetailIndex++;
+        TolkWrapper.Speak(_enemyDetailLines[_enemyDetailIndex]);
+    }
+
+    /// <summary>
+    /// Read previous detail line of current enemy item (Ctrl+Down).
+    /// </summary>
+    public void EnemyDetailPrevious()
+    {
+        if (!_enemyMode) return;
+
+        var card = GetCurrentEnemyCard();
+        if (card == null)
+        {
+            TolkWrapper.Speak("No item selected");
+            return;
+        }
+
+        // Refresh detail lines if card changed
+        if (_enemyDetailCard != card)
+        {
+            _enemyDetailLines = ItemReader.GetDetailLines(card);
+            _enemyDetailIndex = _enemyDetailLines.Count; // Start from end
+            _enemyDetailCard = card;
+        }
+
+        if (_enemyDetailLines.Count == 0)
+        {
+            TolkWrapper.Speak("No details");
+            return;
+        }
+
+        // Go to previous line (no wrap)
+        if (_enemyDetailIndex <= 0)
+        {
+            TolkWrapper.Speak(_enemyDetailLines[0]); // Read first
+            return;
+        }
+
+        _enemyDetailIndex--;
+        TolkWrapper.Speak(_enemyDetailLines[_enemyDetailIndex]);
+    }
+
+    /// <summary>
+    /// Gets the current enemy card based on subsection and index.
+    /// </summary>
+    private Card GetCurrentEnemyCard()
+    {
+        var bm = GetBoardManager();
+        if (bm == null) return null;
+
+        if (_enemySubsection == EnemySubsection.Items)
+        {
+            if (_enemyItemIndex < _enemyItemIndices.Count)
+            {
+                int idx = _enemyItemIndices[_enemyItemIndex];
+                return bm.opponentItemSockets[idx]?.CardController?.CardData;
+            }
+        }
+        else // Skills
+        {
+            if (_enemySkillIndex < _enemySkillIndices.Count)
+            {
+                int idx = _enemySkillIndices[_enemySkillIndex];
+                return bm.opponentSkillSockets[idx]?.CardController?.CardData;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Gets the current enemy card controller based on subsection and index.
+    /// </summary>
+    private CardController GetCurrentEnemyCardController()
+    {
+        var bm = GetBoardManager();
+        if (bm == null) return null;
+
+        if (_enemySubsection == EnemySubsection.Items)
+        {
+            if (_enemyItemIndex < _enemyItemIndices.Count)
+            {
+                int idx = _enemyItemIndices[_enemyItemIndex];
+                return bm.opponentItemSockets[idx]?.CardController;
+            }
+        }
+        else // Skills
+        {
+            if (_enemySkillIndex < _enemySkillIndices.Count)
+            {
+                int idx = _enemySkillIndices[_enemySkillIndex];
+                return bm.opponentSkillSockets[idx]?.CardController;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Announces the current enemy item with position.
     /// </summary>
     private void AnnounceCurrentEnemyItem()
     {
         var bm = GetBoardManager();
         if (bm == null) return;
 
-        int totalItems = _enemyItemIndices.Count + _enemySkillIndices.Count;
-        int pos = _enemyItemIndex + 1;
+        CardController controller = GetCurrentEnemyCardController();
+        Card card = controller?.CardData;
 
-        CardController controller = null;
-        Card card = null;
-        string prefix = "";
-
-        // Primero items, luego skills
-        if (_enemyItemIndex < _enemyItemIndices.Count)
+        int total, pos;
+        if (_enemySubsection == EnemySubsection.Items)
         {
-            int idx = _enemyItemIndices[_enemyItemIndex];
-            controller = bm.opponentItemSockets[idx]?.CardController;
-            card = controller?.CardData;
+            total = _enemyItemIndices.Count;
+            pos = _enemyItemIndex + 1;
         }
         else
         {
-            int skillIdx = _enemyItemIndex - _enemyItemIndices.Count;
-            if (skillIdx < _enemySkillIndices.Count)
-            {
-                int idx = _enemySkillIndices[skillIdx];
-                controller = bm.opponentSkillSockets[idx]?.CardController;
-                card = controller?.CardData;
-                prefix = "Skill: ";
-            }
+            total = _enemySkillIndices.Count;
+            pos = _enemySkillIndex + 1;
         }
 
         if (card == null)
         {
-            TolkWrapper.Speak($"Empty, {pos} of {totalItems}");
+            TolkWrapper.Speak($"Empty, {pos} of {total}");
             return;
         }
 
         string name = ItemReader.GetCardName(card);
-        TolkWrapper.Speak($"{prefix}{name}, {pos} of {totalItems}");
+        TolkWrapper.Speak($"{name}, {pos} of {total}");
 
-        // Activar selección visual del item del enemigo
+        // Visual feedback
         if (controller != null)
         {
             ResetAllCardSelections(bm);
-            // Simular evento de puntero para sonidos y tooltips
             var eventSystem = EventSystem.current;
-            var pointerData = new PointerEventData(eventSystem)
-            {
-                position = Vector2.zero
-            };
+            var pointerData = new PointerEventData(eventSystem) { position = Vector2.zero };
             controller.OnPointerEnter(pointerData);
             controller.HoverMove();
             TriggerHoverSound(controller);
@@ -885,32 +1187,13 @@ public class GameplayNavigator
     }
 
     /// <summary>
-    /// Lee información detallada del item actual del enemigo.
+    /// Reads detailed description of current enemy item (Enter key).
     /// </summary>
     public void ReadCurrentEnemyItemDetails()
     {
         if (!_enemyMode) return;
 
-        var bm = GetBoardManager();
-        if (bm == null) return;
-
-        Card card = null;
-
-        if (_enemyItemIndex < _enemyItemIndices.Count)
-        {
-            int idx = _enemyItemIndices[_enemyItemIndex];
-            card = bm.opponentItemSockets[idx]?.CardController?.CardData;
-        }
-        else
-        {
-            int skillIdx = _enemyItemIndex - _enemyItemIndices.Count;
-            if (skillIdx < _enemySkillIndices.Count)
-            {
-                int idx = _enemySkillIndices[skillIdx];
-                card = bm.opponentSkillSockets[idx]?.CardController?.CardData;
-            }
-        }
-
+        var card = GetCurrentEnemyCard();
         if (card == null)
         {
             TolkWrapper.Speak("No item selected");
@@ -919,6 +1202,10 @@ public class GameplayNavigator
 
         TolkWrapper.Speak(ItemReader.GetDetailedDescription(card));
     }
+
+    // Keep old methods for backward compatibility during combat (F key)
+    public void EnemyNext() => EnemyNavigateRight();
+    public void EnemyPrevious() => EnemyNavigateLeft();
 
     /// <summary>
     /// Abre/cierra el stash y navega a él si está abierto.

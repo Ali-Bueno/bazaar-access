@@ -31,9 +31,60 @@ public class GameplayScreen : IAccessibleScreen
 
     public void HandleInput(AccessibleKey key)
     {
-        // En modo replay (post-combate), Enter/R/E + V/F para stats
+        // En modo replay (post-combate), Enter/R/E + V/F/G para stats y tablero oponente
         if (_navigator.IsInReplayMode)
         {
+            // Si estamos navegando el tablero del oponente (modo enemigo)
+            if (_navigator.IsInEnemyMode)
+            {
+                switch (key)
+                {
+                    // Arrows: Navigate items/skills
+                    case AccessibleKey.Left:
+                        _navigator.EnemyNavigateLeft();
+                        return;
+
+                    case AccessibleKey.Right:
+                        _navigator.EnemyNavigateRight();
+                        return;
+
+                    // Ctrl+Left/Right: Switch subsection (Items <-> Skills)
+                    case AccessibleKey.DetailLeft:
+                        _navigator.EnemyPreviousSubsection();
+                        return;
+
+                    case AccessibleKey.DetailRight:
+                        _navigator.EnemyNextSubsection();
+                        return;
+
+                    // Ctrl+Up/Down: Read detail lines
+                    case AccessibleKey.DetailUp:
+                        _navigator.EnemyDetailNext();
+                        return;
+
+                    case AccessibleKey.DetailDown:
+                        _navigator.EnemyDetailPrevious();
+                        return;
+
+                    // Enter: Read full description
+                    case AccessibleKey.Confirm:
+                        _navigator.ReadCurrentEnemyItemDetails();
+                        return;
+
+                    // G or F: Refresh/re-announce
+                    case AccessibleKey.GoToEnemy:
+                    case AccessibleKey.GoToStash:
+                        _navigator.EnterOpponentBoardMode();
+                        return;
+
+                    // Backspace: Exit enemy mode
+                    case AccessibleKey.Back:
+                        _navigator.ExitEnemyMode();
+                        TolkWrapper.Speak("Exited opponent board. Enter to continue, R to replay, E for recap.");
+                        return;
+                }
+            }
+
             switch (key)
             {
                 case AccessibleKey.Confirm:
@@ -56,9 +107,13 @@ public class GameplayScreen : IAccessibleScreen
                     _navigator.ReadEnemyInfo();
                     break;
 
+                case AccessibleKey.GoToStash: // G key - go to opponent board
+                    _navigator.EnterOpponentBoardMode();
+                    break;
+
                 case AccessibleKey.Back:
                     // Solo recordar brevemente, no repetir el mensaje completo
-                    TolkWrapper.Speak("Post-combat. Enter, R, or E.");
+                    TolkWrapper.Speak("Post-combat. Enter, R, E, or G for opponent board.");
                     break;
 
                 // Ignorar todas las demás teclas durante replay mode
