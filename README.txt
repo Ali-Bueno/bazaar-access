@@ -47,6 +47,10 @@ MESSAGE BUFFER
   . (period)         Read last message
   , (comma)          Read previous message
 
+INFO
+  T                  Board capacity (slots used/available)
+  S                  Stash capacity (items/total)
+
 OTHER
   F1                 Help
 
@@ -54,8 +58,19 @@ OTHER
 DURING COMBAT
 -------------
 - Only V (hero stats) and F (enemy stats) work
-- Combat narration describes item activations in real-time
-- "Victory! X wins" or "Defeat! Lost X prestige" announced at end
+- H                  Combat summary (damage dealt/taken, health)
+- Wave-based narration: effects grouped into summaries
+- "Low health!" / "Critical health!" alerts
+- "Victory! X wins" or "Defeat! Lost X prestige" at end
+
+POST-COMBAT
+-----------
+  Enter              Continue to next phase
+  R                  Replay the combat (with narration)
+  E                  Open Recap (static view of both boards)
+  G                  View opponent's board (navigate with arrows)
+  V                  View your hero stats
+  F                  View enemy stats
 
 
 LOGIN SCREENS
