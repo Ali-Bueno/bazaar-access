@@ -110,6 +110,7 @@ public class GameplayNavigator
     private bool _enemyMode = false;
     private List<int> _enemyItemIndices = new List<int>();
     private List<int> _enemySkillIndices = new List<int>();
+    private List<SkillCard> _enemySkills = new List<SkillCard>(); // Alternative source when sockets unavailable
     private int _enemyItemIndex = 0;
     private int _enemySkillIndex = 0;
     private EnemySubsection _enemySubsection = EnemySubsection.Items;
@@ -755,7 +756,9 @@ public class GameplayNavigator
     {
         _enemyItemIndices.Clear();
         _enemySkillIndices.Clear();
+        _enemySkills.Clear();
         _enemyItemIndex = 0;
+        _enemySkillIndex = 0;
 
         var bm = GetBoardManager();
         if (bm == null) return;
@@ -770,7 +773,7 @@ public class GameplayNavigator
             }
         }
 
-        // Skills del enemigo
+        // Skills del enemigo - primero intentar desde los sockets
         if (bm.opponentSkillSockets != null)
         {
             for (int i = 0; i < bm.opponentSkillSockets.Length; i++)
@@ -780,7 +783,25 @@ public class GameplayNavigator
             }
         }
 
-        Plugin.Logger.LogInfo($"RefreshEnemyItems: {_enemyItemIndices.Count} items, {_enemySkillIndices.Count} skills");
+        // Si no hay skills en los sockets, intentar desde Data.Run.Opponent.Skills
+        if (_enemySkillIndices.Count == 0)
+        {
+            try
+            {
+                var opponent = Data.Run?.Opponent;
+                if (opponent?.Skills != null)
+                {
+                    _enemySkills.AddRange(opponent.Skills);
+                    Plugin.Logger.LogInfo($"RefreshEnemyItems: Got {_enemySkills.Count} skills from Opponent.Skills");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Plugin.Logger.LogWarning($"RefreshEnemyItems: Failed to get Opponent.Skills: {ex.Message}");
+            }
+        }
+
+        Plugin.Logger.LogInfo($"RefreshEnemyItems: {_enemyItemIndices.Count} items, {_enemySkillIndices.Count} socket skills, {_enemySkills.Count} data skills");
     }
 
     /// <summary>
@@ -826,7 +847,8 @@ public class GameplayNavigator
 
             RefreshEnemyItems();
 
-            if (_enemyItemIndices.Count == 0 && _enemySkillIndices.Count == 0)
+            int skillCount = GetEnemySkillCount();
+            if (_enemyItemIndices.Count == 0 && skillCount == 0)
             {
                 TolkWrapper.Speak("No opponent items");
                 return;
@@ -850,9 +872,9 @@ public class GameplayNavigator
             var parts = new List<string>();
             parts.Add($"{opponentName}'s board");
             parts.Add($"Items: {_enemyItemIndices.Count}");
-            if (_enemySkillIndices.Count > 0)
+            if (skillCount > 0)
             {
-                parts.Add($"Skills: {_enemySkillIndices.Count}");
+                parts.Add($"Skills: {skillCount}");
             }
 
             TolkWrapper.Speak(string.Join(", ", parts));
@@ -916,12 +938,13 @@ public class GameplayNavigator
         }
         else // Skills
         {
-            if (_enemySkillIndices.Count == 0)
+            int skillCount = GetEnemySkillCount();
+            if (skillCount == 0)
             {
                 TolkWrapper.Speak("No skills");
                 return;
             }
-            if (_enemySkillIndex >= _enemySkillIndices.Count - 1)
+            if (_enemySkillIndex >= skillCount - 1)
             {
                 AnnounceCurrentEnemyItem();
                 return;
@@ -955,7 +978,8 @@ public class GameplayNavigator
         }
         else // Skills
         {
-            if (_enemySkillIndices.Count == 0)
+            int skillCount = GetEnemySkillCount();
+            if (skillCount == 0)
             {
                 TolkWrapper.Speak("No skills");
                 return;
@@ -978,11 +1002,12 @@ public class GameplayNavigator
         if (!_enemyMode) return;
         ClearEnemyDetailReading();
 
-        if (_enemySubsection == EnemySubsection.Items && _enemySkillIndices.Count > 0)
+        int skillCount = GetEnemySkillCount();
+        if (_enemySubsection == EnemySubsection.Items && skillCount > 0)
         {
             _enemySubsection = EnemySubsection.Skills;
             _enemySkillIndex = 0;
-            TolkWrapper.Speak($"Skills, {_enemySkillIndices.Count}");
+            TolkWrapper.Speak($"Skills, {skillCount}");
         }
         else
         {
@@ -1041,12 +1066,13 @@ public class GameplayNavigator
         // Advance to next line (no wrap)
         if (_enemyDetailIndex >= _enemyDetailLines.Count - 1)
         {
-            TolkWrapper.Speak(_enemyDetailLines[_enemyDetailLines.Count - 1]); // Read last
+            _enemyDetailIndex = _enemyDetailLines.Count - 1;
+            TolkWrapper.Speak($"{_enemyDetailLines[_enemyDetailIndex]}, {_enemyDetailIndex + 1} of {_enemyDetailLines.Count}");
             return;
         }
 
         _enemyDetailIndex++;
-        TolkWrapper.Speak(_enemyDetailLines[_enemyDetailIndex]);
+        TolkWrapper.Speak($"{_enemyDetailLines[_enemyDetailIndex]}, {_enemyDetailIndex + 1} of {_enemyDetailLines.Count}");
     }
 
     /// <summary>
@@ -1080,12 +1106,23 @@ public class GameplayNavigator
         // Go to previous line (no wrap)
         if (_enemyDetailIndex <= 0)
         {
-            TolkWrapper.Speak(_enemyDetailLines[0]); // Read first
+            _enemyDetailIndex = 0;
+            TolkWrapper.Speak($"{_enemyDetailLines[0]}, 1 of {_enemyDetailLines.Count}");
             return;
         }
 
         _enemyDetailIndex--;
-        TolkWrapper.Speak(_enemyDetailLines[_enemyDetailIndex]);
+        TolkWrapper.Speak($"{_enemyDetailLines[_enemyDetailIndex]}, {_enemyDetailIndex + 1} of {_enemyDetailLines.Count}");
+    }
+
+    /// <summary>
+    /// Gets the total count of enemy skills from either sockets or data.
+    /// </summary>
+    private int GetEnemySkillCount()
+    {
+        if (_enemySkillIndices.Count > 0)
+            return _enemySkillIndices.Count;
+        return _enemySkills.Count;
     }
 
     /// <summary>
@@ -1094,10 +1131,10 @@ public class GameplayNavigator
     private Card GetCurrentEnemyCard()
     {
         var bm = GetBoardManager();
-        if (bm == null) return null;
 
         if (_enemySubsection == EnemySubsection.Items)
         {
+            if (bm == null) return null;
             if (_enemyItemIndex < _enemyItemIndices.Count)
             {
                 int idx = _enemyItemIndices[_enemyItemIndex];
@@ -1106,10 +1143,19 @@ public class GameplayNavigator
         }
         else // Skills
         {
-            if (_enemySkillIndex < _enemySkillIndices.Count)
+            // Try from sockets first
+            if (_enemySkillIndices.Count > 0 && bm != null)
             {
-                int idx = _enemySkillIndices[_enemySkillIndex];
-                return bm.opponentSkillSockets[idx]?.CardController?.CardData;
+                if (_enemySkillIndex < _enemySkillIndices.Count)
+                {
+                    int idx = _enemySkillIndices[_enemySkillIndex];
+                    return bm.opponentSkillSockets[idx]?.CardController?.CardData;
+                }
+            }
+            // Fallback to data
+            else if (_enemySkillIndex < _enemySkills.Count)
+            {
+                return _enemySkills[_enemySkillIndex];
             }
         }
         return null;
@@ -1144,14 +1190,13 @@ public class GameplayNavigator
 
     /// <summary>
     /// Announces the current enemy item with position.
+    /// For skills, includes description like player's own skills.
     /// </summary>
     private void AnnounceCurrentEnemyItem()
     {
         var bm = GetBoardManager();
-        if (bm == null) return;
-
         CardController controller = GetCurrentEnemyCardController();
-        Card card = controller?.CardData;
+        Card card = controller?.CardData ?? GetCurrentEnemyCard(); // Fallback to data if no controller
 
         int total, pos;
         if (_enemySubsection == EnemySubsection.Items)
@@ -1161,7 +1206,7 @@ public class GameplayNavigator
         }
         else
         {
-            total = _enemySkillIndices.Count;
+            total = GetEnemySkillCount();
             pos = _enemySkillIndex + 1;
         }
 
@@ -1172,10 +1217,27 @@ public class GameplayNavigator
         }
 
         string name = ItemReader.GetCardName(card);
-        TolkWrapper.Speak($"{name}, {pos} of {total}");
 
-        // Visual feedback
-        if (controller != null)
+        // For skills, include description like player's own skills
+        if (_enemySubsection == EnemySubsection.Skills)
+        {
+            string desc = ItemReader.GetFullDescription(card);
+            if (!string.IsNullOrEmpty(desc))
+            {
+                TolkWrapper.Speak($"{name}: {desc}, {pos} of {total}");
+            }
+            else
+            {
+                TolkWrapper.Speak($"{name}, {pos} of {total}");
+            }
+        }
+        else
+        {
+            TolkWrapper.Speak($"{name}, {pos} of {total}");
+        }
+
+        // Visual feedback (only if controller is available)
+        if (controller != null && bm != null)
         {
             ResetAllCardSelections(bm);
             var eventSystem = EventSystem.current;

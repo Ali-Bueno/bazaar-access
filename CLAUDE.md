@@ -800,6 +800,10 @@ Cada estado define `AllowedOps` que incluye `StateOps.SellItem`.
   - Backspace: Exit opponent board
   - If Replay animation is active, suggests using Recap (E) instead
   - Best used during Recap for static view without Combat Describer
+- ✅ **Enemy board verbosity improvements**: Consistent with player's own board navigation
+  - Detail lines now show "X of Y" position like player's board
+  - Enemy skills show name + description (same as player's Hero Skills)
+  - Fallback to `Data.Run.Opponent.Skills` when socket data unavailable (fixes Recap mode)
 
 ---
 
