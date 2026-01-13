@@ -21,8 +21,9 @@ public static class ActionHelper
     /// </summary>
     /// <param name="card">El item a comprar</param>
     /// <param name="toStash">True para comprar al stash, false para comprar al tablero</param>
+    /// <param name="silent">True para no anunciar (el llamador maneja el mensaje)</param>
     /// <returns>True si la compra fue exitosa</returns>
-    public static bool BuyItem(ItemCard card, bool toStash = false)
+    public static bool BuyItem(ItemCard card, bool toStash = false, bool silent = false)
     {
         if (card == null)
         {
@@ -34,7 +35,7 @@ public static class ActionHelper
         if (state == null)
         {
             Plugin.Logger.LogWarning("BuyItem: AppState.CurrentState is null");
-            TolkWrapper.Speak("Cannot buy now");
+            if (!silent) TolkWrapper.Speak("Cannot buy now");
             return false;
         }
 
@@ -44,12 +45,15 @@ public static class ActionHelper
             state.BuyItemCommand(card, section);
 
             string name = ItemReader.GetCardName(card);
-            int price = ItemReader.GetBuyPrice(card);
 
-            if (price > 0)
-                TolkWrapper.Speak($"Bought {name} for {price} gold");
-            else
-                TolkWrapper.Speak($"Acquired {name}");
+            if (!silent)
+            {
+                int price = ItemReader.GetBuyPrice(card);
+                if (price > 0)
+                    TolkWrapper.Speak($"Bought {name} for {price} gold");
+                else
+                    TolkWrapper.Speak(name);
+            }
 
             Plugin.Logger.LogInfo($"BuyItem: {name} to {section}");
             return true;
@@ -57,7 +61,7 @@ public static class ActionHelper
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"BuyItem failed: {ex.Message}");
-            TolkWrapper.Speak("Purchase failed");
+            if (!silent) TolkWrapper.Speak("Purchase failed");
             return false;
         }
     }
