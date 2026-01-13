@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using BazaarAccess.Core;
 using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameShared.Domain.Core.Types;
@@ -12,17 +13,19 @@ using UnityEngine;
 namespace BazaarAccess.Gameplay;
 
 /// <summary>
-/// Narra el combate en tiempo real para accesibilidad.
-/// Formato: "[Dueño]: [Item]: [Cantidad] [Efecto]. [Crítico]. [Estado]."
+/// Narrates combat in real-time using a wave-based system.
+/// Effects are accumulated and announced as symmetric summaries when activity pauses.
+/// Format: "You: [damage] ([top item]). Enemy: [damage] ([top item]), [status]."
 /// </summary>
 public static class CombatDescriber
 {
-    // Configuración
-    private const float HealthInterval = 5f;        // Segundos entre anuncios de vida
-    private const float HealthThreshold = 0.25f;    // 25% cambio = anuncio inmediato
-    private const float EnemyBufferDelay = 0.8f;    // Segundos para agrupar efectos del enemigo
+    // Configuration
+    private const float WaveTimeout = 1.5f;         // Seconds of inactivity to close a wave
+    private const float HealthInterval = 5f;        // Seconds between health announcements
+    private const float LowHealthThreshold = 0.25f; // 25% = low health warning
+    private const float CritHealthThreshold = 0.10f; // 10% = critical health warning
 
-    // Estado
+    // State
     private static bool _active;
     private static float _lastHealthTime;
     private static int _lastPlayerHealth;
@@ -31,19 +34,58 @@ public static class CombatDescriber
     private static int _lastEnemyMaxHealth;
     private static string _enemyName;
     private static Coroutine _healthCoroutine;
-    private static Coroutine _enemyBufferCoroutine;
+    private static Coroutine _waveCoroutine;
 
+    // Health threshold tracking (to avoid repeating warnings)
+    private static bool _announcedPlayerLow;
+    private static bool _announcedPlayerCrit;
+    private static bool _announcedEnemyLow;
+    private static bool _announcedEnemyCrit;
 
-    // Buffer para agrupar efectos del enemigo
-    private static Dictionary<ActionType, int> _enemyEffectBuffer = new Dictionary<ActionType, int>();
-    private static bool _enemyHadCrit = false;
+    // Wave data for accumulating effects
+    private static WaveData _playerWave = new WaveData();
+    private static WaveData _enemyWave = new WaveData();
+
+    // Combat totals for H key summary
+    private static int _totalPlayerDamageDealt;
+    private static int _totalPlayerDamageTaken;
 
     /// <summary>
-    /// Inicia la narración del combate.
+    /// Data accumulated during a wave of combat activity.
+    /// </summary>
+    private class WaveData
+    {
+        public int TotalDamage;
+        public int TotalHeal;
+        public int TotalShield;
+        public Dictionary<string, int> DamageByItem = new Dictionary<string, int>();
+        public HashSet<string> StatusEffects = new HashSet<string>();
+        public bool HadCrit;
+
+        public void Clear()
+        {
+            TotalDamage = 0;
+            TotalHeal = 0;
+            TotalShield = 0;
+            DamageByItem.Clear();
+            StatusEffects.Clear();
+            HadCrit = false;
+        }
+
+        public bool HasActivity => TotalDamage > 0 || TotalHeal > 0 || TotalShield > 0 || StatusEffects.Count > 0;
+
+        public string GetTopItem()
+        {
+            if (DamageByItem.Count == 0) return null;
+            return DamageByItem.OrderByDescending(kv => kv.Value).First().Key;
+        }
+    }
+
+    /// <summary>
+    /// Starts combat narration.
     /// </summary>
     public static void StartDescribing()
     {
-        // Si ya estaba activo, detener primero para reiniciar limpiamente
         if (_active)
         {
             Plugin.Logger.LogInfo("CombatDescriber: Already active, restarting...");
@@ -52,85 +94,125 @@ public static class CombatDescriber
 
         _active = true;
 
-        // Inicializar estado COMPLETAMENTE
+        // Initialize state
         _lastHealthTime = Time.time;
         _lastPlayerHealth = 0;
         _lastPlayerMaxHealth = 0;
         _lastEnemyHealth = 0;
         _lastEnemyMaxHealth = 0;
-        _enemyEffectBuffer.Clear();
-        _enemyHadCrit = false;
+        _playerWave.Clear();
+        _enemyWave.Clear();
 
-        // Obtener nombre del enemigo FRESCO
+        // Reset totals
+        _totalPlayerDamageDealt = 0;
+        _totalPlayerDamageTaken = 0;
+
+        // Reset health threshold warnings
+        _announcedPlayerLow = false;
+        _announcedPlayerCrit = false;
+        _announcedEnemyLow = false;
+        _announcedEnemyCrit = false;
+
+        // Get enemy name
         _enemyName = GetEnemyName();
 
-        // Capturar vida inicial
+        // Capture initial health
         CaptureHealthState();
 
-        // Iniciar coroutine de anuncios periódicos
+        // Start periodic health announcements
         if (Plugin.Instance != null)
         {
             _healthCoroutine = Plugin.Instance.StartCoroutine(HealthAnnouncementLoop());
         }
 
-        Plugin.Logger.LogInfo($"CombatDescriber: Started, enemy = {_enemyName}, playerHealth = {_lastPlayerHealth}, enemyHealth = {_lastEnemyHealth}");
+        Plugin.Logger.LogInfo($"CombatDescriber: Started, enemy = {_enemyName}");
     }
 
     /// <summary>
-    /// Detiene la narración del combate.
+    /// Stops combat narration.
     /// </summary>
     public static void StopDescribing()
     {
         if (!_active) return;
         _active = false;
 
-        // Detener coroutines
+        // Stop coroutines
         if (_healthCoroutine != null && Plugin.Instance != null)
         {
             Plugin.Instance.StopCoroutine(_healthCoroutine);
             _healthCoroutine = null;
         }
-        if (_enemyBufferCoroutine != null && Plugin.Instance != null)
+        if (_waveCoroutine != null && Plugin.Instance != null)
         {
-            Plugin.Instance.StopCoroutine(_enemyBufferCoroutine);
-            _enemyBufferCoroutine = null;
+            Plugin.Instance.StopCoroutine(_waveCoroutine);
+            _waveCoroutine = null;
         }
 
-        // Limpiar estado para el próximo combate
+        // Clear state
         _enemyName = null;
-        _enemyEffectBuffer.Clear();
-        _enemyHadCrit = false;
+        _playerWave.Clear();
+        _enemyWave.Clear();
 
         Plugin.Logger.LogInfo("CombatDescriber: Stopped");
     }
 
     /// <summary>
-    /// Obtiene el nombre del enemigo (PvP o PvE).
-    /// Solo usa el nombre de PvP si estamos realmente en un combate PvP.
+    /// Gets the current combat summary for the H key.
+    /// </summary>
+    public static string GetCombatSummary()
+    {
+        if (!_active) return "Not in combat.";
+
+        try
+        {
+            var player = Data.Run?.Player;
+            var opponent = Data.Run?.Opponent;
+
+            int playerHealth = player?.GetAttributeValue(EPlayerAttributeType.Health) ?? 0;
+            int playerShield = player?.GetAttributeValue(EPlayerAttributeType.Shield) ?? 0;
+            int enemyHealth = 0;
+            int enemyShield = 0;
+            opponent?.Attributes.TryGetValue(EPlayerAttributeType.Health, out enemyHealth);
+            opponent?.Attributes.TryGetValue(EPlayerAttributeType.Shield, out enemyShield);
+
+            var parts = new List<string>();
+
+            // Damage totals
+            parts.Add($"You dealt {_totalPlayerDamageDealt}, took {_totalPlayerDamageTaken}");
+
+            // Health comparison
+            string playerHealthStr = playerShield > 0 ? $"{playerHealth}+{playerShield}" : $"{playerHealth}";
+            string enemyHealthStr = enemyShield > 0 ? $"{enemyHealth}+{enemyShield}" : $"{enemyHealth}";
+            parts.Add($"Health: {playerHealthStr} vs {enemyHealthStr}");
+
+            return string.Join(". ", parts);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogError($"GetCombatSummary error: {ex.Message}");
+            return "Summary unavailable.";
+        }
+    }
+
+    /// <summary>
+    /// Gets the enemy name (PvP or PvE).
     /// </summary>
     private static string GetEnemyName()
     {
         try
         {
-            // Verificar si estamos en PvP combat
             var currentState = Data.CurrentState?.StateName;
             bool isPvpCombat = currentState == ERunState.PVPCombat;
 
-            Plugin.Logger.LogInfo($"GetEnemyName: currentState={currentState}, isPvpCombat={isPvpCombat}");
-
-            // Solo usar SimPvpOpponent si estamos realmente en PvP
             if (isPvpCombat)
             {
                 var pvp = Data.SimPvpOpponent;
                 if (pvp != null && !string.IsNullOrEmpty(pvp.Name))
                 {
-                    Plugin.Logger.LogInfo($"GetEnemyName: Using PvP opponent name: {pvp.Name}");
                     return pvp.Name;
                 }
             }
 
-            // PvE: usar "Enemy" como fallback
-            Plugin.Logger.LogInfo("GetEnemyName: Using 'Enemy' (PvE)");
             return "Enemy";
         }
         catch (Exception ex)
@@ -141,7 +223,7 @@ public static class CombatDescriber
     }
 
     /// <summary>
-    /// Captura el estado actual de vida.
+    /// Captures current health state.
     /// </summary>
     private static void CaptureHealthState()
     {
@@ -169,19 +251,17 @@ public static class CombatDescriber
     }
 
     /// <summary>
-    /// Handler para cuando se activa un efecto de combate.
-    /// Items del jugador se anuncian inmediatamente.
-    /// Items del enemigo se acumulan y anuncian juntos después de un breve delay.
+    /// Handler for combat effect events.
+    /// Accumulates effects into the current wave.
     /// </summary>
     internal static void OnEffectTriggered(EffectTriggeredEvent evt)
     {
         if (!_active) return;
 
-        // Double-check we're actually in combat (events can arrive late)
+        // Verify we're in combat
         var currentState = Data.CurrentState?.StateName;
         if (currentState != ERunState.Combat && currentState != ERunState.PVPCombat)
         {
-            Plugin.Logger.LogInfo($"OnEffectTriggered: Not in combat state ({currentState}), ignoring");
             return;
         }
 
@@ -190,126 +270,186 @@ public static class CombatDescriber
             var data = evt?.Data;
             if (data == null) return;
 
-            // Solo procesar acciones relevantes
             if (!IsRelevantAction(data.ActionType)) return;
 
             var sourceCard = data.SourceCard;
             if (sourceCard == null) return;
 
-            // Determinar si es del jugador o enemigo
-            string owner = GetCardOwner(sourceCard);
-            if (string.IsNullOrEmpty(owner)) return;
-
-            bool isPlayerItem = owner == "You";
+            // Determine owner
+            bool isPlayerItem = IsPlayerCard(sourceCard);
+            string itemName = ItemReader.GetCardName(sourceCard);
             int amount = CalculateEffectAmount(data);
 
-            if (isPlayerItem)
-            {
-                // Items del jugador: anunciar inmediatamente
-                string itemName = ItemReader.GetCardName(sourceCard);
-                string effectDesc = GetEffectDescription(data.ActionType, amount);
-                if (string.IsNullOrEmpty(effectDesc)) return;
+            // Get the appropriate wave data
+            WaveData wave = isPlayerItem ? _playerWave : _enemyWave;
 
-                string message = $"{owner}: {itemName}: {effectDesc}";
-                if (data.IsCrit) message += ". critical";
-
-                TolkWrapper.Speak(message, interrupt: false);
-            }
-            else
+            // Accumulate effect
+            switch (data.ActionType)
             {
-                // Items del enemigo: acumular en buffer
-                BufferEnemyEffect(data.ActionType, amount, data.IsCrit);
+                case ActionType.PlayerDamage:
+                    wave.TotalDamage += amount;
+                    if (!string.IsNullOrEmpty(itemName))
+                    {
+                        if (wave.DamageByItem.ContainsKey(itemName))
+                            wave.DamageByItem[itemName] += amount;
+                        else
+                            wave.DamageByItem[itemName] = amount;
+                    }
+                    // Track totals
+                    if (isPlayerItem)
+                        _totalPlayerDamageDealt += amount;
+                    else
+                        _totalPlayerDamageTaken += amount;
+                    break;
+
+                case ActionType.PlayerHeal:
+                    wave.TotalHeal += amount;
+                    break;
+
+                case ActionType.PlayerShieldApply:
+                    wave.TotalShield += amount;
+                    break;
+
+                case ActionType.PlayerBurnApply:
+                    wave.StatusEffects.Add("burn");
+                    break;
+
+                case ActionType.PlayerPoisonApply:
+                    wave.StatusEffects.Add("poison");
+                    break;
+
+                case ActionType.CardSlow:
+                    wave.StatusEffects.Add("slow");
+                    break;
+
+                case ActionType.CardFreeze:
+                    wave.StatusEffects.Add("freeze");
+                    // Immediate announcement for freeze (important!)
+                    if (!isPlayerItem)
+                        TolkWrapper.Speak("Frozen!", interrupt: true);
+                    break;
             }
+
+            if (data.IsCrit)
+                wave.HadCrit = true;
+
+            // Reset wave timer
+            RestartWaveTimer();
         }
         catch (Exception ex)
         {
-            Plugin.Logger.LogError($"OnEffectTriggered error: {ex.Message}\n{ex.StackTrace}");
+            Plugin.Logger.LogError($"OnEffectTriggered error: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// Añade un efecto del enemigo al buffer y programa el anuncio.
+    /// Restarts the wave timeout timer.
     /// </summary>
-    private static void BufferEnemyEffect(ActionType type, int amount, bool isCrit)
+    private static void RestartWaveTimer()
     {
-        // Acumular cantidad
-        if (_enemyEffectBuffer.ContainsKey(type))
-            _enemyEffectBuffer[type] += amount;
-        else
-            _enemyEffectBuffer[type] = amount;
-
-        // Recordar si hubo crítico
-        if (isCrit) _enemyHadCrit = true;
-
-        // Reiniciar timer para flush
-        if (_enemyBufferCoroutine != null && Plugin.Instance != null)
+        if (_waveCoroutine != null && Plugin.Instance != null)
         {
-            Plugin.Instance.StopCoroutine(_enemyBufferCoroutine);
+            Plugin.Instance.StopCoroutine(_waveCoroutine);
         }
         if (Plugin.Instance != null)
         {
-            _enemyBufferCoroutine = Plugin.Instance.StartCoroutine(FlushEnemyBufferAfterDelay());
+            _waveCoroutine = Plugin.Instance.StartCoroutine(WaveTimeoutCoroutine());
         }
     }
 
     /// <summary>
-    /// Espera un momento y luego anuncia los efectos acumulados del enemigo.
+    /// Waits for wave timeout then announces the wave summary.
     /// </summary>
-    private static IEnumerator FlushEnemyBufferAfterDelay()
+    private static IEnumerator WaveTimeoutCoroutine()
     {
-        yield return new WaitForSeconds(EnemyBufferDelay);
-        FlushEnemyBuffer();
+        yield return new WaitForSeconds(WaveTimeout);
+        AnnounceWave();
+        _waveCoroutine = null;
     }
 
     /// <summary>
-    /// Anuncia todos los efectos acumulados del enemigo.
+    /// Announces the current wave summary and clears wave data.
     /// </summary>
-    private static void FlushEnemyBuffer()
+    private static void AnnounceWave()
     {
-        if (_enemyEffectBuffer.Count == 0) return;
+        if (!_playerWave.HasActivity && !_enemyWave.HasActivity)
+            return;
 
         var parts = new List<string>();
 
-        // Ordenar efectos por importancia (daño primero, luego estados)
-        var orderedEffects = new[] {
-            ActionType.PlayerDamage,
-            ActionType.PlayerHeal,
-            ActionType.PlayerShieldApply,
-            ActionType.PlayerBurnApply,
-            ActionType.PlayerPoisonApply,
-            ActionType.PlayerRegenApply,
-            ActionType.PlayerJoyApply,
-            ActionType.CardSlow,
-            ActionType.CardHaste,
-            ActionType.CardFreeze
-        };
-
-        foreach (var type in orderedEffects)
+        // Player side
+        if (_playerWave.HasActivity)
         {
-            if (_enemyEffectBuffer.TryGetValue(type, out int amount))
-            {
-                string desc = GetPassiveEffectDescription(type, amount);
-                if (!string.IsNullOrEmpty(desc))
-                    parts.Add(desc);
-            }
+            string playerPart = FormatWaveSide("You", _playerWave);
+            if (!string.IsNullOrEmpty(playerPart))
+                parts.Add(playerPart);
+        }
+
+        // Enemy side
+        if (_enemyWave.HasActivity)
+        {
+            string enemyPart = FormatWaveSide(_enemyName, _enemyWave);
+            if (!string.IsNullOrEmpty(enemyPart))
+                parts.Add(enemyPart);
         }
 
         if (parts.Count > 0)
         {
-            string message = string.Join(", ", parts);
-            if (_enemyHadCrit) message += ". critical hit";
-            TolkWrapper.Speak(message, interrupt: false);
+            TolkWrapper.Speak(string.Join(". ", parts), interrupt: false);
         }
 
-        // Limpiar buffer
-        _enemyEffectBuffer.Clear();
-        _enemyHadCrit = false;
-        _enemyBufferCoroutine = null;
+        // Clear wave data
+        _playerWave.Clear();
+        _enemyWave.Clear();
     }
 
     /// <summary>
-    /// Handler para cambios de vida del jugador/enemigo.
-    /// Solo usado para anuncios periódicos, no para cada cambio.
+    /// Formats one side of the wave summary.
+    /// </summary>
+    private static string FormatWaveSide(string owner, WaveData wave)
+    {
+        var elements = new List<string>();
+
+        // Main effect (damage or heal or shield)
+        if (wave.TotalDamage > 0)
+        {
+            string topItem = wave.GetTopItem();
+            if (!string.IsNullOrEmpty(topItem))
+                elements.Add($"{wave.TotalDamage} damage ({topItem})");
+            else
+                elements.Add($"{wave.TotalDamage} damage");
+        }
+
+        if (wave.TotalHeal > 0)
+        {
+            elements.Add($"{wave.TotalHeal} heal");
+        }
+
+        if (wave.TotalShield > 0)
+        {
+            elements.Add($"{wave.TotalShield} shield");
+        }
+
+        // Status effects
+        if (wave.StatusEffects.Count > 0)
+        {
+            elements.AddRange(wave.StatusEffects);
+        }
+
+        if (elements.Count == 0)
+            return null;
+
+        string result = $"{owner}: {string.Join(", ", elements)}";
+
+        // Add critical if applicable
+        if (wave.HadCrit)
+            result += ", critical";
+
+        return result;
+    }
+
+    /// <summary>
+    /// Handler for health changes - checks for threshold warnings.
     /// </summary>
     internal static void OnPlayerHealthChanged(PlayerHealthChangedEvent evt)
     {
@@ -317,35 +457,7 @@ public static class CombatDescriber
 
         try
         {
-            var update = evt?.Update;
-            if (update == null) return;
-
-            var combatantId = evt.CombatantId;
-
-            Plugin.Logger.LogInfo($"OnPlayerHealthChanged: Combatant={combatantId}, Amount={update.Amount}, Type={update.DamageType}");
-
-            // Actualizar estado de vida
-            bool isPlayer = combatantId == ECombatantId.Player;
-
-            if (isPlayer)
-            {
-                var player = Data.Run?.Player;
-                if (player != null)
-                {
-                    _lastPlayerHealth = player.GetAttributeValue(EPlayerAttributeType.Health) ?? _lastPlayerHealth;
-                }
-            }
-            else
-            {
-                var opponent = Data.Run?.Opponent;
-                if (opponent != null)
-                {
-                    opponent.Attributes.TryGetValue(EPlayerAttributeType.Health, out _lastEnemyHealth);
-                }
-            }
-
-            // Verificar si hay cambio significativo para anuncio inmediato
-            CheckForSignificantHealthChange();
+            CheckHealthThresholds();
         }
         catch (Exception ex)
         {
@@ -354,129 +466,97 @@ public static class CombatDescriber
     }
 
     /// <summary>
-    /// Verifica si la acción es relevante para narrar.
+    /// Checks if health thresholds have been crossed.
+    /// </summary>
+    private static void CheckHealthThresholds()
+    {
+        try
+        {
+            var player = Data.Run?.Player;
+            var opponent = Data.Run?.Opponent;
+
+            if (player != null)
+            {
+                int health = player.GetAttributeValue(EPlayerAttributeType.Health) ?? 0;
+                int maxHealth = player.GetAttributeValue(EPlayerAttributeType.HealthMax) ?? 100;
+                float ratio = maxHealth > 0 ? (float)health / maxHealth : 1f;
+
+                if (ratio <= CritHealthThreshold && !_announcedPlayerCrit)
+                {
+                    TolkWrapper.Speak("Critical health!", interrupt: true);
+                    _announcedPlayerCrit = true;
+                    _announcedPlayerLow = true;
+                }
+                else if (ratio <= LowHealthThreshold && !_announcedPlayerLow)
+                {
+                    TolkWrapper.Speak("Low health!", interrupt: true);
+                    _announcedPlayerLow = true;
+                }
+            }
+
+            if (opponent != null)
+            {
+                opponent.Attributes.TryGetValue(EPlayerAttributeType.Health, out int enemyHealth);
+                opponent.Attributes.TryGetValue(EPlayerAttributeType.HealthMax, out int enemyMaxHealth);
+                if (enemyMaxHealth == 0) enemyMaxHealth = 100;
+                float ratio = (float)enemyHealth / enemyMaxHealth;
+
+                if (ratio <= CritHealthThreshold && !_announcedEnemyCrit)
+                {
+                    TolkWrapper.Speak("Enemy critical!", interrupt: true);
+                    _announcedEnemyCrit = true;
+                    _announcedEnemyLow = true;
+                }
+                else if (ratio <= LowHealthThreshold && !_announcedEnemyLow)
+                {
+                    TolkWrapper.Speak("Enemy low!", interrupt: true);
+                    _announcedEnemyLow = true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogError($"CheckHealthThresholds error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Checks if an action type is relevant for narration.
     /// </summary>
     private static bool IsRelevantAction(ActionType type)
     {
         return type switch
         {
-            // Acciones de daño/curación
             ActionType.PlayerDamage => true,
             ActionType.PlayerHeal => true,
             ActionType.PlayerShieldApply => true,
-
-            // Efectos de estado
             ActionType.PlayerBurnApply => true,
             ActionType.PlayerPoisonApply => true,
-            ActionType.PlayerRegenApply => true,
-            ActionType.PlayerJoyApply => true,
-
-            // Efectos en cartas
             ActionType.CardSlow => true,
-            ActionType.CardHaste => true,
             ActionType.CardFreeze => true,
-
-            // Ignorar todo lo demás
             _ => false
         };
     }
 
     /// <summary>
-    /// Formatea el mensaje de efecto.
-    /// Formato para items del jugador: "[You]: [Item]: [Efecto]. [Crítico]."
-    /// Formato para items del enemigo: Solo el efecto recibido (ej: "5 poison")
+    /// Determines if a card belongs to the player.
     /// </summary>
-    private static string FormatEffectMessage(CombatActionData data)
+    private static bool IsPlayerCard(Card card)
     {
-        var sourceCard = data.SourceCard;
-        if (sourceCard == null) return null;
-
-        // Determinar dueño del item
-        string owner = GetCardOwner(sourceCard);
-        if (string.IsNullOrEmpty(owner)) return null;
-
-        bool isPlayerItem = owner == "You";
-
-        // Calcular cantidad de efecto
-        int amount = CalculateEffectAmount(data);
-
-        // Descripción del efecto
-        string effectDesc = GetEffectDescription(data.ActionType, amount);
-        if (string.IsNullOrEmpty(effectDesc)) return null;
-
-        // Construir mensaje
-        var parts = new List<string>();
-
-        if (isPlayerItem)
-        {
-            // Items del jugador: formato completo
-            string itemName = ItemReader.GetCardName(sourceCard);
-            parts.Add($"{owner}: {itemName}: {effectDesc}");
-
-            // Crítico
-            if (data.IsCrit)
-            {
-                parts.Add("critical");
-            }
-        }
-        else
-        {
-            // Items del enemigo: solo anunciar el efecto recibido
-            // Convertir a formato pasivo (ej: "5 damage received" o "poisoned")
-            string passiveEffect = GetPassiveEffectDescription(data.ActionType, amount);
-            parts.Add(passiveEffect);
-
-            // Crítico para efectos del enemigo
-            if (data.IsCrit)
-            {
-                parts.Add("critical hit");
-            }
-        }
-
-        return string.Join(". ", parts);
-    }
-
-    /// <summary>
-    /// Obtiene la descripción pasiva del efecto (cuando el enemigo te lo aplica).
-    /// </summary>
-    private static string GetPassiveEffectDescription(ActionType type, int amount)
-    {
-        return type switch
-        {
-            ActionType.PlayerDamage => $"{amount} damage received",
-            ActionType.PlayerHeal => $"{amount} healed",
-            ActionType.PlayerShieldApply => $"{amount} shield gained",
-            ActionType.PlayerBurnApply => $"burned for {amount}",
-            ActionType.PlayerPoisonApply => $"poisoned for {amount}",
-            ActionType.PlayerRegenApply => "regen applied",
-            ActionType.PlayerJoyApply => "joy applied",
-            ActionType.CardSlow => "slowed",
-            ActionType.CardHaste => "hasted",
-            ActionType.CardFreeze => "frozen",
-            _ => null
-        };
-    }
-
-    /// <summary>
-    /// Determina el dueño de una carta (jugador o enemigo).
-    /// </summary>
-    private static string GetCardOwner(Card card)
-    {
-        if (card == null) return null;
+        if (card == null) return false;
 
         try
         {
-            // Verificar si la carta pertenece al jugador
             var bm = Singleton<BoardManager>.Instance;
-            if (bm == null) return null;
+            if (bm == null) return true; // Default to player
 
-            // Buscar en sockets del jugador
+            // Check player sockets
             if (bm.playerItemSockets != null)
             {
                 foreach (var socket in bm.playerItemSockets)
                 {
                     if (socket?.CardController?.CardData == card)
-                        return "You";
+                        return true;
                 }
             }
 
@@ -485,17 +565,17 @@ public static class CombatDescriber
                 foreach (var socket in bm.playerSkillSockets)
                 {
                     if (socket?.CardController?.CardData == card)
-                        return "You";
+                        return true;
                 }
             }
 
-            // Buscar en sockets del oponente
+            // Check opponent sockets
             if (bm.opponentItemSockets != null)
             {
                 foreach (var socket in bm.opponentItemSockets)
                 {
                     if (socket?.CardController?.CardData == card)
-                        return _enemyName;
+                        return false;
                 }
             }
 
@@ -504,29 +584,26 @@ public static class CombatDescriber
                 foreach (var socket in bm.opponentSkillSockets)
                 {
                     if (socket?.CardController?.CardData == card)
-                        return _enemyName;
+                        return false;
                 }
             }
 
-            // No encontrado, asumir jugador
-            return "You";
+            return true; // Default to player
         }
         catch
         {
-            return "You";
+            return true;
         }
     }
 
     /// <summary>
-    /// Calcula la cantidad del efecto basándose en los atributos de la carta.
-    /// No usar HealthBefore/HealthAfter porque pueden incluir escudo combinado con vida.
+    /// Calculates the effect amount from card attributes.
     /// </summary>
     private static int CalculateEffectAmount(CombatActionData data)
     {
         var card = data.SourceCard;
         if (card == null) return 0;
 
-        // Usar atributos de la carta directamente para cada tipo de acción
         int amount = data.ActionType switch
         {
             ActionType.PlayerDamage => card.GetAttributeValue(ECardAttributeType.DamageAmount) ?? 0,
@@ -537,7 +614,7 @@ public static class CombatDescriber
             _ => 0
         };
 
-        // Si no encontramos el atributo y tenemos datos de vida (solo para daño/curación, NO escudo)
+        // Fallback to health diff for damage/heal if attribute not found
         if (amount == 0 && (data.ActionType == ActionType.PlayerDamage || data.ActionType == ActionType.PlayerHeal))
         {
             if (data.HealthBefore > 0 || data.HealthAfter > 0)
@@ -550,111 +627,29 @@ public static class CombatDescriber
     }
 
     /// <summary>
-    /// Obtiene la descripción del efecto.
-    /// </summary>
-    private static string GetEffectDescription(ActionType type, int amount)
-    {
-        return type switch
-        {
-            ActionType.PlayerDamage => $"{amount} damage",
-            ActionType.PlayerHeal => $"{amount} heal",
-            ActionType.PlayerShieldApply => $"{amount} shield",
-            ActionType.PlayerBurnApply => $"{amount} burn",
-            ActionType.PlayerPoisonApply => $"{amount} poison",
-            ActionType.PlayerRegenApply => "regen",
-            ActionType.PlayerJoyApply => "joy",
-            ActionType.CardSlow => "slow",
-            ActionType.CardHaste => "haste",
-            ActionType.CardFreeze => "freeze",
-            _ => null
-        };
-    }
-
-    /// <summary>
-    /// Obtiene el nombre del efecto de estado (si aplica).
-    /// </summary>
-    private static string GetStatusEffectName(ActionType type)
-    {
-        // Solo devolver para efectos que son adicionales al daño
-        return type switch
-        {
-            ActionType.CardSlow => "slow",
-            ActionType.CardHaste => "haste",
-            ActionType.CardFreeze => "freeze",
-            _ => null
-        };
-    }
-
-    /// <summary>
-    /// Verifica si hubo un cambio significativo de vida para anunciar.
-    /// </summary>
-    private static void CheckForSignificantHealthChange()
-    {
-        try
-        {
-            var player = Data.Run?.Player;
-            var opponent = Data.Run?.Opponent;
-
-            int currentPlayerHealth = player?.GetAttributeValue(EPlayerAttributeType.Health) ?? 0;
-            int currentEnemyHealth = 0;
-            opponent?.Attributes.TryGetValue(EPlayerAttributeType.Health, out currentEnemyHealth);
-
-            // Calcular cambio porcentual
-            float playerChange = _lastPlayerMaxHealth > 0
-                ? Math.Abs(currentPlayerHealth - _lastPlayerHealth) / (float)_lastPlayerMaxHealth
-                : 0;
-
-            float enemyChange = _lastEnemyMaxHealth > 0
-                ? Math.Abs(currentEnemyHealth - _lastEnemyHealth) / (float)_lastEnemyMaxHealth
-                : 0;
-
-            // Si cambio significativo, anunciar
-            if (playerChange >= HealthThreshold || enemyChange >= HealthThreshold)
-            {
-                AnnounceHealth();
-                _lastHealthTime = Time.time;
-                _lastPlayerHealth = currentPlayerHealth;
-                _lastEnemyHealth = currentEnemyHealth;
-            }
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger.LogError($"CheckForSignificantHealthChange error: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Coroutine para anuncios periódicos de vida.
+    /// Periodic health announcement loop.
     /// </summary>
     private static IEnumerator HealthAnnouncementLoop()
     {
-        Plugin.Logger.LogInfo("CombatDescriber: HealthAnnouncementLoop started");
-
-        // Primer anuncio después de 2 segundos
+        // First announcement after 2 seconds
         yield return new WaitForSeconds(2f);
         if (_active)
         {
-            Plugin.Logger.LogInfo("CombatDescriber: First health announcement");
             AnnounceHealth();
         }
 
         while (_active)
         {
             yield return new WaitForSeconds(HealthInterval);
-
             if (_active)
             {
-                Plugin.Logger.LogInfo("CombatDescriber: Periodic health announcement");
                 AnnounceHealth();
             }
         }
-
-        Plugin.Logger.LogInfo("CombatDescriber: HealthAnnouncementLoop ended");
     }
 
     /// <summary>
-    /// Anuncia el estado de vida actual.
-    /// Formato: "You: [vida] health, [escudo] shield. [Enemy]: [vida] health."
+    /// Announces current health status.
     /// </summary>
     private static void AnnounceHealth()
     {
@@ -665,7 +660,6 @@ public static class CombatDescriber
 
             var parts = new List<string>();
 
-            // Vida del jugador
             if (player != null)
             {
                 int health = player.GetAttributeValue(EPlayerAttributeType.Health) ?? 0;
@@ -679,7 +673,6 @@ public static class CombatDescriber
                 _lastPlayerHealth = health;
             }
 
-            // Vida del enemigo
             if (opponent != null)
             {
                 opponent.Attributes.TryGetValue(EPlayerAttributeType.Health, out int enemyHealth);

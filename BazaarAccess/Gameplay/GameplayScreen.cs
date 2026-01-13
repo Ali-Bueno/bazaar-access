@@ -202,6 +202,11 @@ public class GameplayScreen : IAccessibleScreen
                         _navigator.ReadAllHeroStats();
                     break;
 
+                case AccessibleKey.CombatSummary:
+                    // H key - get combat summary
+                    TolkWrapper.Speak(CombatDescriber.GetCombatSummary());
+                    break;
+
                 case AccessibleKey.Back:
                     // Do nothing - let the game handle it (opens pause menu)
                     break;

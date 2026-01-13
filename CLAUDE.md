@@ -407,6 +407,7 @@ Pantalla accesible principal del gameplay que implementa `IAccessibleScreen`. Se
 - `Shift+U`: Upgradear item en el Pedestal
 - `T`: Ver capacidad del tablero (slots usados/disponibles)
 - `S`: Ver capacidad del stash (slots usados/disponibles)
+- `H`: Ver resumen del combate (solo durante combate)
 
 **Controles en Hero (V)**:
 - `Ctrl+Arriba`: Siguiente stat o skill
@@ -808,6 +809,14 @@ Cada estado define `AllowedOps` que incluye `StateOps.SellItem`.
   - Detail lines now show "X of Y" position like player's board
   - Enemy skills show name + description (same as player's Hero Skills)
   - Fallback to `Data.Run.Opponent.Skills` when socket data unavailable (fixes Recap mode)
+- ✅ **Wave-based Combat Describer**: Complete rewrite for less spam and more context
+  - Effects accumulated during "waves" (1.5s inactivity closes a wave)
+  - Symmetric summaries: "You: 45 damage (Water Dagger). Enemy: 30 damage (Poison Dagger), poison."
+  - Top item shown for each side (the one that did most damage)
+  - Immediate events: "Low health!", "Critical health!", "Frozen!"
+  - **H key**: Press H during combat for summary ("You dealt X, took Y. Health: A vs B")
+  - Periodic health announcements every 5 seconds
+  - Much less spam while providing more useful context
 
 ---
 
@@ -891,65 +900,64 @@ AccessDeniedStateView         // Acceso denegado
 
 ## Combat Describer (CombatDescriber.cs)
 
-Narra el combate en tiempo real para accesibilidad. Se activa automáticamente cuando empieza un combate y se detiene cuando termina.
+Narrates combat using a **wave-based system**. Effects are accumulated during activity periods and announced as symmetric summaries when combat pauses.
 
-### Formato de Mensajes
+### Wave-Based System
 
-**Items del jugador (inmediato):**
+Instead of announcing every effect individually, the system:
+1. Accumulates effects during a "wave" of combat activity
+2. When 1.5 seconds pass without new effects, the wave ends
+3. Announces a symmetric summary showing both player and enemy actions
+
+### Wave Summary Format
+
 ```
-"You: [Item]: [Efecto]. [Crítico]."
+"You: [damage] ([top item]), [effects]. Enemy: [damage] ([top item]), [effects]."
 ```
-Ejemplos:
-- "You: Water Dagger: 10 damage."
-- "You: Fire Sword: 25 damage. critical."
 
-**Items del enemigo (agregado):**
-Los efectos del enemigo se acumulan durante 0.8 segundos y se anuncian juntos en formato pasivo:
+Examples:
+- "You: 45 damage (Water Dagger). Enemy: 30 damage (Poison Dagger), poison."
+- "You: 60 damage (Fire Sword), critical. Enemy: 20 damage (Shield Bot), shield."
+- "You: 35 damage (Axe), burn." (if enemy did nothing relevant)
+
+### Immediate Events (interrupt waves)
+
+- **Low health (25%)**: "Low health!" or "Enemy low!"
+- **Critical health (10%)**: "Critical health!" or "Enemy critical!"
+- **Frozen**: "Frozen!" (important to know you can't act)
+
+### Combat Summary (H key)
+
+Press **H** during combat to get a summary:
 ```
-"[Total] damage received, poisoned for [Total]"
+"You dealt [X], took [Y]. Health: [player] vs [enemy]."
 ```
-Ejemplos:
-- "13 damage received" (en vez de "5 damage, 5 damage, 3 damage")
-- "8 damage received, burned for 5"
-- "poisoned for 10. critical hit"
 
-**Anuncio de vida (cada 5 segundos):**
+### Health Announcements
+
+Every 5 seconds (and 2 seconds after combat starts):
 ```
-"You: [vida] health, [escudo] shield. [Enemy]: [vida] health."
+"You: [health] health, [shield] shield. Enemy: [health] health."
 ```
-Nota: Shield se anuncia separado de health (nunca sumados).
 
-### Eventos Suscritos
+### Events Subscribed
 
-- `Events.EffectTriggered`: Cuando un item/skill activa un efecto
-- `Events.PlayerHealthChanged`: Cuando cambia la vida de jugador/enemigo
+- `Events.EffectTriggered`: When an item/skill triggers an effect
+- `Events.PlayerHealthChanged`: For health threshold warnings
 
-### ActionTypes Narrados
+### ActionTypes Tracked
 
-**Items del jugador (activo):**
-- `PlayerDamage` → "X damage"
-- `PlayerHeal` → "X heal"
-- `PlayerShieldApply` → "X shield"
-- `PlayerBurnApply` → "X burn"
-- `PlayerPoisonApply` → "X poison"
+- `PlayerDamage` → damage total
+- `PlayerHeal` → heal total
+- `PlayerShieldApply` → shield total
+- `PlayerBurnApply` → "burn" status
+- `PlayerPoisonApply` → "poison" status
+- `CardSlow` → "slow" status
+- `CardFreeze` → "freeze" status + immediate announcement
 
-**Items del enemigo (pasivo):**
-- `PlayerDamage` → "X damage received"
-- `PlayerHeal` → "X healed"
-- `PlayerShieldApply` → "X shield gained"
-- `PlayerBurnApply` → "burned for X"
-- `PlayerPoisonApply` → "poisoned for X"
-- `CardSlow` → "slowed"
-- `CardFreeze` → "frozen"
+### Enemy Name
 
-### Críticos
-
-- Items del jugador: "critical"
-- Items del enemigo: "critical hit"
-
-### Nombre del Enemigo
-
-- **PvP**: Usa el nombre del jugador oponente (`Data.SimPvpOpponent.Name`)
+- **PvP**: Uses opponent player name (`Data.SimPvpOpponent.Name`)
 - **PvE**: Usa "Enemy" (fallback)
 
 ---

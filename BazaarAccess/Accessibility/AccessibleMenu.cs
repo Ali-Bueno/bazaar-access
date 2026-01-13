@@ -396,5 +396,7 @@ public enum AccessibleKey
     Home,           // Home - Go to first element
     End,            // End - Go to last element
     PageUp,         // Page Up - Navigate faster (10 items)
-    PageDown        // Page Down - Navigate faster (10 items)
+    PageDown,       // Page Down - Navigate faster (10 items)
+    // Combat
+    CombatSummary   // H - Combat summary (damage dealt/taken, health)
 }
