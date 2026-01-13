@@ -2013,6 +2013,53 @@ public class GameplayNavigator
     }
 
     /// <summary>
+    /// Announces the stash capacity and item count.
+    /// </summary>
+    public void AnnounceStashCapacity()
+    {
+        try
+        {
+            var player = Data.Run?.Player;
+            if (player?.Stash?.Container == null)
+            {
+                TolkWrapper.Speak("Stash info not available");
+                return;
+            }
+
+            var container = player.Stash.Container;
+
+            // Stash has 10 fixed slots
+            int totalSlots = 10;
+
+            // Count used capacity (considering item sizes)
+            var socketables = container.GetSocketableList();
+            int usedCapacity = 0;
+            foreach (var socketable in socketables)
+            {
+                usedCapacity += (int)socketable.Size;
+            }
+
+            // Free slots
+            int freeSlots = container.CountEmptySockets();
+
+            // Item count
+            int itemCount = socketables.Count;
+
+            var parts = new List<string>();
+            parts.Add($"Stash: {usedCapacity} of {totalSlots} capacity used");
+            parts.Add($"{itemCount} items");
+            parts.Add($"{freeSlots} slots free");
+
+            TolkWrapper.Speak(string.Join(", ", parts));
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"AnnounceStashCapacity error: {ex.Message}");
+            TolkWrapper.Speak("Cannot read stash info");
+        }
+    }
+
+    /// <summary>
     /// Gets a description of the current item including its size in slots.
     /// </summary>
     public string GetCurrentItemSizeInfo()

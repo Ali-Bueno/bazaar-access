@@ -409,6 +409,11 @@ public class GameplayScreen : IAccessibleScreen
             case AccessibleKey.BoardInfo:
                 _navigator.AnnounceBoardCapacity();
                 break;
+
+            // S - Stash capacity info
+            case AccessibleKey.StashInfo:
+                _navigator.AnnounceStashCapacity();
+                break;
         }
     }
 

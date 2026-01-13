@@ -389,8 +389,9 @@ public enum AccessibleKey
     Info,           // I - Property/keyword info for the item
     // Upgrade
     Upgrade,        // Shift+U - Upgrade item at pedestal
-    // Board info
+    // Board and Stash info
     BoardInfo,      // T - Board capacity info (slots used/total)
+    StashInfo,      // S - Stash capacity info (items/total)
     // Fast navigation
     Home,           // Home - Go to first element
     End,            // End - Go to last element

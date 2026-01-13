@@ -406,6 +406,7 @@ Pantalla accesible principal del gameplay que implementa `IAccessibleScreen`. Se
 - `I`: Ver propiedades/keywords del item (tags, descripciones)
 - `Shift+U`: Upgradear item en el Pedestal
 - `T`: Ver capacidad del tablero (slots usados/disponibles)
+- `S`: Ver capacidad del stash (slots usados/disponibles)
 
 **Controles en Hero (V)**:
 - `Ctrl+Arriba`: Siguiente stat o skill
