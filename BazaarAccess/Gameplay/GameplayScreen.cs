@@ -57,6 +57,21 @@ public class GameplayScreen : IAccessibleScreen
                         _navigator.EnemyNextSubsection();
                         return;
 
+                    // Up/Down: Same as Ctrl+Up/Down for consistency
+                    case AccessibleKey.Up:
+                        if (_navigator.IsInEnemySkillsSubsection)
+                            _navigator.EnemySkillNext();
+                        else
+                            _navigator.EnemyDetailNext();
+                        return;
+
+                    case AccessibleKey.Down:
+                        if (_navigator.IsInEnemySkillsSubsection)
+                            _navigator.EnemySkillPrevious();
+                        else
+                            _navigator.EnemyDetailPrevious();
+                        return;
+
                     // Ctrl+Up/Down: In Items = read detail lines, In Skills = navigate skills
                     case AccessibleKey.DetailUp:
                         if (_navigator.IsInEnemySkillsSubsection)

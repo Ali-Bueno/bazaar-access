@@ -566,6 +566,7 @@ public static class ItemReader
 
         string name = GetCardName(card);
         string type = GetEncounterTypeName(card.Type);
+        string tier = GetTierName(card);
 
         // Para PvP encounters, incluir el nombre del oponente si está disponible
         if (card.Type == ECardType.PvpEncounter)
@@ -573,11 +574,11 @@ public static class ItemReader
             var pvpOpponent = Data.SimPvpOpponent;
             if (pvpOpponent != null && !string.IsNullOrEmpty(pvpOpponent.Name))
             {
-                return $"{pvpOpponent.Name}, {name}, {type}";
+                return $"{pvpOpponent.Name}, {name}, {type}, {tier}";
             }
         }
 
-        return $"{name}, {type}";
+        return $"{name}, {type}, {tier}";
     }
 
     /// <summary>
