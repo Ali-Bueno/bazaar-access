@@ -342,11 +342,19 @@ public class GameplayScreen : IAccessibleScreen
                 _navigator.Previous();
                 break;
 
-            // Up/Down no hacen nada especial en modo normal
-            // La navegación en Hero se hace con Ctrl+Up/Down
+            // Up/Down: Navigate hero stats in Hero section, or read item details elsewhere
             case AccessibleKey.Up:
+                if (_navigator.IsInHeroSection)
+                    _navigator.HeroPrevious();
+                else
+                    _navigator.ReadDetailLineUp();
+                break;
+
             case AccessibleKey.Down:
-                // No se usan en el gameplay fuera de menús específicos
+                if (_navigator.IsInHeroSection)
+                    _navigator.HeroNext();
+                else
+                    _navigator.ReadDetailLineDown();
                 break;
 
             // Fast navigation
@@ -529,7 +537,8 @@ public class GameplayScreen : IAccessibleScreen
 
     public string GetHelp()
     {
-        return "Left/Right: Navigate items. Tab: Switch section. Space: Stash. " +
+        return "Left/Right: Navigate items. Up/Down: Read item details line by line. " +
+               "Tab: Switch section. Space: Stash. " +
                "B: Board. V: Hero. C: Choices. F: Enemy info. I: Property info. W: Wins. " +
                "Enter: Select/Buy/Sell. E: Exit. R: Refresh. Shift+U: Upgrade. " +
                "Shift+Up/Down: Move to board/stash. Shift+Left/Right: Reorder. " +

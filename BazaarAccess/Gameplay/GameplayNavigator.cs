@@ -293,6 +293,7 @@ public class GameplayNavigator
         _currentSection = sections[nextIdx];
         _currentIndex = 0;
         _heroStatIndex = 0;
+        ClearDetailCache();
         AnnounceSection();
     }
 
@@ -306,6 +307,7 @@ public class GameplayNavigator
         _heroStatIndex = 0;
         _heroSubsection = HeroSubsection.Stats;
         _heroSkillIndex = 0;
+        ClearDetailCache();
         AnnounceSection();
     }
 
@@ -1470,6 +1472,7 @@ public class GameplayNavigator
         }
 
         _currentIndex++;
+        ClearDetailCache();
         AnnounceCurrentItem();
         TriggerVisualSelection();
     }
@@ -1498,6 +1501,7 @@ public class GameplayNavigator
         }
 
         _currentIndex--;
+        ClearDetailCache();
         AnnounceCurrentItem();
         TriggerVisualSelection();
     }
@@ -1513,6 +1517,7 @@ public class GameplayNavigator
         if (count == 0) return;
 
         _currentIndex = 0;
+        ClearDetailCache();
         AnnounceCurrentItem();
         TriggerVisualSelection();
     }
@@ -1528,6 +1533,7 @@ public class GameplayNavigator
         if (count == 0) return;
 
         _currentIndex = count - 1;
+        ClearDetailCache();
         AnnounceCurrentItem();
         TriggerVisualSelection();
     }
@@ -1575,6 +1581,7 @@ public class GameplayNavigator
         }
 
         _currentIndex = newIndex;
+        ClearDetailCache();
         AnnounceCurrentItem();
         TriggerVisualSelection();
     }
@@ -2695,6 +2702,7 @@ public class GameplayNavigator
 
         // Obtener líneas de detalle del item
         _detailLines = ItemReader.GetDetailLines(card);
+        _detailLines.Reverse();
     }
 
     /// <summary>
@@ -2755,5 +2763,71 @@ public class GameplayNavigator
         _detailCard = null;
         _detailLines.Clear();
         _detailIndex = -1;
+    }
+
+    /// <summary>
+    /// Read next detail line (Down key). Starts at first line.
+    /// </summary>
+    public void ReadDetailLineDown()
+    {
+        InitDetailLines();
+
+        if (_detailLines.Count == 0)
+        {
+            TolkWrapper.Speak("No details");
+            return;
+        }
+
+        // First press: start at index 0
+        if (_detailIndex < 0)
+        {
+            _detailIndex = 0;
+            TolkWrapper.Speak(_detailLines[_detailIndex]);
+            return;
+        }
+
+        // Already at last line
+        if (_detailIndex >= _detailLines.Count - 1)
+        {
+            TolkWrapper.Speak($"Last line. {_detailLines[_detailIndex]}");
+            return;
+        }
+
+        // Move to next line
+        _detailIndex++;
+        TolkWrapper.Speak(_detailLines[_detailIndex]);
+    }
+
+    /// <summary>
+    /// Read previous detail line (Up key).
+    /// </summary>
+    public void ReadDetailLineUp()
+    {
+        InitDetailLines();
+
+        if (_detailLines.Count == 0)
+        {
+            TolkWrapper.Speak("No details");
+            return;
+        }
+
+        // If not started, start at first line
+        if (_detailIndex < 0)
+        {
+            _detailIndex = 0;
+            TolkWrapper.Speak(_detailLines[_detailIndex]);
+            return;
+        }
+
+        // Already at first line
+        if (_detailIndex <= 0)
+        {
+            TolkWrapper.Speak($"First line. {_detailLines[_detailIndex]}");
+            return;
+        }
+
+        // Move to previous line
+        _detailIndex--;
+        TolkWrapper.Speak(_detailLines[_detailIndex]);
     }
 }
