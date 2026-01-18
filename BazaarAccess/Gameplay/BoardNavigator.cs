@@ -383,8 +383,7 @@ public class BoardNavigator
         }
 
         string description = GetItemDescription(card);
-        int position = _currentIndex + 1;
-        TolkWrapper.Speak($"{description}, {position} of {maxIndex}");
+        TolkWrapper.Speak(description);
     }
 
     private string GetItemDescription(Card card)

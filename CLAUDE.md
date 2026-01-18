@@ -40,7 +40,7 @@ Unity OnGUI → MapKey(event) → AccessibleKey enum → AccessibilityMgr.Handle
 ### Menu Pattern (AccessibleMenu.cs)
 Composition-based navigation used by all screens/UIs:
 - `AddOption(text, onConfirm, onRead?, onAdjust?)`
-- Up/Down navigates, announces "Item X of Y"
+- Up/Down navigates
 - Home/End/PageUp/PageDown for fast navigation
 
 ## Key Files for Common Tasks
@@ -126,7 +126,7 @@ MessageBuffer.Add("Message");  // Add to history
 
 ## Build & Deploy
 ```bash
-dotnet build BazaarAccess.csproj
+dotnet build BazaarAccess/BazaarAccess.csproj
 # Auto-copies to: D:\games\steam\steamapps\common\The Bazaar\BepInEx\plugins\
 ```
 

@@ -308,6 +308,23 @@ public static class ItemReader
     }
 
     /// <summary>
+    /// Gets the size name of a card (small/medium/large).
+    /// </summary>
+    public static string GetSizeName(Card card)
+    {
+        var template = card?.Template;
+        if (template == null) return "";
+
+        return template.Size switch
+        {
+            ECardSize.Small => "small",
+            ECardSize.Medium => "medium",
+            ECardSize.Large => "large",
+            _ => ""
+        };
+    }
+
+    /// <summary>
     /// Obtiene el precio de compra de un item.
     /// </summary>
     public static int GetBuyPrice(Card card)

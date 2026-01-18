@@ -315,8 +315,7 @@ public class AccessibleMenu
             }
         }
 
-        // Format: "Text, item X of Y"
-        string speech = $"{text}, item {visibleIndex + 1} of {visibleOptions.Count}";
+        string speech = text;
 
         TolkWrapper.Speak(speech);
     }

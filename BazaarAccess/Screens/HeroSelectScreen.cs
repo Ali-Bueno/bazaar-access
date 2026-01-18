@@ -491,8 +491,7 @@ public class HeroSelectScreen : BaseScreen
         if (_detailIndex >= _detailLines.Count) _detailIndex = 0;
 
         string line = _detailLines[_detailIndex];
-        string position = $"line {_detailIndex + 1} of {_detailLines.Count}";
-        TolkWrapper.Speak($"{line}, {position}");
+        TolkWrapper.Speak(line);
     }
 
     private void BuildDetailLines(int heroIndex)
