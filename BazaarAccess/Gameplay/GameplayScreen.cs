@@ -237,6 +237,22 @@ public class GameplayScreen : IAccessibleScreen
                     _navigator.AnnounceWins();
                     break;
 
+                case AccessibleKey.PlayerHealth:
+                    TolkWrapper.Speak(CombatDescriber.GetPlayerHealth());
+                    break;
+
+                case AccessibleKey.EnemyHealth:
+                    TolkWrapper.Speak(CombatDescriber.GetEnemyHealth());
+                    break;
+
+                case AccessibleKey.DamageDealt:
+                    TolkWrapper.Speak(CombatDescriber.GetDamageDealt());
+                    break;
+
+                case AccessibleKey.DamageTaken:
+                    TolkWrapper.Speak(CombatDescriber.GetDamageTaken());
+                    break;
+
                 case AccessibleKey.Back:
                     // Do nothing - let the game handle it (opens pause menu)
                     break;

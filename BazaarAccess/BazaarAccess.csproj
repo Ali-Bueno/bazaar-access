@@ -13,7 +13,7 @@
       https://nuget.samboy.dev/v3/index.json
     </RestoreAdditionalProjectSources>
     <RootNamespace>BazaarAccess</RootNamespace>
-    <BepInExPluginsPath>D:\games\steam\steamapps\common\The Bazaar\BepInEx\plugins</BepInExPluginsPath>
+    <BepInExPluginsPath>F:\Steam\steamapps\common\The Bazaar\BepInEx\plugins</BepInExPluginsPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,7 +28,7 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <GameManagedPath>D:\games\steam\steamapps\common\The Bazaar\TheBazaar_Data\Managed</GameManagedPath>
+    <GameManagedPath>F:\Steam\steamapps\common\The Bazaar\TheBazaar_Data\Managed</GameManagedPath>
   </PropertyGroup>
 
   <ItemGroup>

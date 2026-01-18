@@ -13,9 +13,9 @@ using UnityEngine;
 namespace BazaarAccess.Gameplay;
 
 /// <summary>
-/// Narrates combat in real-time using a wave-based system.
-/// Effects are accumulated and announced as symmetric summaries when activity pauses.
-/// Format: "You: [damage] ([top item]). Enemy: [damage] ([top item]), [status]."
+/// Narrates combat in real-time with immediate per-card announcements.
+/// Each card trigger is announced as it happens: "[ItemName]: [amount] [effect]"
+/// Player items: "Sword: 10 damage" | Enemy items: "Enemy Dagger: 5 damage"
 /// </summary>
 public static class CombatDescriber
 {
@@ -119,11 +119,8 @@ public static class CombatDescriber
         // Capture initial health
         CaptureHealthState();
 
-        // Start periodic health announcements
-        if (Plugin.Instance != null)
-        {
-            _healthCoroutine = Plugin.Instance.StartCoroutine(HealthAnnouncementLoop());
-        }
+        // Periodic health announcements disabled - user can press H for summary
+        // Health threshold warnings (low/critical) are still active
 
         Plugin.Logger.LogInfo($"CombatDescriber: Started, enemy = {_enemyName}");
     }
@@ -195,6 +192,43 @@ public static class CombatDescriber
     }
 
     /// <summary>
+    /// Gets player health as a number string (for 1 key).
+    /// </summary>
+    public static string GetPlayerHealth()
+    {
+        var player = Data.Run?.Player;
+        int health = player?.GetAttributeValue(EPlayerAttributeType.Health) ?? 0;
+        return health.ToString();
+    }
+
+    /// <summary>
+    /// Gets enemy health as a number string (for 2 key).
+    /// </summary>
+    public static string GetEnemyHealth()
+    {
+        var opponent = Data.Run?.Opponent;
+        int health = 0;
+        opponent?.Attributes.TryGetValue(EPlayerAttributeType.Health, out health);
+        return health.ToString();
+    }
+
+    /// <summary>
+    /// Gets total damage dealt as a number string (for 3 key).
+    /// </summary>
+    public static string GetDamageDealt()
+    {
+        return _totalPlayerDamageDealt.ToString();
+    }
+
+    /// <summary>
+    /// Gets total damage taken as a number string (for 4 key).
+    /// </summary>
+    public static string GetDamageTaken()
+    {
+        return _totalPlayerDamageTaken.ToString();
+    }
+
+    /// <summary>
     /// Gets the enemy name (PvP or PvE).
     /// </summary>
     private static string GetEnemyName()
@@ -252,7 +286,7 @@ public static class CombatDescriber
 
     /// <summary>
     /// Handler for combat effect events.
-    /// Accumulates effects into the current wave.
+    /// Announces each effect immediately with format: "[ItemName]: [amount] [effect]"
     /// </summary>
     internal static void OnEffectTriggered(EffectTriggeredEvent evt)
     {
@@ -279,67 +313,70 @@ public static class CombatDescriber
             bool isPlayerItem = IsPlayerCard(sourceCard);
             string itemName = ItemReader.GetCardName(sourceCard);
             int amount = CalculateEffectAmount(data);
+            bool isCrit = data.IsCrit;
 
-            // Get the appropriate wave data
-            WaveData wave = isPlayerItem ? _playerWave : _enemyWave;
-
-            // Accumulate effect
-            switch (data.ActionType)
+            // Track combat totals for H key summary
+            if (data.ActionType == ActionType.PlayerDamage)
             {
-                case ActionType.PlayerDamage:
-                    wave.TotalDamage += amount;
-                    if (!string.IsNullOrEmpty(itemName))
-                    {
-                        if (wave.DamageByItem.ContainsKey(itemName))
-                            wave.DamageByItem[itemName] += amount;
-                        else
-                            wave.DamageByItem[itemName] = amount;
-                    }
-                    // Track totals
-                    if (isPlayerItem)
-                        _totalPlayerDamageDealt += amount;
-                    else
-                        _totalPlayerDamageTaken += amount;
-                    break;
-
-                case ActionType.PlayerHeal:
-                    wave.TotalHeal += amount;
-                    break;
-
-                case ActionType.PlayerShieldApply:
-                    wave.TotalShield += amount;
-                    break;
-
-                case ActionType.PlayerBurnApply:
-                    wave.StatusEffects.Add("burn");
-                    break;
-
-                case ActionType.PlayerPoisonApply:
-                    wave.StatusEffects.Add("poison");
-                    break;
-
-                case ActionType.CardSlow:
-                    wave.StatusEffects.Add("slow");
-                    break;
-
-                case ActionType.CardFreeze:
-                    wave.StatusEffects.Add("freeze");
-                    // Immediate announcement for freeze (important!)
-                    if (!isPlayerItem)
-                        TolkWrapper.Speak("Frozen!", interrupt: true);
-                    break;
+                if (isPlayerItem)
+                    _totalPlayerDamageDealt += amount;
+                else
+                    _totalPlayerDamageTaken += amount;
             }
 
-            if (data.IsCrit)
-                wave.HadCrit = true;
-
-            // Reset wave timer
-            RestartWaveTimer();
+            // Build and announce the effect immediately
+            string announcement = FormatEffectAnnouncement(itemName, isPlayerItem, data.ActionType, amount, isCrit);
+            if (!string.IsNullOrEmpty(announcement))
+            {
+                TolkWrapper.Speak(announcement, interrupt: false);
+            }
         }
         catch (Exception ex)
         {
             Plugin.Logger.LogError($"OnEffectTriggered error: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Formats an immediate effect announcement.
+    /// Player: "Sword: 10 damage" | Enemy: "Enemy Sword: 10 damage"
+    /// </summary>
+    private static string FormatEffectAnnouncement(string itemName, bool isPlayerItem, ActionType actionType, int amount, bool isCrit)
+    {
+        // Prefix with "Enemy" for opponent items
+        string prefix = isPlayerItem ? "" : "Enemy ";
+        string name = string.IsNullOrEmpty(itemName) ? "Item" : itemName;
+
+        string effectText = actionType switch
+        {
+            ActionType.PlayerDamage => amount > 0 ? $"{amount} damage" : "damage",
+            ActionType.PlayerHeal => amount > 0 ? $"{amount} heal" : "heal",
+            ActionType.PlayerShieldApply => amount > 0 ? $"{amount} shield" : "shield",
+            ActionType.PlayerBurnApply => "burn",
+            ActionType.PlayerPoisonApply => "poison",
+            ActionType.CardSlow => "slow",
+            ActionType.CardFreeze => isPlayerItem ? "freeze" : null, // Enemy freeze uses special "Frozen!" alert
+            _ => null
+        };
+
+        if (effectText == null)
+        {
+            // Special case: enemy freeze - announce "Frozen!" instead
+            if (actionType == ActionType.CardFreeze && !isPlayerItem)
+            {
+                TolkWrapper.Speak("Frozen!", interrupt: true);
+                return null;
+            }
+            return null;
+        }
+
+        // Add crit suffix if applicable
+        if (isCrit && actionType == ActionType.PlayerDamage)
+        {
+            effectText += ", crit";
+        }
+
+        return $"{prefix}{name}: {effectText}";
     }
 
     /// <summary>

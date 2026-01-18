@@ -202,6 +202,19 @@ public class KeyboardNavigator : MonoBehaviour
             case KeyCode.PageDown:
                 return AccessibleKey.PageDown;
 
+            // Quick combat stats
+            case KeyCode.Alpha1:
+                return AccessibleKey.PlayerHealth;
+
+            case KeyCode.Alpha2:
+                return AccessibleKey.EnemyHealth;
+
+            case KeyCode.Alpha3:
+                return AccessibleKey.DamageDealt;
+
+            case KeyCode.Alpha4:
+                return AccessibleKey.DamageTaken;
+
             default:
                 return AccessibleKey.None;
         }
