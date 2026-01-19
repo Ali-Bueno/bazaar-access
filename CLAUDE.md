@@ -130,9 +130,86 @@ dotnet build BazaarAccess/BazaarAccess.csproj
 # Auto-copies to: D:\games\steam\steamapps\common\The Bazaar\BepInEx\plugins\
 ```
 
+## Creating Releases
+
+### File Structure
+```
+BazaarAccess release/          # Complete BepInEx installation template
+├── BepInEx/plugins/           # Put BazaarAccess.dll and TolkDotNet.dll here
+├── BepInEx/core/              # BepInEx core files
+├── Tolk.dll, nvdaControllerClient64.dll  # Screen reader bridge
+├── changelog.txt, README.txt  # Documentation
+└── winhttp.dll, doorstop_config.ini      # BepInEx loader
+
+releases/                      # Generated ZIPs for GitHub
+├── BazaarAccess-update.zip    # DLL + changelog only
+└── BazaarAccess-full.zip      # Complete installation
+```
+
+### Release Process
+1. Build the project: `dotnet build BazaarAccess/BazaarAccess.csproj`
+2. Update `changelog.txt` (newest entries at top)
+3. Copy files to release folder:
+   ```bash
+   cp BazaarAccess/bin/Debug/net46/BazaarAccess.dll "BazaarAccess release/BepInEx/plugins/"
+   cp changelog.txt "BazaarAccess release/"
+   cp README.txt "BazaarAccess release/"
+   ```
+4. Create ZIPs (names must stay consistent for permanent links):
+   ```powershell
+   Compress-Archive -Path 'BazaarAccess release/BepInEx/plugins/BazaarAccess.dll', 'BazaarAccess release/changelog.txt' -DestinationPath 'releases/BazaarAccess-update.zip' -Force
+   Compress-Archive -Path 'BazaarAccess release/*' -DestinationPath 'releases/BazaarAccess-full.zip' -Force
+   ```
+5. Create GitHub release:
+   ```bash
+   gh release create vX.X.X releases/BazaarAccess-update.zip releases/BazaarAccess-full.zip --title "vX.X.X - Title" --notes "Release notes"
+   ```
+
+### Permanent Download Links
+These always point to the latest release (keep filenames consistent!):
+- **Update**: https://github.com/Ali-Bueno/bazaar-access/releases/latest/download/BazaarAccess-update.zip
+- **Full**: https://github.com/Ali-Bueno/bazaar-access/releases/latest/download/BazaarAccess-full.zip
+
 ## Important Notes
 - **Debounce**: StateChangePatch uses 0.4s debounce + 1.0s throttle for announcements
 - **Combat waves**: CombatDescriber groups effects with 1.5s inactivity timeout
 - **UI discovery**: Use `FindButtonByName()` or `FindButtonByText()` from BaseUI/BaseScreen
 - **Game data**: Access via `Data.` singleton (Data.Run, Data.CurrentState, etc.)
 - **Reflection**: Event subscriptions use reflection to avoid compile-time dependencies
+
+---
+
+## Recent Merge: oasis1701 Contributions (Jan 18, 2026)
+
+**DO NOT modify these areas without understanding the full implementation:**
+
+### Combat Describer Overhaul (`Gameplay/CombatDescriber.cs`)
+- **Dual mode system**: Toggle between "batched" (wave summaries) and "individual" (per-effect) announcements
+- **Ctrl+M**: Toggle combat announcement mode
+- **Keys 1-4**: Quick stats during combat:
+  - 1 = Player health
+  - 2 = Enemy health
+  - 3 = Damage dealt
+  - 4 = Damage taken
+- New methods: `GetPlayerHealth()`, `GetEnemyHealth()`, `GetDamageDealt()`, `GetDamageTaken()`
+- `FormatEffectAnnouncement()` for immediate per-card announcements
+
+### Day/Hour Announcements (`Patches/StateChangePatch.cs`)
+- `_lastDay`, `_lastHour` tracking fields
+- `CheckAndAnnounceDayHourChanges()` method
+- `DelayedCheckDayHourChanges()` coroutine with 0.5s delay (waits for game data update)
+- Announces "Day X" or "Hour X" on progression
+
+### Enhanced Card Reading (`Gameplay/ItemReader.cs`)
+- Improved cooldown reading with `GetCooldownText()`
+- Better card name announcements
+
+### Navigation Improvements (`Gameplay/GameplayNavigator.cs`, `GameplayScreen.cs`)
+- Arrow keys enabled for reading cards and hero stats
+- Enhanced encounter scrolling
+- UI scrolling improvements across multiple screens
+
+### Plugin Configuration (`Plugin.cs`)
+- Combat mode toggle configuration added
+
+**Reference**: See `Progress.md` for detailed implementation notes on these features.

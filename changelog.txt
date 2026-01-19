@@ -2,6 +2,26 @@
 
 ---
 
+## January 19, 2026
+
+### New Features
+- Combat announcement mode toggle: Press Ctrl+M to switch between batched (wave summaries) and individual (per-effect) modes
+- Quick combat stats keys during combat:
+  - 1 = Player health
+  - 2 = Enemy health
+  - 3 = Damage dealt
+  - 4 = Damage taken
+- Day/Hour announcements: Automatically announces "Day X" or "Hour X" when progressing through the run
+
+### Improvements
+- Improved cooldown reading for cards
+- Enhanced card name announcements
+- Better UI scrolling across menus
+- Arrow keys now work for reading cards and hero stats
+- Encounter scrolling enhancements
+
+---
+
 ## January 14, 2026
 
 ### New Features
