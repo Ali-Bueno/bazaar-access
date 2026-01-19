@@ -88,7 +88,7 @@ public class ConfirmationDialogUI : IAccessibleUI
 
         var btn = _buttons[_currentIndex];
         string text = GetButtonText(btn);
-        TolkWrapper.Speak($"{text}, {_currentIndex + 1} of {_buttons.Count}");
+        TolkWrapper.Speak(text);
     }
 
     private string GetButtonText(Button btn)

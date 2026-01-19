@@ -255,10 +255,8 @@ public class ChestRewardsUI : BaseUI
             _currentIndex = 0;
 
         var info = _rewardInfos[_currentIndex];
-        string position = _rewardInfos.Count > 1 ? $"Reward {_currentIndex + 1} of {_rewardInfos.Count}. " : "";
         string description = GetRewardDescription(info);
-
-        TolkWrapper.Speak($"{position}{description}");
+        TolkWrapper.Speak(description);
     }
 
     private void Close()

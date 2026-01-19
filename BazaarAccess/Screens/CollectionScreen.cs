@@ -199,8 +199,7 @@ public class CollectionScreen : BaseScreen
 
         var item = _currentItems[_currentItemIndex];
         string summary = GetItemSummary(item);
-        string position = $"{_currentItemIndex + 1} of {_currentItems.Length}";
-        TolkWrapper.Speak($"{summary}, {position}");
+        TolkWrapper.Speak(summary);
     }
 
     public override void HandleInput(AccessibleKey key)

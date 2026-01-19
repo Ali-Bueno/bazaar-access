@@ -106,10 +106,7 @@ public static class MessageBuffer
         }
 
         string message = _messages[_currentIndex];
-        int position = _currentIndex + 1;
-        int total = _messages.Count;
-
-        TolkWrapper.Speak($"{message}, {position} of {total}");
+        TolkWrapper.Speak(message);
     }
 
     /// <summary>

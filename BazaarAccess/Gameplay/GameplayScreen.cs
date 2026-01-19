@@ -57,6 +57,21 @@ public class GameplayScreen : IAccessibleScreen
                         _navigator.EnemyNextSubsection();
                         return;
 
+                    // Up/Down: Same as Ctrl+Up/Down for consistency
+                    case AccessibleKey.Up:
+                        if (_navigator.IsInEnemySkillsSubsection)
+                            _navigator.EnemySkillNext();
+                        else
+                            _navigator.EnemyDetailNext();
+                        return;
+
+                    case AccessibleKey.Down:
+                        if (_navigator.IsInEnemySkillsSubsection)
+                            _navigator.EnemySkillPrevious();
+                        else
+                            _navigator.EnemyDetailPrevious();
+                        return;
+
                     // Ctrl+Up/Down: In Items = read detail lines, In Skills = navigate skills
                     case AccessibleKey.DetailUp:
                         if (_navigator.IsInEnemySkillsSubsection)
@@ -200,6 +215,10 @@ public class GameplayScreen : IAccessibleScreen
                     _navigator.ReadEnemyInfo();
                     break;
 
+                case AccessibleKey.ToggleCombatMode:
+                    CombatDescriber.ToggleMode();
+                    break;
+
                 // Ctrl+Up/Down para navegar stats/skills en Hero durante combate
                 case AccessibleKey.DetailUp:
                     if (_navigator.IsInHeroSection)
@@ -235,6 +254,22 @@ public class GameplayScreen : IAccessibleScreen
                 case AccessibleKey.WinsInfo:
                     // W key - wins info (also available during combat)
                     _navigator.AnnounceWins();
+                    break;
+
+                case AccessibleKey.PlayerHealth:
+                    TolkWrapper.Speak(CombatDescriber.GetPlayerHealth());
+                    break;
+
+                case AccessibleKey.EnemyHealth:
+                    TolkWrapper.Speak(CombatDescriber.GetEnemyHealth());
+                    break;
+
+                case AccessibleKey.DamageDealt:
+                    TolkWrapper.Speak(CombatDescriber.GetDamageDealt());
+                    break;
+
+                case AccessibleKey.DamageTaken:
+                    TolkWrapper.Speak(CombatDescriber.GetDamageTaken());
                     break;
 
                 case AccessibleKey.Back:
@@ -326,11 +361,19 @@ public class GameplayScreen : IAccessibleScreen
                 _navigator.Previous();
                 break;
 
-            // Up/Down no hacen nada especial en modo normal
-            // La navegación en Hero se hace con Ctrl+Up/Down
+            // Up/Down: Navigate hero stats in Hero section, or read item details elsewhere
             case AccessibleKey.Up:
+                if (_navigator.IsInHeroSection)
+                    _navigator.HeroPrevious();
+                else
+                    _navigator.ReadDetailLineUp();
+                break;
+
             case AccessibleKey.Down:
-                // No se usan en el gameplay fuera de menús específicos
+                if (_navigator.IsInHeroSection)
+                    _navigator.HeroNext();
+                else
+                    _navigator.ReadDetailLineDown();
                 break;
 
             // Fast navigation
@@ -454,6 +497,11 @@ public class GameplayScreen : IAccessibleScreen
             case AccessibleKey.WinsInfo:
                 _navigator.AnnounceWins();
                 break;
+
+            // Ctrl+M - Toggle combat announcement mode
+            case AccessibleKey.ToggleCombatMode:
+                CombatDescriber.ToggleMode();
+                break;
         }
     }
 
@@ -513,7 +561,8 @@ public class GameplayScreen : IAccessibleScreen
 
     public string GetHelp()
     {
-        return "Left/Right: Navigate items. Tab: Switch section. Space: Stash. " +
+        return "Left/Right: Navigate items. Up/Down: Read item details line by line. " +
+               "Tab: Switch section. Space: Stash. " +
                "B: Board. V: Hero. C: Choices. F: Enemy info. I: Property info. W: Wins. " +
                "Enter: Select/Buy/Sell. E: Exit. R: Refresh. Shift+U: Upgrade. " +
                "Shift+Up/Down: Move to board/stash. Shift+Left/Right: Reorder. " +

@@ -185,6 +185,11 @@ public class KeyboardNavigator : MonoBehaviour
             case KeyCode.H:
                 return AccessibleKey.CombatSummary;
 
+            // Combat mode toggle
+            case KeyCode.M:
+                if (ctrl) return AccessibleKey.ToggleCombatMode;
+                return AccessibleKey.None;
+
             // Wins info
             case KeyCode.W:
                 return AccessibleKey.WinsInfo;
@@ -201,6 +206,19 @@ public class KeyboardNavigator : MonoBehaviour
 
             case KeyCode.PageDown:
                 return AccessibleKey.PageDown;
+
+            // Quick combat stats
+            case KeyCode.Alpha1:
+                return AccessibleKey.PlayerHealth;
+
+            case KeyCode.Alpha2:
+                return AccessibleKey.EnemyHealth;
+
+            case KeyCode.Alpha3:
+                return AccessibleKey.DamageDealt;
+
+            case KeyCode.Alpha4:
+                return AccessibleKey.DamageTaken;
 
             default:
                 return AccessibleKey.None;

@@ -1,5 +1,6 @@
 using BazaarAccess.Core;
 using BepInEx;
+using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
 
@@ -11,11 +12,20 @@ public class Plugin : BaseUnityPlugin
     internal static new ManualLogSource Logger;
     internal static Plugin Instance { get; private set; }
     private static Harmony _harmony;
+    internal static ConfigEntry<bool> UseBatchedCombatMode;
 
     private void Awake()
     {
         Instance = this;
         Logger = base.Logger;
+
+        // Initialize config
+        UseBatchedCombatMode = Config.Bind(
+            "Combat",
+            "UseBatchedMode",
+            true,  // Default: batched mode (original)
+            "True = batched wave announcements with auto health. False = individual per-card announcements."
+        );
 
         // Initialize Tolk with error handling
         if (TolkWrapper.Initialize())

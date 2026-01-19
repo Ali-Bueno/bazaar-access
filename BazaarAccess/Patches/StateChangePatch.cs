@@ -39,6 +39,10 @@ public static class StateChangePatch
     private static ERunState _lastValidState = ERunState.Choice;
     private static bool _hasValidState = false;
 
+    // Track day/hour for announcing changes
+    private static int _lastDay = 0;
+    private static int _lastHour = 0;
+
     // Throttle to avoid announcement spam
     private static Coroutine _announceCoroutine = null;
     private static float _lastAnnounceTime = 0f;
@@ -347,6 +351,16 @@ public static class StateChangePatch
             bool stateActuallyChanged = newState != _lastState;
             _lastState = newState;
 
+            // Reset day/hour tracking on new run
+            if (newState == ERunState.NewRun)
+            {
+                _lastDay = 0;
+                _lastHour = 0;
+            }
+
+            // Check for day/hour changes after a delay (game data updates after state change)
+            Plugin.Instance.StartCoroutine(DelayedCheckDayHourChanges());
+
             // Detect if we enter/exit ReplayState
             bool wasInReplayState = _inReplayState;
             _inReplayState = _replayStateType != null &&
@@ -388,6 +402,8 @@ public static class StateChangePatch
     private static void OnBoardTransitionFinished()
     {
         Plugin.Logger.LogInfo("BoardTransitionFinished - UI ready");
+
+        CheckAndAnnounceDayHourChanges();
         TriggerRefreshAndAnnounce();
     }
 
@@ -397,6 +413,7 @@ public static class StateChangePatch
     private static void OnNewDayTransitionFinished()
     {
         Plugin.Logger.LogInfo("NewDayTransitionAnimationFinished - UI ready");
+        CheckAndAnnounceDayHourChanges();
         // Only refresh, BoardTransitionFinished will announce
         TriggerRefresh();
     }
@@ -726,6 +743,49 @@ public static class StateChangePatch
 
         // Refresh to pick up new attributes
         TriggerRefresh();
+    }
+
+    /// <summary>
+    /// Checks if day or hour changed and announces it to the screen reader.
+    /// </summary>
+    private static void CheckAndAnnounceDayHourChanges()
+    {
+        try
+        {
+            var run = Data.Run;
+            if (run == null) return;
+
+            int currentDay = (int)run.Day;
+            int currentHour = (int)run.Hour;
+
+            // Announce day change (takes priority over hour)
+            if (currentDay > 0 && currentDay != _lastDay)
+            {
+                TolkWrapper.Speak($"Day {currentDay}");
+                _lastDay = currentDay;
+                _lastHour = currentHour;
+            }
+            // Announce hour change (only if day didn't change)
+            else if (currentHour > 0 && currentHour != _lastHour)
+            {
+                TolkWrapper.Speak($"Hour {currentHour}");
+                _lastHour = currentHour;
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogError($"CheckAndAnnounceDayHourChanges error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Waits for game data to update, then checks for day/hour changes.
+    /// </summary>
+    private static System.Collections.IEnumerator DelayedCheckDayHourChanges()
+    {
+        // Wait for game to update Data.Run.Hour/Day
+        yield return new UnityEngine.WaitForSeconds(0.5f);
+        CheckAndAnnounceDayHourChanges();
     }
 
     #endregion

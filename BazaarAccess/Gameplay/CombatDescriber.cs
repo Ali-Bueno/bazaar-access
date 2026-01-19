@@ -13,9 +13,24 @@ using UnityEngine;
 namespace BazaarAccess.Gameplay;
 
 /// <summary>
-/// Narrates combat in real-time using a wave-based system.
-/// Effects are accumulated and announced as symmetric summaries when activity pauses.
-/// Format: "You: [damage] ([top item]). Enemy: [damage] ([top item]), [status]."
+/// Narrates combat events via screen reader. Supports two modes:
+///
+/// BATCHED MODE (default):
+/// - Accumulates effects into "waves" based on timing
+/// - After 1.5s of inactivity, announces a summary: "You: 50 damage (Sword). Enemy: 30 damage"
+/// - Includes periodic health announcements every 5 seconds
+/// - Best for: Getting the overall flow without constant interruption
+/// - Developer: Modify the BATCHED MODE region to change wave behavior
+///
+/// INDIVIDUAL MODE:
+/// - Announces each card trigger immediately as it happens
+/// - Format: "[ItemName]: [amount] [effect]" (e.g., "Sword: 10 damage")
+/// - Enemy items prefixed: "Enemy Dagger: 5 damage"
+/// - Best for: Detailed real-time combat feedback
+/// - Developer: Modify the INDIVIDUAL MODE region to change per-card behavior
+///
+/// Toggle between modes with M key during combat (or via config).
+/// Both modes share: health threshold warnings (low/critical), combat totals, H key summary.
 /// </summary>
 public static class CombatDescriber
 {
@@ -49,6 +64,51 @@ public static class CombatDescriber
     // Combat totals for H key summary
     private static int _totalPlayerDamageDealt;
     private static int _totalPlayerDamageTaken;
+
+    /// <summary>
+    /// Whether to use batched mode (wave summaries + auto health) or individual mode (per-card announcements).
+    /// </summary>
+    public static bool UseBatchedMode => Plugin.UseBatchedCombatMode?.Value ?? true;
+
+    /// <summary>
+    /// Toggles between batched and individual combat announcement modes.
+    /// </summary>
+    public static void ToggleMode()
+    {
+        if (Plugin.UseBatchedCombatMode == null) return;
+
+        Plugin.UseBatchedCombatMode.Value = !Plugin.UseBatchedCombatMode.Value;
+        string modeName = UseBatchedMode ? "Combat viewer set to batched action mode" : "Combat viewer set to Individual action mode";
+        TolkWrapper.Speak(modeName, interrupt: true);
+
+        // Handle mid-combat switch
+        if (_active)
+        {
+            if (UseBatchedMode)
+            {
+                // Start health announcements
+                if (_healthCoroutine == null && Plugin.Instance != null)
+                    _healthCoroutine = Plugin.Instance.StartCoroutine(HealthAnnouncementLoop());
+            }
+            else
+            {
+                // Stop health announcements and flush pending waves
+                if (_healthCoroutine != null && Plugin.Instance != null)
+                {
+                    Plugin.Instance.StopCoroutine(_healthCoroutine);
+                    _healthCoroutine = null;
+                }
+                if (_waveCoroutine != null && Plugin.Instance != null)
+                {
+                    Plugin.Instance.StopCoroutine(_waveCoroutine);
+                    _waveCoroutine = null;
+                }
+                AnnounceWave();  // Flush any pending wave data
+            }
+        }
+
+        Plugin.Logger.LogInfo($"Combat mode toggled to: {modeName}");
+    }
 
     /// <summary>
     /// Data accumulated during a wave of combat activity.
@@ -119,13 +179,14 @@ public static class CombatDescriber
         // Capture initial health
         CaptureHealthState();
 
-        // Start periodic health announcements
-        if (Plugin.Instance != null)
+        // Start periodic health announcements only in batched mode
+        if (UseBatchedMode && Plugin.Instance != null)
         {
             _healthCoroutine = Plugin.Instance.StartCoroutine(HealthAnnouncementLoop());
         }
+        // Health threshold warnings (low/critical) are always active
 
-        Plugin.Logger.LogInfo($"CombatDescriber: Started, enemy = {_enemyName}");
+        Plugin.Logger.LogInfo($"CombatDescriber: Started, enemy = {_enemyName}, mode = {(UseBatchedMode ? "batched" : "individual")}");
     }
 
     /// <summary>
@@ -195,6 +256,43 @@ public static class CombatDescriber
     }
 
     /// <summary>
+    /// Gets player health as a number string (for 1 key).
+    /// </summary>
+    public static string GetPlayerHealth()
+    {
+        var player = Data.Run?.Player;
+        int health = player?.GetAttributeValue(EPlayerAttributeType.Health) ?? 0;
+        return health.ToString();
+    }
+
+    /// <summary>
+    /// Gets enemy health as a number string (for 2 key).
+    /// </summary>
+    public static string GetEnemyHealth()
+    {
+        var opponent = Data.Run?.Opponent;
+        int health = 0;
+        opponent?.Attributes.TryGetValue(EPlayerAttributeType.Health, out health);
+        return health.ToString();
+    }
+
+    /// <summary>
+    /// Gets total damage dealt as a number string (for 3 key).
+    /// </summary>
+    public static string GetDamageDealt()
+    {
+        return _totalPlayerDamageDealt.ToString();
+    }
+
+    /// <summary>
+    /// Gets total damage taken as a number string (for 4 key).
+    /// </summary>
+    public static string GetDamageTaken()
+    {
+        return _totalPlayerDamageTaken.ToString();
+    }
+
+    /// <summary>
     /// Gets the enemy name (PvP or PvE).
     /// </summary>
     private static string GetEnemyName()
@@ -251,8 +349,7 @@ public static class CombatDescriber
     }
 
     /// <summary>
-    /// Handler for combat effect events.
-    /// Accumulates effects into the current wave.
+    /// Handler for combat effect events. Dispatches to the appropriate mode handler.
     /// </summary>
     internal static void OnEffectTriggered(EffectTriggeredEvent evt)
     {
@@ -275,72 +372,163 @@ public static class CombatDescriber
             var sourceCard = data.SourceCard;
             if (sourceCard == null) return;
 
-            // Determine owner
+            // Determine owner and effect details
             bool isPlayerItem = IsPlayerCard(sourceCard);
             string itemName = ItemReader.GetCardName(sourceCard);
             int amount = CalculateEffectAmount(data);
+            bool isCrit = data.IsCrit;
 
-            // Get the appropriate wave data
-            WaveData wave = isPlayerItem ? _playerWave : _enemyWave;
-
-            // Accumulate effect
-            switch (data.ActionType)
-            {
-                case ActionType.PlayerDamage:
-                    wave.TotalDamage += amount;
-                    if (!string.IsNullOrEmpty(itemName))
-                    {
-                        if (wave.DamageByItem.ContainsKey(itemName))
-                            wave.DamageByItem[itemName] += amount;
-                        else
-                            wave.DamageByItem[itemName] = amount;
-                    }
-                    // Track totals
-                    if (isPlayerItem)
-                        _totalPlayerDamageDealt += amount;
-                    else
-                        _totalPlayerDamageTaken += amount;
-                    break;
-
-                case ActionType.PlayerHeal:
-                    wave.TotalHeal += amount;
-                    break;
-
-                case ActionType.PlayerShieldApply:
-                    wave.TotalShield += amount;
-                    break;
-
-                case ActionType.PlayerBurnApply:
-                    wave.StatusEffects.Add("burn");
-                    break;
-
-                case ActionType.PlayerPoisonApply:
-                    wave.StatusEffects.Add("poison");
-                    break;
-
-                case ActionType.CardSlow:
-                    wave.StatusEffects.Add("slow");
-                    break;
-
-                case ActionType.CardFreeze:
-                    wave.StatusEffects.Add("freeze");
-                    // Immediate announcement for freeze (important!)
-                    if (!isPlayerItem)
-                        TolkWrapper.Speak("Frozen!", interrupt: true);
-                    break;
-            }
-
-            if (data.IsCrit)
-                wave.HadCrit = true;
-
-            // Reset wave timer
-            RestartWaveTimer();
+            // Dispatch to the appropriate mode handler
+            if (UseBatchedMode)
+                HandleBatchedEffect(itemName, isPlayerItem, data, amount, isCrit);
+            else
+                HandleIndividualEffect(itemName, isPlayerItem, data, amount, isCrit);
         }
         catch (Exception ex)
         {
             Plugin.Logger.LogError($"OnEffectTriggered error: {ex.Message}");
         }
     }
+
+    #region ===== BATCHED MODE =====
+    // All batched mode specific code here.
+    // Developer can modify this section without affecting individual mode.
+    // Batched mode accumulates effects into waves and announces summaries after 1.5s of inactivity.
+
+    /// <summary>
+    /// Handles an effect in batched mode by accumulating it into wave data.
+    /// Modify this method to change how effects are grouped and summarized.
+    /// </summary>
+    private static void HandleBatchedEffect(string itemName, bool isPlayerItem, CombatActionData data, int amount, bool isCrit)
+    {
+        WaveData wave = isPlayerItem ? _playerWave : _enemyWave;
+
+        switch (data.ActionType)
+        {
+            case ActionType.PlayerDamage:
+                wave.TotalDamage += amount;
+                if (!string.IsNullOrEmpty(itemName))
+                {
+                    if (wave.DamageByItem.ContainsKey(itemName))
+                        wave.DamageByItem[itemName] += amount;
+                    else
+                        wave.DamageByItem[itemName] = amount;
+                }
+                if (isPlayerItem) _totalPlayerDamageDealt += amount;
+                else _totalPlayerDamageTaken += amount;
+                break;
+
+            case ActionType.PlayerHeal:
+                wave.TotalHeal += amount;
+                break;
+
+            case ActionType.PlayerShieldApply:
+                wave.TotalShield += amount;
+                break;
+
+            case ActionType.PlayerBurnApply:
+                wave.StatusEffects.Add("burn");
+                break;
+
+            case ActionType.PlayerPoisonApply:
+                wave.StatusEffects.Add("poison");
+                break;
+
+            case ActionType.CardSlow:
+                wave.StatusEffects.Add("slow");
+                break;
+
+            case ActionType.CardFreeze:
+                if (!isPlayerItem)
+                {
+                    // Enemy freeze - special "Frozen!" alert
+                    TolkWrapper.Speak("Frozen!", interrupt: true);
+                }
+                else
+                {
+                    wave.StatusEffects.Add("freeze");
+                }
+                break;
+        }
+
+        if (isCrit) wave.HadCrit = true;
+        RestartWaveTimer();
+    }
+
+    #endregion
+
+    #region ===== INDIVIDUAL MODE =====
+    // All individual mode specific code here.
+    // Developer can modify this section without affecting batched mode.
+    // Individual mode announces each card trigger immediately as it happens.
+
+    /// <summary>
+    /// Handles an effect in individual mode by announcing it immediately.
+    /// Modify this method to change how individual effects are announced.
+    /// </summary>
+    private static void HandleIndividualEffect(string itemName, bool isPlayerItem, CombatActionData data, int amount, bool isCrit)
+    {
+        // Track damage totals
+        if (data.ActionType == ActionType.PlayerDamage)
+        {
+            if (isPlayerItem) _totalPlayerDamageDealt += amount;
+            else _totalPlayerDamageTaken += amount;
+        }
+
+        string announcement = FormatEffectAnnouncement(itemName, isPlayerItem, data.ActionType, amount, isCrit);
+        if (!string.IsNullOrEmpty(announcement))
+        {
+            TolkWrapper.Speak(announcement, interrupt: false);
+        }
+    }
+
+    /// <summary>
+    /// Formats an immediate effect announcement for individual mode.
+    /// Player: "Sword: 10 damage" | Enemy: "Enemy Sword: 10 damage"
+    /// </summary>
+    private static string FormatEffectAnnouncement(string itemName, bool isPlayerItem, ActionType actionType, int amount, bool isCrit)
+    {
+        // Prefix with "Enemy" for opponent items
+        string prefix = isPlayerItem ? "" : "Enemy ";
+        string name = string.IsNullOrEmpty(itemName) ? "Item" : itemName;
+
+        string effectText = actionType switch
+        {
+            ActionType.PlayerDamage => amount > 0 ? $"{amount} damage" : "damage",
+            ActionType.PlayerHeal => amount > 0 ? $"{amount} heal" : "heal",
+            ActionType.PlayerShieldApply => amount > 0 ? $"{amount} shield" : "shield",
+            ActionType.PlayerBurnApply => "burn",
+            ActionType.PlayerPoisonApply => "poison",
+            ActionType.CardSlow => "slow",
+            ActionType.CardFreeze => isPlayerItem ? "freeze" : null, // Enemy freeze uses special "Frozen!" alert
+            _ => null
+        };
+
+        if (effectText == null)
+        {
+            // Special case: enemy freeze - announce "Frozen!" instead
+            if (actionType == ActionType.CardFreeze && !isPlayerItem)
+            {
+                TolkWrapper.Speak("Frozen!", interrupt: true);
+                return null;
+            }
+            return null;
+        }
+
+        // Add crit suffix if applicable
+        if (isCrit && actionType == ActionType.PlayerDamage)
+        {
+            effectText += ", crit";
+        }
+
+        return $"{prefix}{name}: {effectText}";
+    }
+
+    #endregion
+
+    #region ===== BATCHED MODE: WAVE METHODS =====
+    // Wave accumulation and announcement methods for batched mode.
+    // Modify these to change how waves are timed and summarized.
 
     /// <summary>
     /// Restarts the wave timeout timer.
@@ -448,6 +636,11 @@ public static class CombatDescriber
         return result;
     }
 
+    #endregion
+
+    #region ===== SHARED: HEALTH WARNINGS =====
+    // Health threshold warnings (low/critical) are active in both modes.
+
     /// <summary>
     /// Handler for health changes - checks for threshold warnings.
     /// </summary>
@@ -519,6 +712,11 @@ public static class CombatDescriber
             Plugin.Logger.LogError($"CheckHealthThresholds error: {ex.Message}");
         }
     }
+
+    #endregion
+
+    #region ===== SHARED: UTILITIES =====
+    // Utility methods used by both modes.
 
     /// <summary>
     /// Checks if an action type is relevant for narration.
@@ -626,8 +824,14 @@ public static class CombatDescriber
         return amount;
     }
 
+    #endregion
+
+    #region ===== BATCHED MODE: PERIODIC HEALTH =====
+    // Periodic health announcements are only active in batched mode.
+    // Modify these methods to change timing or format of health updates.
+
     /// <summary>
-    /// Periodic health announcement loop.
+    /// Periodic health announcement loop (batched mode only).
     /// </summary>
     private static IEnumerator HealthAnnouncementLoop()
     {
@@ -696,4 +900,6 @@ public static class CombatDescriber
             Plugin.Logger.LogError($"AnnounceHealth error: {ex.Message}");
         }
     }
+
+    #endregion
 }

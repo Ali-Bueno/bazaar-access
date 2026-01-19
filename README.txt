@@ -34,7 +34,8 @@ ITEM MANAGEMENT
   Shift+Left/Right   Reorder items on Board
 
 DETAILED INFO
-  Ctrl+Up/Down       Read item details line by line / Navigate hero stats
+up/down arrows, Read card text line by line and hero stats
+Alternative keys,   Ctrl+Up/Down       Read item details line by line / Navigate hero stats
   Ctrl+Left/Right    Switch hero subsection (Stats <-> Skills)
   I                  Show item properties/keywords descriptions
 
@@ -50,6 +51,7 @@ MESSAGE BUFFER
 INFO
   T                  Board capacity (slots used/available)
   S                  Stash capacity (items/total)
+control+m, switch combat reading modes, batched/wave mode > individual actions mode.
 
 OTHER
   F1                 Help
@@ -57,9 +59,11 @@ OTHER
 
 DURING COMBAT
 -------------
-- Only V (hero stats) and F (enemy stats) work
+1 through 4 on number row: your health, enemy health, damage delt, damage taken.
+- V (hero stats) and F (enemy stats)
 - H                  Combat summary (damage dealt/taken, health)
-- Wave-based narration: effects grouped into summaries
+- if in batched combat mode,  Wave-based narration: effects grouped into summaries
+- If in individual action mode, You will hear every card trigger. auto health announcements are disabled, use the 1 through 4 row number keys to quickly read health related info.
 - "Low health!" / "Critical health!" alerts
 - "Victory! X wins" or "Defeat! Lost X prestige" at end
 

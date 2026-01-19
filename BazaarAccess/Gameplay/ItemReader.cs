@@ -308,6 +308,23 @@ public static class ItemReader
     }
 
     /// <summary>
+    /// Gets the size name of a card (small/medium/large).
+    /// </summary>
+    public static string GetSizeName(Card card)
+    {
+        var template = card?.Template;
+        if (template == null) return "";
+
+        return template.Size switch
+        {
+            ECardSize.Small => "small",
+            ECardSize.Medium => "medium",
+            ECardSize.Large => "large",
+            _ => ""
+        };
+    }
+
+    /// <summary>
     /// Obtiene el precio de compra de un item.
     /// </summary>
     public static int GetBuyPrice(Card card)
@@ -457,7 +474,12 @@ public static class ItemReader
         }
 
         // Cooldown (convertir de ms a segundos)
+        // Try Cooldown first, fallback to CooldownMax (base cooldown shown in UI)
         var cooldown = card.GetAttributeValue(ECardAttributeType.Cooldown);
+        if (!cooldown.HasValue || cooldown.Value <= 0)
+        {
+            cooldown = card.GetAttributeValue(ECardAttributeType.CooldownMax);
+        }
         if (cooldown.HasValue && cooldown.Value > 0)
         {
             float seconds = cooldown.Value / 1000f;
@@ -549,6 +571,7 @@ public static class ItemReader
 
         string name = GetCardName(card);
         string type = GetEncounterTypeName(card.Type);
+        string tier = GetTierName(card);
 
         // Para PvP encounters, incluir el nombre del oponente si está disponible
         if (card.Type == ECardType.PvpEncounter)
@@ -556,11 +579,11 @@ public static class ItemReader
             var pvpOpponent = Data.SimPvpOpponent;
             if (pvpOpponent != null && !string.IsNullOrEmpty(pvpOpponent.Name))
             {
-                return $"{pvpOpponent.Name}, {name}, {type}";
+                return $"{pvpOpponent.Name}, {name}, {type}, {tier}";
             }
         }
 
-        return $"{name}, {type}";
+        return $"{name}, {type}, {tier}";
     }
 
     /// <summary>
@@ -837,7 +860,12 @@ public static class ItemReader
         }
 
         // Cooldown
+        // Try Cooldown first, fallback to CooldownMax (base cooldown shown in UI)
         var cooldown = card.GetAttributeValue(ECardAttributeType.Cooldown);
+        if (!cooldown.HasValue || cooldown.Value <= 0)
+        {
+            cooldown = card.GetAttributeValue(ECardAttributeType.CooldownMax);
+        }
         if (cooldown.HasValue && cooldown.Value > 0)
         {
             float seconds = cooldown.Value / 1000f;

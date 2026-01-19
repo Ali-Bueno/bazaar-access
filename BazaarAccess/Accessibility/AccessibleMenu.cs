@@ -315,8 +315,7 @@ public class AccessibleMenu
             }
         }
 
-        // Format: "Text, item X of Y"
-        string speech = $"{text}, item {visibleIndex + 1} of {visibleOptions.Count}";
+        string speech = text;
 
         TolkWrapper.Speak(speech);
     }
@@ -399,6 +398,13 @@ public enum AccessibleKey
     PageDown,       // Page Down - Navigate faster (10 items)
     // Combat
     CombatSummary,  // H - Combat summary (damage dealt/taken, health)
+    // Quick combat stats (number keys)
+    PlayerHealth,   // 1 - Player health (number only)
+    EnemyHealth,    // 2 - Enemy health (number only)
+    DamageDealt,    // 3 - Damage dealt (number only)
+    DamageTaken,    // 4 - Damage taken (number only)
     // Wins info
-    WinsInfo        // W - Announce current wins/victories
+    WinsInfo,       // W - Announce current wins/victories
+    // Combat mode toggle
+    ToggleCombatMode  // Ctrl+M - Toggle between individual and batched combat announcements
 }

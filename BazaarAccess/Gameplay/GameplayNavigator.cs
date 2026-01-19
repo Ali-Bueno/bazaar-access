@@ -293,6 +293,7 @@ public class GameplayNavigator
         _currentSection = sections[nextIdx];
         _currentIndex = 0;
         _heroStatIndex = 0;
+        ClearDetailCache();
         AnnounceSection();
     }
 
@@ -306,6 +307,7 @@ public class GameplayNavigator
         _heroStatIndex = 0;
         _heroSubsection = HeroSubsection.Stats;
         _heroSkillIndex = 0;
+        ClearDetailCache();
         AnnounceSection();
     }
 
@@ -460,11 +462,11 @@ public class GameplayNavigator
 
         if (!string.IsNullOrEmpty(desc))
         {
-            TolkWrapper.Speak($"{name}: {desc}, {_heroSkillIndex + 1} of {_playerSkills.Count}");
+            TolkWrapper.Speak($"{name}: {desc}");
         }
         else
         {
-            TolkWrapper.Speak($"{name}, {_heroSkillIndex + 1} of {_playerSkills.Count}");
+            TolkWrapper.Speak(name);
         }
 
         // Activar selección visual de la skill
@@ -1117,7 +1119,7 @@ public class GameplayNavigator
         var card = GetCurrentEnemyCard();
         if (card == null)
         {
-            TolkWrapper.Speak($"Empty slot, {_enemySkillIndex + 1} of {skillCount}");
+            TolkWrapper.Speak("Empty slot");
             return;
         }
 
@@ -1126,11 +1128,11 @@ public class GameplayNavigator
 
         if (!string.IsNullOrEmpty(desc))
         {
-            TolkWrapper.Speak($"{name}: {desc}, {_enemySkillIndex + 1} of {skillCount}");
+            TolkWrapper.Speak($"{name}: {desc}");
         }
         else
         {
-            TolkWrapper.Speak($"{name}, {_enemySkillIndex + 1} of {skillCount}");
+            TolkWrapper.Speak(name);
         }
     }
 
@@ -1171,12 +1173,12 @@ public class GameplayNavigator
         if (_enemyDetailIndex >= _enemyDetailLines.Count - 1)
         {
             _enemyDetailIndex = _enemyDetailLines.Count - 1;
-            TolkWrapper.Speak($"{_enemyDetailLines[_enemyDetailIndex]}, {_enemyDetailIndex + 1} of {_enemyDetailLines.Count}");
+            TolkWrapper.Speak(_enemyDetailLines[_enemyDetailIndex]);
             return;
         }
 
         _enemyDetailIndex++;
-        TolkWrapper.Speak($"{_enemyDetailLines[_enemyDetailIndex]}, {_enemyDetailIndex + 1} of {_enemyDetailLines.Count}");
+        TolkWrapper.Speak(_enemyDetailLines[_enemyDetailIndex]);
     }
 
     /// <summary>
@@ -1211,12 +1213,12 @@ public class GameplayNavigator
         if (_enemyDetailIndex <= 0)
         {
             _enemyDetailIndex = 0;
-            TolkWrapper.Speak($"{_enemyDetailLines[0]}, 1 of {_enemyDetailLines.Count}");
+            TolkWrapper.Speak(_enemyDetailLines[0]);
             return;
         }
 
         _enemyDetailIndex--;
-        TolkWrapper.Speak($"{_enemyDetailLines[_enemyDetailIndex]}, {_enemyDetailIndex + 1} of {_enemyDetailLines.Count}");
+        TolkWrapper.Speak(_enemyDetailLines[_enemyDetailIndex]);
     }
 
     /// <summary>
@@ -1316,7 +1318,7 @@ public class GameplayNavigator
 
         if (card == null)
         {
-            TolkWrapper.Speak($"Empty, {pos} of {total}");
+            TolkWrapper.Speak("Empty");
             return;
         }
 
@@ -1328,16 +1330,16 @@ public class GameplayNavigator
             string desc = ItemReader.GetFullDescription(card);
             if (!string.IsNullOrEmpty(desc))
             {
-                TolkWrapper.Speak($"{name}: {desc}, {pos} of {total}");
+                TolkWrapper.Speak($"{name}: {desc}");
             }
             else
             {
-                TolkWrapper.Speak($"{name}, {pos} of {total}");
+                TolkWrapper.Speak(name);
             }
         }
         else
         {
-            TolkWrapper.Speak($"{name}, {pos} of {total}");
+            TolkWrapper.Speak(name);
         }
 
         // Visual feedback (only if controller is available)
@@ -1470,6 +1472,7 @@ public class GameplayNavigator
         }
 
         _currentIndex++;
+        ClearDetailCache();
         AnnounceCurrentItem();
         TriggerVisualSelection();
     }
@@ -1498,6 +1501,7 @@ public class GameplayNavigator
         }
 
         _currentIndex--;
+        ClearDetailCache();
         AnnounceCurrentItem();
         TriggerVisualSelection();
     }
@@ -1513,6 +1517,7 @@ public class GameplayNavigator
         if (count == 0) return;
 
         _currentIndex = 0;
+        ClearDetailCache();
         AnnounceCurrentItem();
         TriggerVisualSelection();
     }
@@ -1528,6 +1533,7 @@ public class GameplayNavigator
         if (count == 0) return;
 
         _currentIndex = count - 1;
+        ClearDetailCache();
         AnnounceCurrentItem();
         TriggerVisualSelection();
     }
@@ -1575,6 +1581,7 @@ public class GameplayNavigator
         }
 
         _currentIndex = newIndex;
+        ClearDetailCache();
         AnnounceCurrentItem();
         TriggerVisualSelection();
     }
@@ -1782,7 +1789,7 @@ public class GameplayNavigator
                     break;
             }
 
-            TolkWrapper.Speak($"{desc}, {pos} of {total}");
+            TolkWrapper.Speak(desc);
             return;
         }
 
@@ -1795,7 +1802,7 @@ public class GameplayNavigator
         }
 
         string cardDesc = GetCardDescription(card);
-        TolkWrapper.Speak($"{cardDesc}, {pos} of {total}");
+        TolkWrapper.Speak(cardDesc);
     }
 
     public void ReadDetailedInfo()
@@ -2318,23 +2325,64 @@ public class GameplayNavigator
 
     private string GetCardDescription(Card card)
     {
-        // En selección
+        // En selección (shop/rewards)
         if (_currentSection == NavigationSection.Selection)
         {
             if (IsEncounterCard(card))
                 return ItemReader.GetEncounterInfo(card);
 
+            string shopName = ItemReader.GetCardName(card);
+            string shopSize = card.Type != ECardType.Skill ? ItemReader.GetSizeName(card) : null;
+            string shopTier = ItemReader.GetTierName(card);
+
             if (IsSelectionFree())
-                return ItemReader.GetCardName(card);
+            {
+                // Free selection - no price, but show size/tier
+                if (card.Type == ECardType.Skill)
+                    return !string.IsNullOrEmpty(shopTier) ? $"{shopName}, {shopTier.ToLower()}" : shopName;
+
+                if (!string.IsNullOrEmpty(shopSize) && !string.IsNullOrEmpty(shopTier))
+                    return $"{shopName}, {shopSize}, {shopTier.ToLower()}";
+                if (!string.IsNullOrEmpty(shopSize))
+                    return $"{shopName}, {shopSize}";
+                return shopName;
+            }
 
             int price = ItemReader.GetBuyPrice(card);
-            return price > 0 ? $"{ItemReader.GetCardName(card)}, {price} gold" : ItemReader.GetCardName(card);
+            if (price > 0)
+            {
+                if (card.Type == ECardType.Skill)
+                    return !string.IsNullOrEmpty(shopTier) ? $"{shopName}, {shopTier.ToLower()}, {price} gold" : $"{shopName}, {price} gold";
+
+                if (!string.IsNullOrEmpty(shopSize) && !string.IsNullOrEmpty(shopTier))
+                    return $"{shopName}, {shopSize}, {shopTier.ToLower()}, {price} gold";
+                if (!string.IsNullOrEmpty(shopSize))
+                    return $"{shopName}, {shopSize}, {price} gold";
+                return $"{shopName}, {price} gold";
+            }
+            return shopName;
         }
 
-        // En tablero/stash - mostrar precio de venta
+        // En tablero/stash/skills
         string name = ItemReader.GetCardName(card);
-        int sellPrice = ItemReader.GetSellPrice(card);
-        return sellPrice > 0 ? $"{name}, sell {sellPrice}" : name;
+
+        // Skills show tier only, items show size and tier
+        if (card.Type == ECardType.Skill)
+        {
+            string tier = ItemReader.GetTierName(card);
+            return !string.IsNullOrEmpty(tier) ? $"{name}, {tier.ToLower()}" : name;
+        }
+
+        string size = ItemReader.GetSizeName(card);
+        string itemTier = ItemReader.GetTierName(card);
+
+        if (!string.IsNullOrEmpty(size) && !string.IsNullOrEmpty(itemTier))
+            return $"{name}, {size}, {itemTier.ToLower()}";
+        if (!string.IsNullOrEmpty(size))
+            return $"{name}, {size}";
+        if (!string.IsNullOrEmpty(itemTier))
+            return $"{name}, {itemTier.ToLower()}";
+        return name;
     }
 
     private bool IsEncounterCard(Card card) =>
@@ -2654,6 +2702,7 @@ public class GameplayNavigator
 
         // Obtener líneas de detalle del item
         _detailLines = ItemReader.GetDetailLines(card);
+        _detailLines.Reverse();
     }
 
     /// <summary>
@@ -2672,12 +2721,12 @@ public class GameplayNavigator
         if (_detailIndex <= 0)
         {
             _detailIndex = 0;
-            TolkWrapper.Speak($"{_detailLines[0]}, 1 of {_detailLines.Count}");
+            TolkWrapper.Speak(_detailLines[0]);
         }
         else
         {
             _detailIndex--;
-            TolkWrapper.Speak($"{_detailLines[_detailIndex]}, {_detailIndex + 1} of {_detailLines.Count}");
+            TolkWrapper.Speak(_detailLines[_detailIndex]);
         }
     }
 
@@ -2703,7 +2752,7 @@ public class GameplayNavigator
             _detailIndex++;
         }
 
-        TolkWrapper.Speak($"{_detailLines[_detailIndex]}, {_detailIndex + 1} of {_detailLines.Count}");
+        TolkWrapper.Speak(_detailLines[_detailIndex]);
     }
 
     /// <summary>
@@ -2714,5 +2763,71 @@ public class GameplayNavigator
         _detailCard = null;
         _detailLines.Clear();
         _detailIndex = -1;
+    }
+
+    /// <summary>
+    /// Read next detail line (Down key). Starts at first line.
+    /// </summary>
+    public void ReadDetailLineDown()
+    {
+        InitDetailLines();
+
+        if (_detailLines.Count == 0)
+        {
+            TolkWrapper.Speak("No details");
+            return;
+        }
+
+        // First press: start at index 0
+        if (_detailIndex < 0)
+        {
+            _detailIndex = 0;
+            TolkWrapper.Speak(_detailLines[_detailIndex]);
+            return;
+        }
+
+        // Already at last line
+        if (_detailIndex >= _detailLines.Count - 1)
+        {
+            TolkWrapper.Speak($"Last line. {_detailLines[_detailIndex]}");
+            return;
+        }
+
+        // Move to next line
+        _detailIndex++;
+        TolkWrapper.Speak(_detailLines[_detailIndex]);
+    }
+
+    /// <summary>
+    /// Read previous detail line (Up key).
+    /// </summary>
+    public void ReadDetailLineUp()
+    {
+        InitDetailLines();
+
+        if (_detailLines.Count == 0)
+        {
+            TolkWrapper.Speak("No details");
+            return;
+        }
+
+        // If not started, start at first line
+        if (_detailIndex < 0)
+        {
+            _detailIndex = 0;
+            TolkWrapper.Speak(_detailLines[_detailIndex]);
+            return;
+        }
+
+        // Already at first line
+        if (_detailIndex <= 0)
+        {
+            TolkWrapper.Speak($"First line. {_detailLines[_detailIndex]}");
+            return;
+        }
+
+        // Move to previous line
+        _detailIndex--;
+        TolkWrapper.Speak(_detailLines[_detailIndex]);
     }
 }
