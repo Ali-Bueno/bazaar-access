@@ -24,3 +24,11 @@ Thumbs.db
 
 # BepInEx logs
 LogOutput.log
+
+# Claude temp files
+tmpclaude-*
+nul
+
+# Release builds (local only)
+releases/
+BazaarAccess release/
