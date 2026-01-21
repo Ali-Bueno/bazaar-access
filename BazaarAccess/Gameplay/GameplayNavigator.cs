@@ -45,6 +45,20 @@ public enum EnemySubsection
 }
 
 /// <summary>
+/// Secciones en modo recap (post-combate con E).
+/// </summary>
+public enum RecapSection
+{
+    None,           // No estamos en ninguna sección de recap
+    HeroStats,      // Stats del héroe propio (V)
+    HeroSkills,     // Skills del héroe propio (V + Right)
+    EnemyStats,     // Stats del héroe enemigo (F)
+    EnemySkills,    // Skills del héroe enemigo (F + Right)
+    EnemyBoard,     // Tablero del enemigo (G)
+    PlayerBoard     // Tablero propio (B)
+}
+
+/// <summary>
 /// Tipos de items navegables (cartas o acciones).
 /// </summary>
 public enum NavItemType
@@ -120,6 +134,12 @@ public class GameplayNavigator
     private List<string> _enemyDetailLines = new List<string>();
     private int _enemyDetailIndex = -1;
     private Card _enemyDetailCard = null;
+
+    // Recap mode navigation
+    private RecapSection _currentRecapSection = RecapSection.None;
+    private int _enemyStatIndex = 0;  // For navigating enemy hero stats
+    private int _enemyHeroSkillIndex = 0;  // For navigating enemy hero skills (separate from enemy board skills)
+
     private static readonly EPlayerAttributeType[] HeroStats = new[]
     {
         EPlayerAttributeType.Health,
@@ -141,6 +161,7 @@ public class GameplayNavigator
     public HeroSubsection CurrentHeroSubsection => _heroSubsection;
     public bool IsInEnemyMode => _enemyMode;
     public EnemySubsection CurrentEnemySubsection => _enemySubsection;
+    public RecapSection CurrentRecapSection => _currentRecapSection;
 
     public ERunState GetCurrentState()
     {
@@ -654,6 +675,10 @@ public class GameplayNavigator
     public void SetRecapMode(bool inRecapMode)
     {
         _inRecapMode = inRecapMode;
+        if (!inRecapMode)
+        {
+            _currentRecapSection = RecapSection.None;
+        }
     }
 
     /// <summary>
@@ -877,6 +902,12 @@ public class GameplayNavigator
             _enemySkillIndex = 0;
             _enemySubsection = EnemySubsection.Items;
             ClearEnemyDetailReading();
+
+            // Set recap section if in recap mode
+            if (_inRecapMode)
+            {
+                _currentRecapSection = RecapSection.EnemyBoard;
+            }
 
             // Get opponent name if available
             string opponentName = "Opponent";
@@ -2830,4 +2861,307 @@ public class GameplayNavigator
         _detailIndex--;
         TolkWrapper.Speak(_detailLines[_detailIndex]);
     }
+
+    // ===============================================
+    // RECAP MODE NAVIGATION (post-combat with E key)
+    // ===============================================
+
+    /// <summary>
+    /// Enter Hero stats mode in recap (V key).
+    /// </summary>
+    public void EnterRecapHeroMode()
+    {
+        _currentRecapSection = RecapSection.HeroStats;
+        _heroStatIndex = 0;
+        _currentSection = NavigationSection.Hero;
+        _heroSubsection = HeroSubsection.Stats;
+
+        int statCount = HeroStats.Length;
+        int skillCount = _playerSkills.Count;
+
+        string msg = $"Your hero. Stats: {statCount}";
+        if (skillCount > 0)
+            msg += $", Skills: {skillCount}. Right arrow for skills.";
+
+        TolkWrapper.Speak(msg);
+    }
+
+    /// <summary>
+    /// Navigate to previous hero stat/skill in recap (Up key).
+    /// </summary>
+    public void RecapHeroPrevious()
+    {
+        if (_currentRecapSection == RecapSection.HeroStats)
+        {
+            if (_heroStatIndex <= 0)
+            {
+                _heroStatIndex = 0;
+                AnnounceHeroStat();
+                return;
+            }
+            _heroStatIndex--;
+            AnnounceHeroStat();
+        }
+        else if (_currentRecapSection == RecapSection.HeroSkills)
+        {
+            if (_heroSkillIndex <= 0)
+            {
+                _heroSkillIndex = 0;
+                AnnounceHeroSkill();
+                return;
+            }
+            _heroSkillIndex--;
+            AnnounceHeroSkill();
+        }
+    }
+
+    /// <summary>
+    /// Navigate to next hero stat/skill in recap (Down key).
+    /// </summary>
+    public void RecapHeroNext()
+    {
+        if (_currentRecapSection == RecapSection.HeroStats)
+        {
+            if (_heroStatIndex >= HeroStats.Length - 1)
+            {
+                AnnounceHeroStat();
+                return;
+            }
+            _heroStatIndex++;
+            AnnounceHeroStat();
+        }
+        else if (_currentRecapSection == RecapSection.HeroSkills)
+        {
+            if (_heroSkillIndex >= _playerSkills.Count - 1)
+            {
+                AnnounceHeroSkill();
+                return;
+            }
+            _heroSkillIndex++;
+            AnnounceHeroSkill();
+        }
+    }
+
+    /// <summary>
+    /// Switch to hero stats in recap (Left key).
+    /// </summary>
+    public void RecapHeroToStats()
+    {
+        if (_currentRecapSection == RecapSection.HeroSkills)
+        {
+            _currentRecapSection = RecapSection.HeroStats;
+            _heroStatIndex = 0;
+            TolkWrapper.Speak($"Stats, {HeroStats.Length}");
+        }
+    }
+
+    /// <summary>
+    /// Switch to hero skills in recap (Right key).
+    /// </summary>
+    public void RecapHeroToSkills()
+    {
+        if (_currentRecapSection == RecapSection.HeroStats)
+        {
+            if (_playerSkills.Count == 0)
+            {
+                TolkWrapper.Speak("No skills");
+                return;
+            }
+            _currentRecapSection = RecapSection.HeroSkills;
+            _heroSkillIndex = 0;
+            TolkWrapper.Speak($"Skills, {_playerSkills.Count}");
+        }
+    }
+
+    /// <summary>
+    /// Enter Enemy stats mode in recap (F key).
+    /// </summary>
+    public void EnterRecapEnemyStatsMode()
+    {
+        _currentRecapSection = RecapSection.EnemyStats;
+        _enemyStatIndex = 0;
+        _enemyHeroSkillIndex = 0;
+
+        RefreshEnemyItems(); // Also loads enemy skills
+
+        var opponent = Data.Run?.Opponent;
+        if (opponent == null)
+        {
+            TolkWrapper.Speak("No enemy");
+            _currentRecapSection = RecapSection.None;
+            return;
+        }
+
+        int skillCount = _enemySkills.Count;
+        string msg = "Enemy hero. Stats";
+        if (skillCount > 0)
+            msg += $", Skills: {skillCount}. Right arrow for skills.";
+
+        TolkWrapper.Speak(msg);
+    }
+
+    /// <summary>
+    /// Navigate to previous enemy stat/skill in recap (Up key).
+    /// </summary>
+    public void RecapEnemyStatsPrevious()
+    {
+        if (_currentRecapSection == RecapSection.EnemyStats)
+        {
+            if (_enemyStatIndex <= 0)
+            {
+                _enemyStatIndex = 0;
+                AnnounceEnemyStat();
+                return;
+            }
+            _enemyStatIndex--;
+            AnnounceEnemyStat();
+        }
+        else if (_currentRecapSection == RecapSection.EnemySkills)
+        {
+            if (_enemyHeroSkillIndex <= 0)
+            {
+                _enemyHeroSkillIndex = 0;
+                AnnounceEnemyHeroSkill();
+                return;
+            }
+            _enemyHeroSkillIndex--;
+            AnnounceEnemyHeroSkill();
+        }
+    }
+
+    /// <summary>
+    /// Navigate to next enemy stat/skill in recap (Down key).
+    /// </summary>
+    public void RecapEnemyStatsNext()
+    {
+        if (_currentRecapSection == RecapSection.EnemyStats)
+        {
+            if (_enemyStatIndex >= HeroStats.Length - 1)
+            {
+                AnnounceEnemyStat();
+                return;
+            }
+            _enemyStatIndex++;
+            AnnounceEnemyStat();
+        }
+        else if (_currentRecapSection == RecapSection.EnemySkills)
+        {
+            if (_enemyHeroSkillIndex >= _enemySkills.Count - 1)
+            {
+                AnnounceEnemyHeroSkill();
+                return;
+            }
+            _enemyHeroSkillIndex++;
+            AnnounceEnemyHeroSkill();
+        }
+    }
+
+    /// <summary>
+    /// Switch to enemy stats in recap (Left key).
+    /// </summary>
+    public void RecapEnemyToStats()
+    {
+        if (_currentRecapSection == RecapSection.EnemySkills)
+        {
+            _currentRecapSection = RecapSection.EnemyStats;
+            _enemyStatIndex = 0;
+            TolkWrapper.Speak("Stats");
+        }
+    }
+
+    /// <summary>
+    /// Switch to enemy skills in recap (Right key).
+    /// </summary>
+    public void RecapEnemyToSkills()
+    {
+        if (_currentRecapSection == RecapSection.EnemyStats)
+        {
+            if (_enemySkills.Count == 0)
+            {
+                TolkWrapper.Speak("No skills");
+                return;
+            }
+            _currentRecapSection = RecapSection.EnemySkills;
+            _enemyHeroSkillIndex = 0;
+            TolkWrapper.Speak($"Skills, {_enemySkills.Count}");
+        }
+    }
+
+    /// <summary>
+    /// Announce current enemy hero stat.
+    /// </summary>
+    private void AnnounceEnemyStat()
+    {
+        var opponent = Data.Run?.Opponent;
+        if (opponent == null)
+        {
+            TolkWrapper.Speak("No enemy data");
+            return;
+        }
+
+        var type = HeroStats[_enemyStatIndex];
+        string name = GetStatName(type);
+
+        if (opponent.Attributes.TryGetValue(type, out int value))
+        {
+            TolkWrapper.Speak($"{name}: {value}");
+        }
+        else
+        {
+            TolkWrapper.Speak($"{name}: none");
+        }
+    }
+
+    /// <summary>
+    /// Announce current enemy hero skill.
+    /// </summary>
+    private void AnnounceEnemyHeroSkill()
+    {
+        if (_enemyHeroSkillIndex < 0 || _enemyHeroSkillIndex >= _enemySkills.Count)
+        {
+            TolkWrapper.Speak("No skill");
+            return;
+        }
+
+        var skill = _enemySkills[_enemyHeroSkillIndex];
+        if (skill == null)
+        {
+            TolkWrapper.Speak("Empty slot");
+            return;
+        }
+
+        string name = ItemReader.GetCardName(skill);
+        string desc = ItemReader.GetFullDescription(skill);
+
+        if (!string.IsNullOrEmpty(desc))
+        {
+            TolkWrapper.Speak($"{name}: {desc}");
+        }
+        else
+        {
+            TolkWrapper.Speak(name);
+        }
+    }
+
+    /// <summary>
+    /// Enter player board mode in recap (B key).
+    /// </summary>
+    public void EnterRecapPlayerBoardMode()
+    {
+        _currentRecapSection = RecapSection.PlayerBoard;
+        _currentSection = NavigationSection.Board;
+        _currentIndex = 0;
+        ClearDetailCache();
+
+        RefreshBoard();
+
+        if (_boardIndices.Count == 0)
+        {
+            TolkWrapper.Speak("Your board is empty");
+            return;
+        }
+
+        TolkWrapper.Speak($"Your board, {_boardIndices.Count} items");
+    }
+
 }

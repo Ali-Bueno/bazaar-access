@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using BazaarAccess.Core;
@@ -573,12 +574,17 @@ public static class ItemReader
         string type = GetEncounterTypeName(card.Type);
         string tier = GetTierName(card);
 
-        // Para PvP encounters, incluir el nombre del oponente si está disponible
+        // Para PvP encounters, incluir el nombre del oponente y rango si están disponibles
         if (card.Type == ECardType.PvpEncounter)
         {
             var pvpOpponent = Data.SimPvpOpponent;
             if (pvpOpponent != null && !string.IsNullOrEmpty(pvpOpponent.Name))
             {
+                string rank = GetPvpOpponentRank(pvpOpponent);
+                if (!string.IsNullOrEmpty(rank))
+                {
+                    return $"{pvpOpponent.Name}, {name}, {type}, {rank}";
+                }
                 return $"{pvpOpponent.Name}, {name}, {type}, {tier}";
             }
         }
@@ -605,6 +611,15 @@ public static class ItemReader
                 sb.Append(pvpOpponent.Name);
                 sb.Append(", ");
                 sb.Append(GetCardName(card)); // Héroe
+
+                // Incluir rango si está disponible
+                string rank = GetPvpOpponentRank(pvpOpponent);
+                if (!string.IsNullOrEmpty(rank))
+                {
+                    sb.Append(", ");
+                    sb.Append(rank);
+                }
+
                 sb.Append(", Level ");
                 sb.Append(pvpOpponent.Level);
                 sb.Append(", ");
@@ -802,6 +817,12 @@ public static class ItemReader
     {
         var lines = new List<string>();
         if (card == null) return lines;
+
+        // Para encuentros PvP, devolver info detallada del oponente
+        if (card.Type == ECardType.PvpEncounter)
+        {
+            return GetPvpEncounterDetailLines(card);
+        }
 
         // Nombre
         lines.Add(GetCardName(card));
@@ -1053,5 +1074,166 @@ public static class ItemReader
         allDescriptions.AddRange(keywordDescriptions);
 
         return allDescriptions;
+    }
+
+    /// <summary>
+    /// Obtiene las líneas de detalle para un encuentro PvP.
+    /// Se usa con flechas arriba/abajo para leer info adicional del oponente.
+    /// </summary>
+    private static List<string> GetPvpEncounterDetailLines(Card card)
+    {
+        var lines = new List<string>();
+
+        var pvpOpponent = Data.SimPvpOpponent;
+        if (pvpOpponent == null)
+        {
+            lines.Add(GetCardName(card));
+            lines.Add("PvP Encounter");
+            return lines;
+        }
+
+        try
+        {
+            var type = pvpOpponent.GetType();
+
+            // Nombre del jugador
+            string name = GetPvpProperty<string>(pvpOpponent, type, "Name") ?? "Unknown";
+            lines.Add($"Player: {name}");
+
+            // Héroe
+            string hero = GetCardName(card);
+            lines.Add($"Hero: {hero}");
+
+            // Rango y división
+            string rank = GetPvpProperty<object>(pvpOpponent, type, "Rank")?.ToString();
+            string division = GetPvpProperty<object>(pvpOpponent, type, "Division")?.ToString();
+            if (!string.IsNullOrEmpty(rank))
+            {
+                if (!string.IsNullOrEmpty(division) && division != "0")
+                {
+                    lines.Add($"Rank: {rank} {division}");
+                }
+                else
+                {
+                    lines.Add($"Rank: {rank}");
+                }
+            }
+
+            // Rating
+            var rating = GetPvpProperty<int?>(pvpOpponent, type, "Rating");
+            if (rating.HasValue && rating.Value > 0)
+            {
+                lines.Add($"Rating: {rating.Value}");
+            }
+
+            // Nivel
+            var level = GetPvpProperty<int?>(pvpOpponent, type, "Level");
+            if (level.HasValue && level.Value > 0)
+            {
+                lines.Add($"Level: {level.Value}");
+            }
+
+            // Victorias
+            var victories = GetPvpProperty<int?>(pvpOpponent, type, "Victories");
+            if (victories.HasValue)
+            {
+                lines.Add($"Wins: {victories.Value}");
+            }
+
+            // Prestigio
+            var prestige = GetPvpProperty<int?>(pvpOpponent, type, "Prestige");
+            if (prestige.HasValue && prestige.Value > 0)
+            {
+                lines.Add($"Prestige: {prestige.Value}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogWarning($"GetPvpEncounterDetailLines error: {ex.Message}");
+            lines.Add(GetCardName(card));
+            lines.Add("PvP Encounter");
+        }
+
+        return lines;
+    }
+
+    /// <summary>
+    /// Helper para obtener propiedades del oponente PvP usando reflexión.
+    /// </summary>
+    private static T GetPvpProperty<T>(object pvpOpponent, Type type, string propertyName)
+    {
+        try
+        {
+            var prop = type.GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+            if (prop != null)
+            {
+                var value = prop.GetValue(pvpOpponent);
+                if (value is T typedValue)
+                {
+                    return typedValue;
+                }
+                // Intentar conversión para tipos numéricos
+                if (typeof(T) == typeof(int?) && value != null)
+                {
+                    return (T)(object)(int?)Convert.ToInt32(value);
+                }
+            }
+        }
+        catch { }
+        return default;
+    }
+
+    /// <summary>
+    /// Obtiene el rango del oponente PvP.
+    /// Devuelve formato: "Bronze 1" o "Gold 3" etc.
+    /// </summary>
+    public static string GetPvpOpponentRank(object pvpOpponent)
+    {
+        if (pvpOpponent == null) return null;
+
+        try
+        {
+            var type = pvpOpponent.GetType();
+            string rankName = null;
+            string division = null;
+
+            // Obtener Rank (Bronze, Silver, Gold, etc.)
+            var rankProp = type.GetProperty("Rank", BindingFlags.Public | BindingFlags.Instance);
+            if (rankProp != null)
+            {
+                var value = rankProp.GetValue(pvpOpponent);
+                if (value != null)
+                {
+                    rankName = value.ToString();
+                }
+            }
+
+            // Obtener Division (1, 2, 3, etc.)
+            var divProp = type.GetProperty("Division", BindingFlags.Public | BindingFlags.Instance);
+            if (divProp != null)
+            {
+                var value = divProp.GetValue(pvpOpponent);
+                if (value != null)
+                {
+                    division = value.ToString();
+                }
+            }
+
+            // Combinar rango y división
+            if (!string.IsNullOrEmpty(rankName))
+            {
+                if (!string.IsNullOrEmpty(division) && division != "0")
+                {
+                    return $"{rankName} {division}";
+                }
+                return rankName;
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogWarning($"GetPvpOpponentRank error: {ex.Message}");
+        }
+
+        return null;
     }
 }

@@ -213,3 +213,36 @@ These always point to the latest release (keep filenames consistent!):
 - Combat mode toggle configuration added
 
 **Reference**: See `Progress.md` for detailed implementation notes on these features.
+
+---
+
+## End of Run Screens (Jan 21, 2026)
+
+### EndOfRunPatch.cs
+Patches `TheBazaar.UI.EndOfRun.EndOfRunScreenController.Start` to create accessible UI for post-run screens.
+
+**Key Components:**
+- `EndOfRunUI` class implements `IAccessibleScreen`
+- Two-pass text grouping:
+  1. Parent-based grouping for stats (label + value pairs)
+  2. Y-position grouping for challenges/achievements (horizontal spread detection)
+- Automatic challenge progress formatting: "Use items 200 times: 77/200"
+- Achievement formatting: "Achievement Herbalist: Heal 15000"
+- Section headers detected and announced separately
+
+**Navigation:**
+- Arrow Up/Down: Read lines
+- Enter/Backspace: Continue to next screen
+
+### Recap Mode Changes (`GameplayScreen.cs`, `GameplayNavigator.cs`)
+- V = Hero stats (arrow keys navigate)
+- F = Enemy stats (arrow keys navigate)
+- G = Enemy board (arrow keys navigate items)
+- B = Player board (arrow keys navigate items)
+- Backspace exits recap mode entirely (not individual sections)
+- No Ctrl required for navigation within sections
+
+### PvP Opponent Info (`ItemReader.cs`)
+- `GetPvpOpponentRank()`: Uses reflection to get Rank and Division properties
+- `GetPvpEncounterDetailLines()`: Provides detailed info for arrow key reading
+- Rank format: "Bronze 1", "Silver 3", "Gold 2", etc.

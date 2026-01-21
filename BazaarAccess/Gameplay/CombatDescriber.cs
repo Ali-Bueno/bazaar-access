@@ -229,12 +229,18 @@ public static class CombatDescriber
             var player = Data.Run?.Player;
             var opponent = Data.Run?.Opponent;
 
-            int playerHealth = player?.GetAttributeValue(EPlayerAttributeType.Health) ?? 0;
+            int reportedPlayerHealth = player?.GetAttributeValue(EPlayerAttributeType.Health) ?? 0;
             int playerShield = player?.GetAttributeValue(EPlayerAttributeType.Shield) ?? 0;
-            int enemyHealth = 0;
+            // Game may include shield in health, so subtract to get actual health
+            int playerHealth = reportedPlayerHealth - playerShield;
+            if (playerHealth < 0) playerHealth = reportedPlayerHealth;
+
+            int reportedEnemyHealth = 0;
             int enemyShield = 0;
-            opponent?.Attributes.TryGetValue(EPlayerAttributeType.Health, out enemyHealth);
+            opponent?.Attributes.TryGetValue(EPlayerAttributeType.Health, out reportedEnemyHealth);
             opponent?.Attributes.TryGetValue(EPlayerAttributeType.Shield, out enemyShield);
+            int enemyHealth = reportedEnemyHealth - enemyShield;
+            if (enemyHealth < 0) enemyHealth = reportedEnemyHealth;
 
             var parts = new List<string>();
 
@@ -261,7 +267,10 @@ public static class CombatDescriber
     public static string GetPlayerHealth()
     {
         var player = Data.Run?.Player;
-        int health = player?.GetAttributeValue(EPlayerAttributeType.Health) ?? 0;
+        int reportedHealth = player?.GetAttributeValue(EPlayerAttributeType.Health) ?? 0;
+        int shield = player?.GetAttributeValue(EPlayerAttributeType.Shield) ?? 0;
+        int health = reportedHealth - shield;
+        if (health < 0) health = reportedHealth;
         return health.ToString();
     }
 
@@ -271,8 +280,12 @@ public static class CombatDescriber
     public static string GetEnemyHealth()
     {
         var opponent = Data.Run?.Opponent;
-        int health = 0;
-        opponent?.Attributes.TryGetValue(EPlayerAttributeType.Health, out health);
+        int reportedHealth = 0;
+        int shield = 0;
+        opponent?.Attributes.TryGetValue(EPlayerAttributeType.Health, out reportedHealth);
+        opponent?.Attributes.TryGetValue(EPlayerAttributeType.Shield, out shield);
+        int health = reportedHealth - shield;
+        if (health < 0) health = reportedHealth;
         return health.ToString();
     }
 
@@ -293,31 +306,11 @@ public static class CombatDescriber
     }
 
     /// <summary>
-    /// Gets the enemy name (PvP or PvE).
+    /// Gets the enemy name. Always returns "Enemy" for simplicity during combat.
     /// </summary>
     private static string GetEnemyName()
     {
-        try
-        {
-            var currentState = Data.CurrentState?.StateName;
-            bool isPvpCombat = currentState == ERunState.PVPCombat;
-
-            if (isPvpCombat)
-            {
-                var pvp = Data.SimPvpOpponent;
-                if (pvp != null && !string.IsNullOrEmpty(pvp.Name))
-                {
-                    return pvp.Name;
-                }
-            }
-
-            return "Enemy";
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger.LogWarning($"GetEnemyName error: {ex.Message}");
-            return "Enemy";
-        }
+        return "Enemy";
     }
 
     /// <summary>
@@ -854,6 +847,7 @@ public static class CombatDescriber
 
     /// <summary>
     /// Announces current health status.
+    /// Note: The game may report Health as (actual health + shield), so we subtract shield to get actual health.
     /// </summary>
     private static void AnnounceHealth()
     {
@@ -866,28 +860,34 @@ public static class CombatDescriber
 
             if (player != null)
             {
-                int health = player.GetAttributeValue(EPlayerAttributeType.Health) ?? 0;
+                int reportedHealth = player.GetAttributeValue(EPlayerAttributeType.Health) ?? 0;
                 int shield = player.GetAttributeValue(EPlayerAttributeType.Shield) ?? 0;
+                // Game may include shield in health, so subtract to get actual health
+                int actualHealth = reportedHealth - shield;
+                if (actualHealth < 0) actualHealth = reportedHealth; // Fallback if assumption is wrong
 
                 if (shield > 0)
-                    parts.Add($"You: {health} health, {shield} shield");
+                    parts.Add($"You: {actualHealth} health, {shield} shield");
                 else
-                    parts.Add($"You: {health} health");
+                    parts.Add($"You: {reportedHealth} health");
 
-                _lastPlayerHealth = health;
+                _lastPlayerHealth = actualHealth;
             }
 
             if (opponent != null)
             {
-                opponent.Attributes.TryGetValue(EPlayerAttributeType.Health, out int enemyHealth);
+                opponent.Attributes.TryGetValue(EPlayerAttributeType.Health, out int reportedEnemyHealth);
                 opponent.Attributes.TryGetValue(EPlayerAttributeType.Shield, out int enemyShield);
+                // Game may include shield in health, so subtract to get actual health
+                int actualEnemyHealth = reportedEnemyHealth - enemyShield;
+                if (actualEnemyHealth < 0) actualEnemyHealth = reportedEnemyHealth; // Fallback if assumption is wrong
 
                 if (enemyShield > 0)
-                    parts.Add($"{_enemyName}: {enemyHealth} health, {enemyShield} shield");
+                    parts.Add($"{_enemyName}: {actualEnemyHealth} health, {enemyShield} shield");
                 else
-                    parts.Add($"{_enemyName}: {enemyHealth} health");
+                    parts.Add($"{_enemyName}: {reportedEnemyHealth} health");
 
-                _lastEnemyHealth = enemyHealth;
+                _lastEnemyHealth = actualEnemyHealth;
             }
 
             if (parts.Count > 0)

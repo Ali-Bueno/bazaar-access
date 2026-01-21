@@ -12,18 +12,13 @@ namespace BazaarAccess.Screens;
 /// <summary>
 /// Hero selection screen.
 /// Shows available heroes, game mode selection, and play button.
-/// Supports Ctrl+Up/Down to read hero details.
+/// Arrow navigation reads full hero info (name, title, description).
 /// </summary>
 public class HeroSelectScreen : BaseScreen
 {
     public override string ScreenName => "Hero Select";
 
     private readonly List<HeroItemView> _heroViews = new List<HeroItemView>();
-
-    // For reading hero details with Ctrl+arrows
-    private List<string> _detailLines = new List<string>();
-    private int _detailIndex = -1;
-    private int _lastHeroIndex = -1;
 
     public HeroSelectScreen(Transform root) : base(root)
     {
@@ -304,6 +299,36 @@ public class HeroSelectScreen : BaseScreen
 
         var parts = new List<string> { heroName };
 
+        // Get HeroSO for title and description
+        var heroSO = GetHeroSO(view);
+        if (heroSO != null)
+        {
+            // Add title if available and not a placeholder
+            try
+            {
+                string title = heroSO.Title;
+                if (!string.IsNullOrEmpty(title) &&
+                    !title.Equals("Title", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    parts.Add(title);
+                }
+            }
+            catch { }
+
+            // Add description if available and not a placeholder
+            try
+            {
+                string description = heroSO.Description;
+                if (!string.IsNullOrEmpty(description) &&
+                    !description.Equals("Description", System.StringComparison.OrdinalIgnoreCase) &&
+                    !description.Equals("Title", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    parts.Add(description);
+                }
+            }
+            catch { }
+        }
+
         if (isSelected)
         {
             parts.Add("selected");
@@ -314,7 +339,7 @@ public class HeroSelectScreen : BaseScreen
             parts.Add("locked");
         }
 
-        return string.Join(", ", parts);
+        return string.Join(". ", parts);
     }
 
     private bool IsHeroUnlocked(HeroItemView view)
@@ -444,133 +469,6 @@ public class HeroSelectScreen : BaseScreen
         string currentHero = Data.SelectedHero.ToString();
         TolkWrapper.Speak($"Hero Select. Current hero: {currentHero}");
         // Don't call base.OnFocus() to avoid double announcement
-    }
-
-    public override void HandleInput(AccessibleKey key)
-    {
-        // Handle Ctrl+Up/Down for hero details
-        if (key == AccessibleKey.DetailUp || key == AccessibleKey.DetailDown)
-        {
-            ReadHeroDetail(key == AccessibleKey.DetailUp ? 1 : -1);
-            return;
-        }
-
-        base.HandleInput(key);
-    }
-
-    private void ReadHeroDetail(int direction)
-    {
-        int currentIndex = Menu.CurrentIndex;
-
-        // Check if we're on a hero option (first N options are heroes)
-        if (currentIndex < 0 || currentIndex >= _heroViews.Count)
-        {
-            TolkWrapper.Speak("No hero details available");
-            return;
-        }
-
-        // If hero changed, rebuild detail lines
-        if (currentIndex != _lastHeroIndex)
-        {
-            _lastHeroIndex = currentIndex;
-            _detailIndex = -1;
-            BuildDetailLines(currentIndex);
-        }
-
-        if (_detailLines.Count == 0)
-        {
-            TolkWrapper.Speak("No hero details available");
-            return;
-        }
-
-        // Navigate through detail lines
-        _detailIndex += direction;
-
-        // Wrap around
-        if (_detailIndex < 0) _detailIndex = _detailLines.Count - 1;
-        if (_detailIndex >= _detailLines.Count) _detailIndex = 0;
-
-        string line = _detailLines[_detailIndex];
-        TolkWrapper.Speak(line);
-    }
-
-    private void BuildDetailLines(int heroIndex)
-    {
-        _detailLines.Clear();
-
-        if (heroIndex < 0 || heroIndex >= _heroViews.Count) return;
-
-        var heroView = _heroViews[heroIndex];
-        if (heroView == null) return;
-
-        // Get HeroSO via reflection
-        var heroSO = GetHeroSO(heroView);
-        if (heroSO == null)
-        {
-            Plugin.Logger.LogInfo($"HeroSelectScreen: Could not get HeroSO for hero at index {heroIndex}");
-            return;
-        }
-
-        // Add hero name
-        string heroName = heroView.Hero.ToString();
-        _detailLines.Add(heroName);
-
-        // Add title if available
-        try
-        {
-            string title = heroSO.Title;
-            if (!string.IsNullOrEmpty(title))
-            {
-                _detailLines.Add(title);
-            }
-        }
-        catch (System.Exception ex)
-        {
-            Plugin.Logger.LogInfo($"HeroSelectScreen: Error getting title: {ex.Message}");
-        }
-
-        // Add description if available
-        try
-        {
-            string description = heroSO.Description;
-
-            // Check if the description is a placeholder (some heroes have "Description" as placeholder)
-            bool isPlaceholder = string.IsNullOrEmpty(description) ||
-                                 description.Equals("Description", System.StringComparison.OrdinalIgnoreCase) ||
-                                 description.Equals("Title", System.StringComparison.OrdinalIgnoreCase);
-
-            if (!isPlaceholder)
-            {
-                // Split description into sentences for easier reading
-                var sentences = description.Split(new[] { ". " }, System.StringSplitOptions.RemoveEmptyEntries);
-                foreach (var sentence in sentences)
-                {
-                    string trimmed = sentence.Trim();
-                    if (!string.IsNullOrEmpty(trimmed))
-                    {
-                        // Add period back if it was removed by split
-                        if (!trimmed.EndsWith(".") && !trimmed.EndsWith("!") && !trimmed.EndsWith("?"))
-                        {
-                            trimmed += ".";
-                        }
-                        _detailLines.Add(trimmed);
-                    }
-                }
-            }
-        }
-        catch (System.Exception ex)
-        {
-            Plugin.Logger.LogInfo($"HeroSelectScreen: Error getting description: {ex.Message}");
-        }
-
-        // Add unlock status
-        bool isLocked = !IsHeroUnlocked(heroView);
-        if (isLocked)
-        {
-            _detailLines.Add("This hero is locked");
-        }
-
-        Plugin.Logger.LogInfo($"HeroSelectScreen: Built {_detailLines.Count} detail lines for {heroName}");
     }
 
     private HeroSO GetHeroSO(HeroItemView view)

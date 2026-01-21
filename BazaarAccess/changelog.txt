@@ -1,0 +1,121 @@
+# Bazaar Access - Changelog
+
+---
+
+## v1.2.0 - January 21, 2026
+
+### New Features
+- End of Run Screens: Full accessibility for post-run screens
+  - Statistics screen: Wins, Max Health, Prestige, Level, Income, Gold
+  - Chest rewards screen
+  - Challenges screen: Daily and Weekly challenges with progress (e.g., "Use items 200 times: 77/200")
+  - Achievements section with names and descriptions
+  - Arrow keys to navigate line by line, Enter to continue
+- PvP Opponent Rank: When selecting ranked PvP encounters, shows opponent rank and division (e.g., "Bronze 1", "Silver 3")
+  - Arrow keys to read detailed opponent info
+
+### Bug Fixes
+- Fixed health and shield being combined in combat announcements (now correctly shows actual health without shield)
+- Fixed PvP enemy names being too long during combat (now always shows "Enemy")
+
+### Improvements
+- Recap Mode Navigation simplified:
+  - V = Hero stats, F = Enemy stats, G = Enemy board, B = Player board
+  - Arrow keys navigate within each section (no Ctrl required)
+  - Backspace only exits recap mode, not individual sections
+- Hero Select Screen: Arrow keys now read complete hero info (name, title, description) directly
+
+---
+
+## January 14, 2026
+
+### New Features
+- Press W to hear current run wins (e.g., "3 wins")
+
+### Bug Fixes
+- Fixed opponent skills not showing when switching with Ctrl+Right
+- Fixed opponent board (G) being accessible without entering Recap first
+
+### Improvements
+- Opponent skills navigation now works like hero skills:
+  - Ctrl+Right to switch to Skills announces first skill with description
+  - Ctrl+Up/Down navigates between skills with name + description
+- G key now requires pressing E (Recap) first for a cleaner post-combat flow
+- Post-combat messages updated for clarity
+
+---
+
+## January 13, 2026
+
+### New Features
+- Wave-based Combat Describer: Complete rewrite for less spam and more context
+  - Effects accumulated during combat waves (1.5s pause closes a wave)
+  - Symmetric summaries: "You: 45 damage (Water Dagger). Enemy: 30 damage (Poison Dagger), poison."
+  - Shows top damage-dealing item for each side
+  - Immediate alerts: "Low health!", "Critical health!", "Frozen!"
+  - Press H during combat for summary ("You dealt X, took Y. Health: A vs B")
+
+### Bug Fixes
+- Fixed free items (loot, rewards, events) now correctly say "Acquired [name]" instead of "Bought for X gold"
+- Fixed chest rewards finally working correctly with real item names
+
+### Improvements
+- Press S to hear stash capacity (items stored / total slots)
+
+---
+
+## January 12, 2026
+
+### New Features
+- PvP encounters now show opponent name before hero (e.g., "PlayerName, Vanessa, PvP")
+- Press G in post-combat to view opponent's board (same navigation as your own board)
+  - Left/Right arrows: Navigate items or skills
+  - Ctrl+Left/Right: Switch between Items and Skills subsections
+  - Ctrl+Up/Down: Read item details line by line
+  - Enter: Read full description
+  - Backspace: Exit opponent board
+  - Best used with E (Recap) for static view without Combat Describer interruptions
+  - If Replay animation is active, G suggests using Recap instead
+
+### Bug Fixes
+- Fixed shield being added to health in combat announcements (now shows separately)
+- Fixed enemy effects announcing item names (now only announces the effect received)
+- Fixed enchanted items not showing enchantment name and properties (e.g., "Radiant Water Dagger" with Crit Chance)
+- Fixed chest rewards popup getting stuck (only Enter closes it now)
+- Fixed heroes with placeholder descriptions showing "Description" instead of nothing (Vanessa)
+- Fixed combat describing events from previous combats
+- Fixed pressing F during combat showing names from previous opponents
+- Fixed PvP encounters in menu now correctly show opponent name (was showing previous opponent)
+
+### Improvements
+- Enemy effects are now aggregated: multiple hits announced as total damage (e.g., "13 damage received" instead of spam)
+- Menus now read current item at limits instead of "Start/End of list" (Board section keeps limit messages)
+- Enchanted items show "Enchanted: Type" line in detail view (Ctrl+Up/Down)
+- Keyboard navigation now plays the same hover sounds as mouse navigation
+- Upgrading items with Shift+U now triggers full visual/audio feedback like mouse drag-drop
+
+---
+
+## January 11, 2026
+
+### New Features
+- Fast Navigation Keys: Home/End to jump to first/last, Page Up/Down to move 10 items
+- No Wrap-Around Navigation: Lists announce "Start of list" or "End of list" at limits
+- Collection Screen: Navigate categories and items, equip with Enter
+- Chest Opening: Navigate chest types, open single or 10 at once, rewards announced
+- Battle Pass Screen: Challenges and Tiers sections, claim rewards with Enter
+- Hero Select: Game mode selection, Ctrl+Up/Down for hero details
+- Board Capacity: Press T to hear slots used/available
+- Board Reorder Feedback: Announces when item can't move further left/right
+- Jules Hero Support: Items announce Heated/Chilled state after tier name
+
+### Bug Fixes
+- Fixed duplicate/triple announcements across the entire mod
+- Fixed incorrect "Shop" announcement at game start
+- Fixed stash close only switching to Board if user was in Stash section
+- Fixed duplicate move item error messages
+- Fixed enchanted/upgraded items not showing updated stats
+
+### Improvements
+- Back button now shows "Back" instead of "Button Large"
+- Marketplace button hidden until accessible implementation is ready
