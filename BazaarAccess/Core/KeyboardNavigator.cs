@@ -168,10 +168,9 @@ public class KeyboardNavigator : MonoBehaviour
             case KeyCode.I:
                 return AccessibleKey.Info;
 
-            // Upgrade item
+            // Upgrade item (U or Shift+U)
             case KeyCode.U:
-                if (shift) return AccessibleKey.Upgrade;
-                return AccessibleKey.None;
+                return AccessibleKey.Upgrade;
 
             // Board info
             case KeyCode.T:
@@ -185,10 +184,10 @@ public class KeyboardNavigator : MonoBehaviour
             case KeyCode.H:
                 return AccessibleKey.CombatSummary;
 
-            // Combat mode toggle
+            // Combat mode toggle / Move action
             case KeyCode.M:
                 if (ctrl) return AccessibleKey.ToggleCombatMode;
-                return AccessibleKey.None;
+                return AccessibleKey.ActionMove;
 
             // Wins info
             case KeyCode.W:

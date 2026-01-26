@@ -238,10 +238,22 @@ public class GameplayNavigator
         var bm = GetBoardManager();
         if (bm?.playerItemSockets == null) return;
 
+        // Track which items we've already seen to avoid duplicates
+        // (large items occupy multiple slots but should only appear once)
+        var seenItems = new HashSet<BazaarGameShared.Domain.Core.InstanceId>();
+
         for (int i = 0; i < bm.playerItemSockets.Length; i++)
         {
-            if (bm.playerItemSockets[i]?.CardController?.CardData != null)
-                _boardIndices.Add(i);
+            var card = bm.playerItemSockets[i]?.CardController?.CardData;
+            if (card != null)
+            {
+                // Only add the first slot of each item
+                if (!seenItems.Contains(card.InstanceId))
+                {
+                    seenItems.Add(card.InstanceId);
+                    _boardIndices.Add(i);
+                }
+            }
         }
     }
 
@@ -2320,6 +2332,25 @@ public class GameplayNavigator
             }
         }
         return false;
+    }
+
+    /// <summary>
+    /// Gets the item card at a specific board slot, or null if empty.
+    /// Used to find adjacent items for reorder feedback.
+    /// </summary>
+    public Card GetItemAtSlot(int slot)
+    {
+        if (slot < 0 || slot >= 10) return null;
+
+        var bm = GetBoardManager();
+        if (bm?.playerItemSockets == null) return null;
+
+        // Check if this slot has an item
+        if (slot < bm.playerItemSockets.Length)
+        {
+            return bm.playerItemSockets[slot]?.CardController?.CardData;
+        }
+        return null;
     }
 
     public bool HasContent() => GetCurrentSectionCount() > 0;

@@ -246,3 +246,48 @@ Patches `TheBazaar.UI.EndOfRun.EndOfRunScreenController.Start` to create accessi
 - `GetPvpOpponentRank()`: Uses reflection to get Rank and Division properties
 - `GetPvpEncounterDetailLines()`: Provides detailed info for arrow key reading
 - Rank format: "Bronze 1", "Silver 3", "Gold 2", etc.
+
+---
+
+## Action Menu System & Combat Health (Jan 26, 2026)
+
+### Combat Health with Shield (`Gameplay/CombatDescriber.cs`)
+- **Keys 1 and 2** now show shield: "400 with 50 shield" instead of just "400"
+- `GetPlayerHealth()` and `GetEnemyHealth()` updated
+
+### Action Menu System (`GameplayScreen.cs`)
+Press **Enter** on a board/stash item to open the action menu:
+
+**Menu Navigation:**
+- **Up/Down**: Navigate options (Sell, Upgrade, Enchant, Move to Stash/Board)
+- **Enter**: Confirm selected option
+- **Backspace**: Exit action menu
+
+**Keyboard Shortcuts (in action menu):**
+- **S**: Sell item directly
+- **U**: Upgrade/Enchant item directly
+- **M**: Move to stash/board directly
+- **Left/Right arrows**: Reorder item on board (stays in action menu)
+- **Home/End**: Move item to left/right edge of board
+
+**Reorder Feedback:**
+- "Between [item1] and [item2]" - when between two items
+- "After [item]" / "Before [item]" - when adjacent to one item
+- "Left edge" / "Right edge" - at board boundaries
+
+### Pedestal Detection (`Gameplay/ActionHelper.cs`)
+- `GetCurrentPedestalInfo()`: Detects altar type (Upgrade, Enchant, EnchantRandom)
+- `GetPedestalActionDescription()`: Returns human-readable description
+- `IsEnchantPedestal()` / `IsUpgradePedestal()`: Quick type checks
+- Uses reflection to access `TCardEncounterPedestal.Behavior` property
+
+### Upgrade/Enchant Timing
+- `DelayedRefreshAfterUpgrade()`: Waits up to 10 seconds for game animations
+- Polls `IsProcessingUpgradeOrFuseOrEnchant` and `IsPlayingUpgradeOrFuseOrEnchantAnimation` flags
+- Announces "Upgrading [name]" / "Enchanting [name]" before action
+- Announces "Done" when animation completes
+
+### Board Navigation Fix (`Gameplay/GameplayNavigator.cs`)
+- `RefreshBoard()` now uses `HashSet<InstanceId>` to track seen items
+- Large items (size 2-3) only appear once in navigation, not multiple times
+- Prevents incorrect slot calculation when moving items

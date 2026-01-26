@@ -305,8 +305,9 @@ public static class ActionHelper
     /// <param name="card">El item a mover</param>
     /// <param name="currentSlot">Slot actual del item (0-9)</param>
     /// <param name="direction">-1 para izquierda, +1 para derecha</param>
+    /// <param name="silent">If true, don't announce anything (caller handles feedback)</param>
     /// <returns>True si el movimiento fue exitoso</returns>
-    public static bool ReorderItem(ItemCard card, int currentSlot, int direction)
+    public static bool ReorderItem(ItemCard card, int currentSlot, int direction, bool silent = false)
     {
         if (card == null)
         {
@@ -326,15 +327,16 @@ public static class ActionHelper
             int cardSize = (int)card.Size;
             int newSlot = currentSlot + direction;
 
-            // Verificar límites (10 slots en el tablero, 0-9)
+            // Verificar límites del tablero (10 slots, 0-9)
+            // El item no puede ir más allá del borde
             if (newSlot < 0)
             {
-                TolkWrapper.Speak("Reached limit, cannot move further left");
+                if (!silent) TolkWrapper.Speak("At left edge");
                 return false;
             }
             if (newSlot + cardSize > 10)
             {
-                TolkWrapper.Speak("Reached limit, cannot move further right");
+                if (!silent) TolkWrapper.Speak("At right edge");
                 return false;
             }
 
@@ -347,17 +349,13 @@ public static class ActionHelper
 
             state.MoveCardCommand(card, desiredSockets, EInventorySection.Hand);
 
-            string name = ItemReader.GetCardName(card);
-            string dirName = direction < 0 ? "left" : "right";
-            TolkWrapper.Speak($"Moved {name} {dirName}");
-
-            Plugin.Logger.LogInfo($"ReorderItem: {name} from slot {currentSlot} to {newSlot}");
+            Plugin.Logger.LogInfo($"ReorderItem: {ItemReader.GetCardName(card)} from slot {currentSlot} to {newSlot}");
             return true;
         }
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"ReorderItem failed: {ex.Message}");
-            TolkWrapper.Speak("Move failed");
+            if (!silent) TolkWrapper.Speak("Move failed");
             return false;
         }
     }
@@ -514,6 +512,331 @@ public static class ActionHelper
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"TriggerItemDroppedOnPedestalEvent failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Pedestal/altar type information.
+    /// </summary>
+    public enum PedestalType
+    {
+        None,
+        Upgrade,
+        Enchant,
+        EnchantRandom
+    }
+
+    /// <summary>
+    /// Information about the current pedestal/altar.
+    /// </summary>
+    public class PedestalInfo
+    {
+        public PedestalType Type { get; set; } = PedestalType.None;
+        public string EnchantmentName { get; set; }
+        public ETier? TargetTier { get; set; }
+    }
+
+    /// <summary>
+    /// Gets information about the current pedestal/altar.
+    /// Uses reflection to access game's internal pedestal data.
+    /// </summary>
+    public static PedestalInfo GetCurrentPedestalInfo()
+    {
+        var info = new PedestalInfo();
+
+        var currentState = StateChangePatch.GetCurrentRunState();
+        if (currentState != ERunState.Pedestal)
+        {
+            return info;
+        }
+
+        try
+        {
+            // Get the current encounter ID
+            var currentEncounterIdProp = typeof(Data).GetProperty("CurrentEncounterId",
+                BindingFlags.Public | BindingFlags.Static);
+            if (currentEncounterIdProp == null)
+            {
+                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: CurrentEncounterId property not found");
+                return info;
+            }
+
+            var encounterId = currentEncounterIdProp.GetValue(null) as System.Guid?;
+            if (!encounterId.HasValue || encounterId.Value == System.Guid.Empty)
+            {
+                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: No current encounter ID");
+                return info;
+            }
+
+            // Get static data to retrieve the pedestal template
+            var getStaticMethod = typeof(Data).GetMethod("GetStatic",
+                BindingFlags.Public | BindingFlags.Static);
+            if (getStaticMethod == null)
+            {
+                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: GetStatic method not found");
+                return info;
+            }
+
+            // GetStatic returns a Task, we need to get the result
+            var staticDataTask = getStaticMethod.Invoke(null, null);
+            if (staticDataTask == null)
+            {
+                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: GetStatic returned null");
+                return info;
+            }
+
+            // Get the Result property from the Task
+            var resultProp = staticDataTask.GetType().GetProperty("Result");
+            if (resultProp == null)
+            {
+                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: Task.Result not found");
+                return info;
+            }
+
+            var staticData = resultProp.GetValue(staticDataTask);
+            if (staticData == null)
+            {
+                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: Static data is null");
+                return info;
+            }
+
+            // Get the card by ID
+            var getCardMethod = staticData.GetType().GetMethod("GetCardById");
+            if (getCardMethod == null)
+            {
+                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: GetCardById method not found");
+                return info;
+            }
+
+            var cardTemplate = getCardMethod.Invoke(staticData, new object[] { encounterId.Value });
+            if (cardTemplate == null)
+            {
+                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: Card template is null");
+                return info;
+            }
+
+            // Check if it's a pedestal encounter
+            var pedestalType = typeof(Data).Assembly.GetType("BazaarGameShared.Domain.Cards.Encounter.Pedestal.TCardEncounterPedestal");
+            if (pedestalType == null || !pedestalType.IsInstanceOfType(cardTemplate))
+            {
+                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: Not a pedestal encounter");
+                return info;
+            }
+
+            // Get the Behavior property
+            var behaviorProp = pedestalType.GetProperty("Behavior");
+            if (behaviorProp == null)
+            {
+                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: Behavior property not found");
+                return info;
+            }
+
+            var behavior = behaviorProp.GetValue(cardTemplate);
+            if (behavior == null)
+            {
+                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: Behavior is null");
+                return info;
+            }
+
+            // Check behavior type
+            var behaviorTypeName = behavior.GetType().Name;
+            Plugin.Logger.LogDebug($"GetCurrentPedestalInfo: Behavior type = {behaviorTypeName}");
+
+            if (behaviorTypeName.Contains("Upgrade"))
+            {
+                info.Type = PedestalType.Upgrade;
+
+                // Try to get TargetTier
+                var targetTierProp = behavior.GetType().GetProperty("TargetTier");
+                if (targetTierProp != null)
+                {
+                    var tierValue = targetTierProp.GetValue(behavior);
+                    if (tierValue != null)
+                    {
+                        info.TargetTier = (ETier)tierValue;
+                    }
+                }
+            }
+            else if (behaviorTypeName.Contains("EnchantRandom"))
+            {
+                info.Type = PedestalType.EnchantRandom;
+                info.EnchantmentName = "Random";
+            }
+            else if (behaviorTypeName.Contains("Enchant"))
+            {
+                info.Type = PedestalType.Enchant;
+
+                // Get the specific enchantment type
+                var enchantProp = behavior.GetType().GetProperty("Enchantment");
+                if (enchantProp != null)
+                {
+                    var enchantValue = enchantProp.GetValue(behavior);
+                    if (enchantValue != null)
+                    {
+                        info.EnchantmentName = enchantValue.ToString();
+                    }
+                }
+            }
+
+            Plugin.Logger.LogInfo($"GetCurrentPedestalInfo: Type={info.Type}, Enchant={info.EnchantmentName}, TargetTier={info.TargetTier}");
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"GetCurrentPedestalInfo error: {ex.Message}");
+        }
+
+        return info;
+    }
+
+    /// <summary>
+    /// Gets a description of what will happen when using the current pedestal.
+    /// </summary>
+    public static string GetPedestalActionDescription(Card card)
+    {
+        var pedestalInfo = GetCurrentPedestalInfo();
+
+        string cardName = ItemReader.GetCardName(card);
+        string currentTier = ItemReader.GetTierName(card);
+
+        switch (pedestalInfo.Type)
+        {
+            case PedestalType.Upgrade:
+                string nextTier = GetNextTierName(card.Tier);
+                if (pedestalInfo.TargetTier.HasValue)
+                {
+                    nextTier = pedestalInfo.TargetTier.Value.ToString();
+                }
+                return $"Upgrade {cardName} from {currentTier} to {nextTier}";
+
+            case PedestalType.Enchant:
+                return $"Enchant {cardName} with {pedestalInfo.EnchantmentName}";
+
+            case PedestalType.EnchantRandom:
+                return $"Enchant {cardName} with a random enchantment";
+
+            default:
+                return $"Use {cardName} at pedestal";
+        }
+    }
+
+    /// <summary>
+    /// Checks if the current pedestal is for enchanting.
+    /// </summary>
+    public static bool IsEnchantPedestal()
+    {
+        var info = GetCurrentPedestalInfo();
+        return info.Type == PedestalType.Enchant || info.Type == PedestalType.EnchantRandom;
+    }
+
+    /// <summary>
+    /// Checks if the current pedestal is for upgrading.
+    /// </summary>
+    public static bool IsUpgradePedestal()
+    {
+        var info = GetCurrentPedestalInfo();
+        return info.Type == PedestalType.Upgrade;
+    }
+
+    /// <summary>
+    /// Enchants or upgrades an item at the current pedestal.
+    /// Automatically detects the pedestal type.
+    /// </summary>
+    public static bool UseCurrentPedestal(Card card)
+    {
+        if (card == null)
+        {
+            Plugin.Logger.LogWarning("UseCurrentPedestal: card is null");
+            return false;
+        }
+
+        var currentState = StateChangePatch.GetCurrentRunState();
+        if (currentState != ERunState.Pedestal)
+        {
+            TolkWrapper.Speak("Not at a pedestal");
+            return false;
+        }
+
+        var pedestalInfo = GetCurrentPedestalInfo();
+        string cardName = ItemReader.GetCardName(card);
+
+        switch (pedestalInfo.Type)
+        {
+            case PedestalType.Upgrade:
+                return UpgradeItem(card);
+
+            case PedestalType.Enchant:
+            case PedestalType.EnchantRandom:
+                return EnchantItem(card, pedestalInfo);
+
+            default:
+                // Fallback to upgrade behavior
+                return UpgradeItem(card);
+        }
+    }
+
+    /// <summary>
+    /// Enchants an item at the pedestal.
+    /// </summary>
+    private static bool EnchantItem(Card card, PedestalInfo pedestalInfo)
+    {
+        var state = AppState.CurrentState;
+        if (state == null)
+        {
+            Plugin.Logger.LogWarning("EnchantItem: AppState.CurrentState is null");
+            TolkWrapper.Speak("Cannot enchant now");
+            return false;
+        }
+
+        if (!state.CanHandleOperation(StateOps.CommitToPedestal))
+        {
+            TolkWrapper.Speak("Cannot enchant this item");
+            return false;
+        }
+
+        // Check if already enchanted
+        if (card is ItemCard itemCard && itemCard.Enchantment.HasValue)
+        {
+            TolkWrapper.Speak("Item is already enchanted");
+            return false;
+        }
+
+        try
+        {
+            string name = ItemReader.GetCardName(card);
+            string enchantName = pedestalInfo.EnchantmentName ?? "unknown";
+
+            // Trigger visual feedback
+            var controller = Data.CardAndSkillLookup?.GetCardController(card) as ItemController;
+            if (controller != null)
+            {
+                TriggerItemDroppedOnPedestalEvent(controller);
+            }
+
+            // Mark processing
+            if (Singleton<BoardManager>.Instance != null)
+            {
+                Singleton<BoardManager>.Instance.MarkUpgradeOrFuseOrEnchantProcessing();
+            }
+
+            state.CommitToPedestalCommand(card.InstanceId);
+
+            if (pedestalInfo.Type == PedestalType.EnchantRandom)
+            {
+                TolkWrapper.Speak($"Enchanting {name} with random enchantment");
+            }
+            else
+            {
+                TolkWrapper.Speak($"Enchanting {name} with {enchantName}");
+            }
+
+            Plugin.Logger.LogInfo($"EnchantItem: {name} with {enchantName}");
+            return true;
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"EnchantItem failed: {ex.Message}");
+            TolkWrapper.Speak("Enchantment failed");
+            return false;
         }
     }
 }

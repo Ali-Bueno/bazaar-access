@@ -406,5 +406,10 @@ public enum AccessibleKey
     // Wins info
     WinsInfo,       // W - Announce current wins/victories
     // Combat mode toggle
-    ToggleCombatMode  // Ctrl+M - Toggle between individual and batched combat announcements
+    ToggleCombatMode,  // Ctrl+M - Toggle between individual and batched combat announcements
+    // Action mode
+    ActionModeToggle,  // Enter on board/stash item - Opens action menu
+    // Action menu shortcuts
+    ActionSell,        // S - Sell item (in action mode)
+    ActionMove         // M - Move item to stash/board (in action mode)
 }

@@ -12,11 +12,12 @@ public enum ConfirmActionType
     Buy,
     Sell,
     Move,
-    Select
+    Select,
+    Upgrade
 }
 
 /// <summary>
-/// UI de confirmación para acciones de compra/venta/mover.
+/// UI de confirmación para acciones de compra/venta/mover/upgrade.
 /// </summary>
 public class ConfirmActionUI : IAccessibleUI
 {
@@ -24,6 +25,7 @@ public class ConfirmActionUI : IAccessibleUI
 
     private readonly string _itemName;
     private readonly int _price;
+    private readonly string _customMessage;
     private readonly ConfirmActionType _actionType;
     private readonly Action _onConfirm;
     private readonly Action _onCancel;
@@ -32,10 +34,16 @@ public class ConfirmActionUI : IAccessibleUI
     private bool _isValid = true;
 
     public ConfirmActionUI(ConfirmActionType actionType, string itemName, int price, Action onConfirm, Action onCancel = null)
+        : this(actionType, itemName, price, null, onConfirm, onCancel)
+    {
+    }
+
+    public ConfirmActionUI(ConfirmActionType actionType, string itemName, int price, string customMessage, Action onConfirm, Action onCancel = null)
     {
         _actionType = actionType;
         _itemName = itemName;
         _price = price;
+        _customMessage = customMessage;
         _onConfirm = onConfirm;
         _onCancel = onCancel;
 
@@ -45,6 +53,7 @@ public class ConfirmActionUI : IAccessibleUI
             ConfirmActionType.Sell => "Confirm Sale",
             ConfirmActionType.Move => "Confirm Move",
             ConfirmActionType.Select => "Confirm Selection",
+            ConfirmActionType.Upgrade => "Confirm Upgrade",
             _ => "Confirm"
         };
     }
@@ -88,15 +97,24 @@ public class ConfirmActionUI : IAccessibleUI
 
     public void OnFocus()
     {
-        // Anunciar la pregunta de confirmación
-        string question = _actionType switch
+        // Use custom message if provided
+        string question;
+        if (!string.IsNullOrEmpty(_customMessage))
         {
-            ConfirmActionType.Buy => $"Buy {_itemName} for {_price} gold?",
-            ConfirmActionType.Sell => $"Sell {_itemName} for {_price} gold?",
-            ConfirmActionType.Move => $"Move {_itemName}?",
-            ConfirmActionType.Select => $"Select {_itemName}?",
-            _ => $"Confirm action for {_itemName}?"
-        };
+            question = _customMessage;
+        }
+        else
+        {
+            question = _actionType switch
+            {
+                ConfirmActionType.Buy => $"Buy {_itemName} for {_price} gold?",
+                ConfirmActionType.Sell => $"Sell {_itemName} for {_price} gold?",
+                ConfirmActionType.Move => $"Move {_itemName}?",
+                ConfirmActionType.Select => $"Select {_itemName}?",
+                ConfirmActionType.Upgrade => $"Upgrade {_itemName}?",
+                _ => $"Confirm action for {_itemName}?"
+            };
+        }
 
         TolkWrapper.Speak(question);
         AnnounceCurrentOption();

@@ -262,7 +262,8 @@ public static class CombatDescriber
     }
 
     /// <summary>
-    /// Gets player health as a number string (for 1 key).
+    /// Gets player health as a string (for 1 key).
+    /// Format: "400" or "400 with 50 shield" if shield is present.
     /// </summary>
     public static string GetPlayerHealth()
     {
@@ -271,11 +272,15 @@ public static class CombatDescriber
         int shield = player?.GetAttributeValue(EPlayerAttributeType.Shield) ?? 0;
         int health = reportedHealth - shield;
         if (health < 0) health = reportedHealth;
+
+        if (shield > 0)
+            return $"{health} with {shield} shield";
         return health.ToString();
     }
 
     /// <summary>
-    /// Gets enemy health as a number string (for 2 key).
+    /// Gets enemy health as a string (for 2 key).
+    /// Format: "400" or "400 with 50 shield" if shield is present.
     /// </summary>
     public static string GetEnemyHealth()
     {
@@ -286,6 +291,9 @@ public static class CombatDescriber
         opponent?.Attributes.TryGetValue(EPlayerAttributeType.Shield, out shield);
         int health = reportedHealth - shield;
         if (health < 0) health = reportedHealth;
+
+        if (shield > 0)
+            return $"{health} with {shield} shield";
         return health.ToString();
     }
 

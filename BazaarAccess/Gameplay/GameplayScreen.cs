@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using BazaarAccess.Accessibility;
 using BazaarAccess.Core;
 using BazaarAccess.Patches;
@@ -16,6 +17,18 @@ namespace BazaarAccess.Gameplay;
 /// Navegación dinámica con items y acciones.
 /// Auto-focus a la sección correcta según el estado del juego.
 /// </summary>
+/// <summary>
+/// Action menu option type.
+/// </summary>
+public enum ActionOption
+{
+    Sell,
+    Upgrade,
+    Enchant,
+    MoveToStash,
+    MoveToBoard
+}
+
 public class GameplayScreen : IAccessibleScreen
 {
     public string ScreenName => "Gameplay";
@@ -24,6 +37,12 @@ public class GameplayScreen : IAccessibleScreen
     private bool _isValid = true;
     private ERunState _lastState = ERunState.Choice;
 
+    // Action mode state
+    private bool _isInActionMode = false;
+    private List<ActionOption> _actionOptions = new List<ActionOption>();
+    private int _actionIndex = 0;
+    private Card _actionCard = null;
+
     public GameplayScreen()
     {
         _navigator = new GameplayNavigator();
@@ -31,6 +50,13 @@ public class GameplayScreen : IAccessibleScreen
 
     public void HandleInput(AccessibleKey key)
     {
+        // Handle action mode input (when in action mode)
+        if (_isInActionMode)
+        {
+            HandleActionModeInput(key);
+            return;
+        }
+
         // En modo replay (post-combate), Enter/R/E + V/F/G/B para navegación
         if (_navigator.IsInReplayMode)
         {
@@ -367,16 +393,17 @@ public class GameplayScreen : IAccessibleScreen
                 break;
 
             case AccessibleKey.GoToStash:
-                // Si el stash está cerrado, abrirlo primero
+                // G opens stash (if closed) and navigates to it
                 if (!_navigator.IsStashOpen())
                 {
-                    _navigator.ToggleStash();
+                    _navigator.ToggleStash(); // Open the stash
                 }
                 else
                 {
-                    _navigator.GoToStash();
+                    _navigator.GoToStash(); // Navigate to stash
                 }
                 break;
+
 
             case AccessibleKey.GoToEnemy:
                 _navigator.ReadEnemyInfo();
@@ -479,7 +506,7 @@ public class GameplayScreen : IAccessibleScreen
                 MessageBuffer.ReadPrevious();
                 break;
 
-            // Espacio - abrir/cerrar stash
+            // Space - toggle stash open/close
             case AccessibleKey.Space:
                 _navigator.ToggleStash();
                 break;
@@ -533,6 +560,464 @@ public class GameplayScreen : IAccessibleScreen
                 CombatDescriber.ToggleMode();
                 break;
         }
+    }
+
+    /// <summary>
+    /// Enters action mode for the current item.
+    /// Builds a menu of available actions.
+    /// </summary>
+    private void EnterActionMode(Card card)
+    {
+        if (card == null) return;
+
+        _actionCard = card;
+        _actionOptions.Clear();
+        _actionIndex = 0;
+
+        var currentState = StateChangePatch.GetCurrentRunState();
+        bool canSell = _navigator.CanSellInCurrentState();
+        bool canMove = _navigator.CanMoveInCurrentState();
+        bool isInBoard = _navigator.CurrentSection == NavigationSection.Board;
+        bool isInStash = _navigator.CurrentSection == NavigationSection.Stash;
+        bool stashOpen = _navigator.IsStashOpen();
+
+        // Build available options
+        if (canSell)
+        {
+            _actionOptions.Add(ActionOption.Sell);
+        }
+
+        if (currentState == ERunState.Pedestal && ActionHelper.CanUpgrade())
+        {
+            if (ActionHelper.IsEnchantPedestal())
+            {
+                _actionOptions.Add(ActionOption.Enchant);
+            }
+            else
+            {
+                _actionOptions.Add(ActionOption.Upgrade);
+            }
+        }
+
+        if (canMove && isInBoard && stashOpen)
+        {
+            _actionOptions.Add(ActionOption.MoveToStash);
+        }
+
+        if (canMove && isInStash)
+        {
+            _actionOptions.Add(ActionOption.MoveToBoard);
+        }
+
+        if (_actionOptions.Count == 0)
+        {
+            TolkWrapper.Speak("No actions available");
+            return;
+        }
+
+        _isInActionMode = true;
+
+        // Announce action mode with first option
+        string cardName = ItemReader.GetCardName(card);
+        TolkWrapper.Speak($"{cardName}. {GetActionOptionText(_actionOptions[0])}. " +
+                          $"{_actionOptions.Count} actions. Backspace to cancel.");
+    }
+
+    /// <summary>
+    /// Gets the display text for an action option.
+    /// </summary>
+    private string GetActionOptionText(ActionOption option)
+    {
+        switch (option)
+        {
+            case ActionOption.Sell:
+                int sellPrice = ItemReader.GetSellPrice(_actionCard);
+                return $"Sell for {sellPrice} gold (S)";
+
+            case ActionOption.Upgrade:
+                string currentTier = ItemReader.GetTierName(_actionCard);
+                string nextTier = GetNextTierName(_actionCard.Tier);
+                return $"Upgrade to {nextTier} (U)";
+
+            case ActionOption.Enchant:
+                var pedestalInfo = ActionHelper.GetCurrentPedestalInfo();
+                string enchantName = pedestalInfo.EnchantmentName ?? "random";
+                return $"Enchant with {enchantName} (U)";
+
+            case ActionOption.MoveToStash:
+                return "Move to stash (M)";
+
+            case ActionOption.MoveToBoard:
+                return "Move to board (M)";
+
+            default:
+                return option.ToString();
+        }
+    }
+
+    /// <summary>
+    /// Announces the current action option.
+    /// </summary>
+    private void AnnounceCurrentActionOption()
+    {
+        if (_actionOptions.Count == 0) return;
+
+        string optionText = GetActionOptionText(_actionOptions[_actionIndex]);
+        int position = _actionIndex + 1;
+        int total = _actionOptions.Count;
+        TolkWrapper.Speak($"{optionText}, {position} of {total}");
+    }
+
+    /// <summary>
+    /// Executes the specified action option directly (no confirmation).
+    /// </summary>
+    private void ExecuteActionOption(ActionOption option)
+    {
+        var itemCard = _actionCard as ItemCard;
+        _isInActionMode = false;
+        _actionCard = null;
+
+        switch (option)
+        {
+            case ActionOption.Sell:
+                if (itemCard != null)
+                {
+                    string name = ItemReader.GetCardName(itemCard);
+                    int price = ItemReader.GetSellPrice(itemCard);
+                    ActionHelper.SellItem(itemCard);
+                    TolkWrapper.Speak($"Sold {name} for {price} gold");
+                    RefreshAndAnnounce();
+                }
+                break;
+
+            case ActionOption.Upgrade:
+                if (itemCard != null)
+                {
+                    string upgradeName = ItemReader.GetCardName(itemCard);
+                    TolkWrapper.Speak($"Upgrading {upgradeName}");
+                    ActionHelper.UpgradeItem(itemCard);
+                    Plugin.Instance.StartCoroutine(DelayedRefreshAfterUpgrade());
+                }
+                break;
+
+            case ActionOption.Enchant:
+                if (itemCard != null)
+                {
+                    string enchantItemName = ItemReader.GetCardName(itemCard);
+                    TolkWrapper.Speak($"Enchanting {enchantItemName}");
+                    ActionHelper.UseCurrentPedestal(itemCard);
+                    Plugin.Instance.StartCoroutine(DelayedRefreshAfterUpgrade());
+                }
+                break;
+
+            case ActionOption.MoveToStash:
+                if (itemCard != null)
+                {
+                    ActionHelper.MoveItem(itemCard, true);
+                    TolkWrapper.Speak("Moved to stash");
+                    RefreshAndAnnounce();
+                }
+                break;
+
+            case ActionOption.MoveToBoard:
+                if (itemCard != null)
+                {
+                    ActionHelper.MoveItem(itemCard, false);
+                    TolkWrapper.Speak("Moved to board");
+                    RefreshAndAnnounce();
+                }
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Handles input while in action mode.
+    /// </summary>
+    private void HandleActionModeInput(AccessibleKey key)
+    {
+        if (_actionCard == null)
+        {
+            _isInActionMode = false;
+            TolkWrapper.Speak("Action cancelled");
+            return;
+        }
+
+        // Check if we can reorder (only in board section)
+        bool canReorder = _navigator.IsInBoardSection() && _navigator.CanMoveInCurrentState();
+        var itemCard = _actionCard as ItemCard;
+
+        switch (key)
+        {
+            // Navigate menu options
+            case AccessibleKey.Up:
+                if (_actionOptions.Count > 1)
+                {
+                    _actionIndex = (_actionIndex - 1 + _actionOptions.Count) % _actionOptions.Count;
+                    AnnounceCurrentActionOption();
+                }
+                break;
+
+            case AccessibleKey.Down:
+                if (_actionOptions.Count > 1)
+                {
+                    _actionIndex = (_actionIndex + 1) % _actionOptions.Count;
+                    AnnounceCurrentActionOption();
+                }
+                break;
+
+            // Confirm selected option
+            case AccessibleKey.Confirm:
+                if (_actionOptions.Count > 0)
+                {
+                    ExecuteActionOption(_actionOptions[_actionIndex]);
+                }
+                break;
+
+            // Shortcut: S = Sell
+            case AccessibleKey.StashInfo: // S key
+                if (_actionOptions.Contains(ActionOption.Sell))
+                {
+                    ExecuteActionOption(ActionOption.Sell);
+                }
+                else
+                {
+                    TolkWrapper.Speak("Cannot sell");
+                }
+                break;
+
+            // Shortcut: U = Upgrade/Enchant
+            case AccessibleKey.Upgrade:
+                if (_actionOptions.Contains(ActionOption.Upgrade))
+                {
+                    ExecuteActionOption(ActionOption.Upgrade);
+                }
+                else if (_actionOptions.Contains(ActionOption.Enchant))
+                {
+                    ExecuteActionOption(ActionOption.Enchant);
+                }
+                else
+                {
+                    TolkWrapper.Speak("Cannot upgrade or enchant here");
+                }
+                break;
+
+            // Shortcut: M = Move
+            case AccessibleKey.ActionMove:
+                if (_actionOptions.Contains(ActionOption.MoveToStash))
+                {
+                    ExecuteActionOption(ActionOption.MoveToStash);
+                }
+                else if (_actionOptions.Contains(ActionOption.MoveToBoard))
+                {
+                    ExecuteActionOption(ActionOption.MoveToBoard);
+                }
+                else
+                {
+                    TolkWrapper.Speak("Cannot move");
+                }
+                break;
+
+            // Reorder: Left/Right arrows (stay in action mode)
+            case AccessibleKey.Left:
+                if (canReorder && itemCard != null)
+                {
+                    int currentSlot = _navigator.GetCurrentBoardSlot();
+                    if (ActionHelper.ReorderItem(itemCard, currentSlot, -1, silent: true))
+                    {
+                        _navigator.Refresh();
+                        int newSlot = currentSlot - 1;
+                        _navigator.GoToBoardSlot(newSlot);
+                        AnnounceReorderPosition(newSlot, itemCard);
+                    }
+                    // ReorderItem announces "At left edge" if at limit
+                }
+                else
+                {
+                    TolkWrapper.Speak("Cannot reorder");
+                }
+                break;
+
+            case AccessibleKey.Right:
+                if (canReorder && itemCard != null)
+                {
+                    int currentSlot = _navigator.GetCurrentBoardSlot();
+                    if (ActionHelper.ReorderItem(itemCard, currentSlot, 1, silent: true))
+                    {
+                        _navigator.Refresh();
+                        int newSlot = currentSlot + 1;
+                        _navigator.GoToBoardSlot(newSlot);
+                        AnnounceReorderPosition(newSlot, itemCard);
+                    }
+                    // ReorderItem announces "At right edge" if at limit
+                }
+                else
+                {
+                    TolkWrapper.Speak("Cannot reorder");
+                }
+                break;
+
+            // Reorder: Home/End for edges (stay in action mode)
+            case AccessibleKey.Home:
+                if (canReorder && itemCard != null)
+                {
+                    MoveItemToEdge(itemCard, -1);
+                }
+                else
+                {
+                    TolkWrapper.Speak("Cannot reorder");
+                }
+                break;
+
+            case AccessibleKey.End:
+                if (canReorder && itemCard != null)
+                {
+                    MoveItemToEdge(itemCard, 1);
+                }
+                else
+                {
+                    TolkWrapper.Speak("Cannot reorder");
+                }
+                break;
+
+            // Exit with Backspace
+            case AccessibleKey.Back:
+                _isInActionMode = false;
+                _actionCard = null;
+                TolkWrapper.Speak("Exited");
+                break;
+
+            // All other keys are ignored (stay in action mode)
+            default:
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Announces the position after reordering, including adjacent items.
+    /// </summary>
+    private void AnnounceReorderPosition(int slot, ItemCard movedCard)
+    {
+        int cardSize = (int)movedCard.Size;
+        int leftEdge = 0;
+        int rightEdge = 10 - cardSize;
+
+        // Check if at edge
+        if (slot <= leftEdge)
+        {
+            // At left edge - announce item to the right if any
+            var rightItem = _navigator.GetItemAtSlot(slot + cardSize);
+            if (rightItem != null)
+            {
+                string rightName = ItemReader.GetCardName(rightItem);
+                TolkWrapper.Speak($"Left edge, before {rightName}");
+            }
+            else
+            {
+                TolkWrapper.Speak("Left edge");
+            }
+        }
+        else if (slot >= rightEdge)
+        {
+            // At right edge - announce item to the left if any
+            var leftItem = _navigator.GetItemAtSlot(slot - 1);
+            if (leftItem != null)
+            {
+                string leftName = ItemReader.GetCardName(leftItem);
+                TolkWrapper.Speak($"Right edge, after {leftName}");
+            }
+            else
+            {
+                TolkWrapper.Speak("Right edge");
+            }
+        }
+        else
+        {
+            // In the middle - announce items on both sides
+            var leftItem = _navigator.GetItemAtSlot(slot - 1);
+            var rightItem = _navigator.GetItemAtSlot(slot + cardSize);
+
+            if (leftItem != null && rightItem != null)
+            {
+                string leftName = ItemReader.GetCardName(leftItem);
+                string rightName = ItemReader.GetCardName(rightItem);
+                TolkWrapper.Speak($"Between {leftName} and {rightName}");
+            }
+            else if (leftItem != null)
+            {
+                string leftName = ItemReader.GetCardName(leftItem);
+                TolkWrapper.Speak($"After {leftName}");
+            }
+            else if (rightItem != null)
+            {
+                string rightName = ItemReader.GetCardName(rightItem);
+                TolkWrapper.Speak($"Before {rightName}");
+            }
+            else
+            {
+                TolkWrapper.Speak($"Position {slot + 1}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Moves an item to the left or right edge of the board.
+    /// </summary>
+    private void MoveItemToEdge(ItemCard card, int direction)
+    {
+        if (card == null)
+        {
+            TolkWrapper.Speak("Cannot move this");
+            return;
+        }
+
+        int currentSlot = _navigator.GetCurrentBoardSlot();
+        if (currentSlot < 0)
+        {
+            TolkWrapper.Speak("Cannot determine position");
+            return;
+        }
+
+        int cardSize = (int)card.Size;
+        int targetSlot;
+
+        if (direction < 0)
+        {
+            // Move to left edge (slot 0)
+            targetSlot = 0;
+        }
+        else
+        {
+            // Move to right edge (slot 10 - cardSize)
+            targetSlot = 10 - cardSize;
+        }
+
+        if (targetSlot == currentSlot)
+        {
+            string edge = direction < 0 ? "left" : "right";
+            TolkWrapper.Speak($"Already at {edge} edge");
+            return;
+        }
+
+        // Calculate how many moves we need
+        int stepDirection = (targetSlot > currentSlot) ? 1 : -1;
+
+        // Move step by step (the game doesn't support direct multi-slot moves)
+        while (currentSlot != targetSlot)
+        {
+            if (!ActionHelper.ReorderItem(card, currentSlot, stepDirection, silent: true))
+            {
+                break; // Stop if a move fails
+            }
+            currentSlot += stepDirection;
+        }
+
+        // Refresh and announce
+        _navigator.Refresh();
+        _navigator.GoToBoardSlot(currentSlot); // Use actual position reached
+
+        // Announce with context
+        AnnounceReorderPosition(currentSlot, card);
+        _navigator.TriggerVisualSelection();
     }
 
     /// <summary>
@@ -591,14 +1076,12 @@ public class GameplayScreen : IAccessibleScreen
 
     public string GetHelp()
     {
-        return "Left/Right: Navigate items. Up/Down: Read item details line by line. " +
-               "Tab: Switch section. Space: Stash. " +
-               "B: Board. V: Hero. C: Choices. F: Enemy info. I: Property info. W: Wins. " +
-               "Enter: Select/Buy/Sell. E: Exit. R: Refresh. Shift+U: Upgrade. " +
-               "Shift+Up/Down: Move to board/stash. Shift+Left/Right: Reorder. " +
-               "Ctrl+Up/Down: Read item details or navigate Hero stats. " +
-               "Ctrl+Left/Right: Switch Hero subsection (Stats/Skills). " +
-               "Period/Comma: Messages.";
+        return "Left/Right: Navigate items. Up/Down: Read details. " +
+               "Tab: Switch section. Space: Toggle stash. G: Go to stash. " +
+               "B: Board. V: Hero. C: Choices. F: Enemy. I: Properties. W: Wins. " +
+               "Enter: Select/Buy or Action menu on board items. E: Exit. R: Refresh. " +
+               "In Action menu: S sell, U upgrade, M move, Arrows reorder. " +
+               "Ctrl+Arrows: Detail reading. Period/Comma: Messages.";
     }
 
     public void OnFocus()
@@ -778,13 +1261,13 @@ public class GameplayScreen : IAccessibleScreen
             return;
         }
 
-        // Si estamos en Board/Stash, es venta
+        // Si estamos en Board/Stash, abrir menú de acciones
         if (_navigator.IsInPlayerSection())
         {
             var card = _navigator.GetCurrentCard();
             if (card != null)
             {
-                HandleSellConfirm(card);
+                EnterActionMode(card);
             }
             else
             {
@@ -903,6 +1386,14 @@ public class GameplayScreen : IAccessibleScreen
         var itemCard = card as ItemCard;
         if (itemCard == null) { TolkWrapper.Speak("Cannot sell this"); return; }
 
+        // Check if we're in Pedestal state - offer upgrade instead of sell
+        var currentState = StateChangePatch.GetCurrentRunState();
+        if (currentState == ERunState.Pedestal && ActionHelper.CanUpgrade())
+        {
+            HandleUpgradeConfirm(card);
+            return;
+        }
+
         if (!_navigator.CanSellInCurrentState())
         {
             TolkWrapper.Speak("Cannot sell right now");
@@ -919,6 +1410,84 @@ public class GameplayScreen : IAccessibleScreen
             },
             onCancel: () => TolkWrapper.Speak("Cancelled"));
         AccessibilityMgr.ShowUI(ui);
+    }
+
+    /// <summary>
+    /// Shows upgrade confirmation dialog with tier information.
+    /// </summary>
+    private void HandleUpgradeConfirm(Card card)
+    {
+        string name = ItemReader.GetCardName(card);
+
+        // Get pedestal info to determine if it's upgrade or enchant
+        var pedestalInfo = ActionHelper.GetCurrentPedestalInfo();
+
+        if (pedestalInfo.Type == ActionHelper.PedestalType.Enchant ||
+            pedestalInfo.Type == ActionHelper.PedestalType.EnchantRandom)
+        {
+            // Enchantment altar
+            // Check if already enchanted
+            if (card is ItemCard itemCard && itemCard.Enchantment.HasValue)
+            {
+                string currentEnchant = ItemReader.GetEnchantmentName(itemCard.Enchantment.Value);
+                TolkWrapper.Speak($"{name} is already enchanted with {currentEnchant}");
+                return;
+            }
+
+            string enchantName = pedestalInfo.EnchantmentName ?? "random";
+            string message = pedestalInfo.Type == ActionHelper.PedestalType.EnchantRandom
+                ? $"Enchant {name} with a random enchantment?"
+                : $"Enchant {name} with {enchantName}?";
+
+            var ui = new ConfirmActionUI(ConfirmActionType.Upgrade, name, 0, message,
+                onConfirm: () => {
+                    if (ActionHelper.UseCurrentPedestal(card))
+                    {
+                        Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
+                    }
+                },
+                onCancel: () => TolkWrapper.Speak("Cancelled"));
+            AccessibilityMgr.ShowUI(ui);
+        }
+        else
+        {
+            // Upgrade altar
+            string currentTier = ItemReader.GetTierName(card);
+            string nextTier = GetNextTierName(card.Tier);
+
+            // Check if already at max tier
+            if (card.Tier == ETier.Diamond || card.Tier == ETier.Legendary)
+            {
+                TolkWrapper.Speak($"{name} is already at {currentTier}, cannot upgrade further");
+                return;
+            }
+
+            string message = $"Upgrade {name} from {currentTier} to {nextTier}?";
+
+            var ui = new ConfirmActionUI(ConfirmActionType.Upgrade, name, 0, message,
+                onConfirm: () => {
+                    if (ActionHelper.UpgradeItem(card))
+                    {
+                        Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
+                    }
+                },
+                onCancel: () => TolkWrapper.Speak("Cancelled"));
+            AccessibilityMgr.ShowUI(ui);
+        }
+    }
+
+    /// <summary>
+    /// Gets the name of the next tier.
+    /// </summary>
+    private string GetNextTierName(ETier currentTier)
+    {
+        return currentTier switch
+        {
+            ETier.Bronze => "Silver",
+            ETier.Silver => "Gold",
+            ETier.Gold => "Diamond",
+            _ => "max"
+        };
     }
 
     private void HandleMoveAction()
@@ -1043,17 +1612,18 @@ public class GameplayScreen : IAccessibleScreen
         // Calcular el nuevo slot donde estará el item
         int newSlot = currentSlot + direction;
 
-        if (ActionHelper.ReorderItem(card, currentSlot, direction))
+        if (ActionHelper.ReorderItem(card, currentSlot, direction, silent: true))
         {
             // Refrescar primero para actualizar _boardIndices
             _navigator.Refresh();
             // Ahora mover el índice del navegador al nuevo slot para seguir al item
             _navigator.GoToBoardSlot(newSlot);
-            // Anunciar el item (que es el mismo que movimos)
-            _navigator.AnnounceCurrentItem();
+            // Announce position with context
+            AnnounceReorderPosition(newSlot, card);
             // Activar selección visual
             _navigator.TriggerVisualSelection();
         }
+        // ReorderItem announces edge limits if at boundary
     }
 
     private void RefreshAndAnnounce()
@@ -1125,6 +1695,55 @@ public class GameplayScreen : IAccessibleScreen
         AutoFocusForState(newState);
 
         // No anunciar aquí - StateChangePatch lo hará con debounce
+    }
+
+    /// <summary>
+    /// Coroutine for upgrade/enchant that waits longer for animations.
+    /// Game animations can take up to 12 seconds.
+    /// </summary>
+    private System.Collections.IEnumerator DelayedRefreshAfterUpgrade()
+    {
+        // Wait for game to process and start animation
+        yield return new WaitForSeconds(1.5f);
+
+        // Check if BoardManager is still processing
+        // Poll every 0.5 seconds up to 10 seconds total
+        float maxWait = 10f;
+        float waited = 0f;
+
+        while (waited < maxWait)
+        {
+            var boardManager = Singleton<BoardManager>.Instance;
+            if (boardManager != null)
+            {
+                // Check if animation is done using reflection
+                var isProcessingProp = boardManager.GetType().GetProperty("IsProcessingUpgradeOrFuseOrEnchant",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                var isAnimatingProp = boardManager.GetType().GetProperty("IsPlayingUpgradeOrFuseOrEnchantAnimation",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+
+                bool isProcessing = isProcessingProp != null && (bool)isProcessingProp.GetValue(boardManager);
+                bool isAnimating = isAnimatingProp != null && (bool)isAnimatingProp.GetValue(boardManager);
+
+                if (!isProcessing && !isAnimating)
+                {
+                    break; // Animation done
+                }
+            }
+
+            yield return new WaitForSeconds(0.5f);
+            waited += 0.5f;
+        }
+
+        // Final refresh
+        yield return new WaitForSeconds(0.3f);
+        _navigator.Refresh();
+
+        TolkWrapper.Speak("Done");
+
+        // Auto-focus
+        var newState = StateChangePatch.GetCurrentRunState();
+        AutoFocusForState(newState);
     }
 
     /// <summary>
