@@ -929,16 +929,8 @@ public class GameplayNavigator
                 opponentName = pvpOpponent.Name;
             }
 
-            // Announce board - start in Items subsection
-            var parts = new List<string>();
-            parts.Add($"{opponentName}'s board");
-            parts.Add($"Items: {_enemyItemIndices.Count}");
-            if (skillCount > 0)
-            {
-                parts.Add($"Skills: {skillCount}");
-            }
-
-            TolkWrapper.Speak(string.Join(", ", parts));
+            // Announce board
+            TolkWrapper.Speak($"{opponentName}'s board, {_enemyItemIndices.Count} items");
         }
         catch (System.Exception ex)
         {
@@ -1198,10 +1190,10 @@ public class GameplayNavigator
             return;
         }
 
-        // Refresh detail lines if card changed
+        // Refresh detail lines if card changed - use enemy-focused order
         if (_enemyDetailCard != card)
         {
-            _enemyDetailLines = ItemReader.GetDetailLines(card);
+            _enemyDetailLines = ItemReader.GetEnemyDetailLines(card);
             _enemyDetailIndex = -1;
             _enemyDetailCard = card;
         }
@@ -1238,11 +1230,11 @@ public class GameplayNavigator
             return;
         }
 
-        // Refresh detail lines if card changed
+        // Refresh detail lines if card changed - use enemy-focused order
         if (_enemyDetailCard != card)
         {
-            _enemyDetailLines = ItemReader.GetDetailLines(card);
-            _enemyDetailIndex = _enemyDetailLines.Count; // Start from end
+            _enemyDetailLines = ItemReader.GetEnemyDetailLines(card);
+            _enemyDetailIndex = -1;
             _enemyDetailCard = card;
         }
 
@@ -1252,7 +1244,7 @@ public class GameplayNavigator
             return;
         }
 
-        // Go to previous line (no wrap)
+        // On first press or at start, read first line
         if (_enemyDetailIndex <= 0)
         {
             _enemyDetailIndex = 0;
@@ -1382,7 +1374,8 @@ public class GameplayNavigator
         }
         else
         {
-            TolkWrapper.Speak(name);
+            // Use compact combat-focused description for enemy items
+            TolkWrapper.Speak(ItemReader.GetEnemyCompactDescription(card));
         }
 
         // Visual feedback (only if controller is available)
@@ -3023,12 +3016,30 @@ public class GameplayNavigator
             return;
         }
 
-        int skillCount = _enemySkills.Count;
-        string msg = "Enemy hero. Stats";
-        if (skillCount > 0)
-            msg += $", Skills: {skillCount}. Right arrow for skills.";
+        TolkWrapper.Speak("Enemy stats");
+    }
 
-        TolkWrapper.Speak(msg);
+    /// <summary>
+    /// Enter Enemy stats mode during combat (F key).
+    /// Allows navigation of enemy stats and skills with arrow keys.
+    /// </summary>
+    public void EnterCombatEnemyStatsMode()
+    {
+        _currentRecapSection = RecapSection.EnemyStats;
+        _enemyStatIndex = 0;
+        _enemyHeroSkillIndex = 0;
+
+        RefreshEnemyItems(); // Also loads enemy skills
+
+        var opponent = Data.Run?.Opponent;
+        if (opponent == null)
+        {
+            TolkWrapper.Speak("No enemy");
+            _currentRecapSection = RecapSection.None;
+            return;
+        }
+
+        TolkWrapper.Speak("Enemy stats");
     }
 
     /// <summary>

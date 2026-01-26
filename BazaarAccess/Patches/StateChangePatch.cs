@@ -29,6 +29,7 @@ public static class StateChangePatch
     private static bool _initialized = false;
     private static bool _inCombat = false;
     private static bool _inReplayState = false;
+    private static bool _combatBoardReady = false;
     private static Type _eventsType;
     private static Type _replayStateType;
 
@@ -51,6 +52,7 @@ public static class StateChangePatch
 
     public static bool IsInCombat => _inCombat;
     public static bool IsInReplayState => _inReplayState;
+    public static bool IsCombatBoardReady => _combatBoardReady;
 
     /// <summary>
     /// Initializes event subscriptions.
@@ -464,13 +466,27 @@ public static class StateChangePatch
     {
         Plugin.Logger.LogInfo("CombatStarted");
         _inCombat = true;
+        _combatBoardReady = false;
         _combatResultAnnounced = false; // Reset for the new combat
 
         // Start combat narration
         CombatDescriber.StartDescribing();
 
+        // Set board ready after a short delay for items to appear
+        Plugin.Instance.StartCoroutine(DelayedSetCombatBoardReady());
+
         var screen = AccessibilityMgr.GetCurrentScreen() as GameplayScreen;
         screen?.OnCombatStateChanged(true);
+    }
+
+    private static System.Collections.IEnumerator DelayedSetCombatBoardReady()
+    {
+        yield return new WaitForSeconds(1.5f);
+        if (_inCombat)
+        {
+            _combatBoardReady = true;
+            Plugin.Logger.LogInfo("Combat board ready (after delay)");
+        }
     }
 
     /// <summary>
@@ -480,6 +496,7 @@ public static class StateChangePatch
     {
         Plugin.Logger.LogInfo("CombatEnded");
         _inCombat = false;
+        _combatBoardReady = false;
 
         // Stop combat narration
         CombatDescriber.StopDescribing();

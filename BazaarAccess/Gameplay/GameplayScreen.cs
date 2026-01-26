@@ -43,6 +43,10 @@ public class GameplayScreen : IAccessibleScreen
     private int _actionIndex = 0;
     private Card _actionCard = null;
 
+    // Combat navigation mode
+    private enum CombatNavSection { None, PlayerBoard, EnemyBoard, EnemyStats }
+    private CombatNavSection _combatNavSection = CombatNavSection.None;
+
     public GameplayScreen()
     {
         _navigator = new GameplayNavigator();
@@ -225,50 +229,152 @@ public class GameplayScreen : IAccessibleScreen
                         currentState == ERunState.Combat ||
                         currentState == ERunState.PVPCombat;
 
-        // En modo combate, solo permitir V (Hero), F (Enemy) y Ctrl+flechas para navegar Hero/Enemy
+        // En modo combate, permitir navegación de tableros con B/G y flechas
         if (inCombat)
         {
-            // Si estamos en modo enemigo durante combate
-            if (_navigator.IsInEnemyMode)
+            // Handle combat navigation sections (player board or enemy board)
+            if (_combatNavSection == CombatNavSection.PlayerBoard)
             {
                 switch (key)
                 {
-                    case AccessibleKey.DetailUp:
-                        _navigator.EnemyNext();
+                    case AccessibleKey.Left:
+                        _navigator.Previous();
                         return;
-
-                    case AccessibleKey.DetailDown:
-                        _navigator.EnemyPrevious();
+                    case AccessibleKey.Right:
+                        _navigator.Next();
                         return;
-
-                    case AccessibleKey.Confirm:
-                        _navigator.ReadCurrentEnemyItemDetails();
+                    case AccessibleKey.Up:
+                        _navigator.ReadDetailLineUp();
                         return;
-
-                    case AccessibleKey.GoToEnemy:
+                    case AccessibleKey.Down:
+                        _navigator.ReadDetailLineDown();
+                        return;
+                    case AccessibleKey.GoToBoard: // B again re-announces
+                        _navigator.GoToBoard();
+                        return;
+                    case AccessibleKey.GoToStash: // G switches to enemy board
+                        _combatNavSection = CombatNavSection.EnemyBoard;
+                        _navigator.EnterOpponentBoardMode();
+                        return;
+                    case AccessibleKey.GoToHero: // V switches to hero
+                        _combatNavSection = CombatNavSection.None;
+                        _navigator.GoToHero();
+                        return;
+                    case AccessibleKey.GoToEnemy: // F switches to enemy stats
+                        _combatNavSection = CombatNavSection.None;
                         _navigator.ReadEnemyInfo();
                         return;
-
-                    case AccessibleKey.GoToHero:
+                    case AccessibleKey.Back:
+                        _combatNavSection = CombatNavSection.None;
+                        TolkWrapper.Speak("Exited board view");
+                        return;
+                }
+            }
+            else if (_combatNavSection == CombatNavSection.EnemyBoard)
+            {
+                switch (key)
+                {
+                    case AccessibleKey.Left:
+                        _navigator.EnemyNavigateLeft();
+                        return;
+                    case AccessibleKey.Right:
+                        _navigator.EnemyNavigateRight();
+                        return;
+                    case AccessibleKey.Up:
+                        _navigator.EnemyDetailPrevious();
+                        return;
+                    case AccessibleKey.Down:
+                        _navigator.EnemyDetailNext();
+                        return;
+                    case AccessibleKey.GoToStash: // G again re-announces
+                        _navigator.EnterOpponentBoardMode();
+                        return;
+                    case AccessibleKey.GoToBoard: // B switches to player board
+                        _combatNavSection = CombatNavSection.PlayerBoard;
+                        _navigator.ExitEnemyMode();
+                        _navigator.GoToBoard();
+                        return;
+                    case AccessibleKey.GoToHero: // V switches to hero
+                        _combatNavSection = CombatNavSection.None;
                         _navigator.ExitEnemyMode();
                         _navigator.GoToHero();
                         return;
-
-                    case AccessibleKey.Back:
+                    case AccessibleKey.GoToEnemy: // F switches to enemy stats
+                        _combatNavSection = CombatNavSection.EnemyStats;
                         _navigator.ExitEnemyMode();
-                        TolkWrapper.Speak("Exited enemy view");
+                        _navigator.EnterCombatEnemyStatsMode();
+                        return;
+                    case AccessibleKey.Back:
+                        _combatNavSection = CombatNavSection.None;
+                        _navigator.ExitEnemyMode();
+                        TolkWrapper.Speak("Exited enemy board view");
+                        return;
+                }
+            }
+            else if (_combatNavSection == CombatNavSection.EnemyStats)
+            {
+                switch (key)
+                {
+                    case AccessibleKey.Up:
+                        _navigator.RecapEnemyStatsPrevious();
+                        return;
+                    case AccessibleKey.Down:
+                        _navigator.RecapEnemyStatsNext();
+                        return;
+                    case AccessibleKey.Left:
+                        _navigator.RecapEnemyToStats();
+                        return;
+                    case AccessibleKey.Right:
+                        _navigator.RecapEnemyToSkills();
+                        return;
+                    case AccessibleKey.GoToEnemy: // F again re-announces
+                        _navigator.EnterCombatEnemyStatsMode();
+                        return;
+                    case AccessibleKey.GoToBoard: // B switches to player board
+                        _combatNavSection = CombatNavSection.PlayerBoard;
+                        _navigator.GoToBoard();
+                        return;
+                    case AccessibleKey.GoToStash: // G switches to enemy board
+                        _combatNavSection = CombatNavSection.EnemyBoard;
+                        _navigator.EnterOpponentBoardMode();
+                        return;
+                    case AccessibleKey.GoToHero: // V switches to hero
+                        _combatNavSection = CombatNavSection.None;
+                        _navigator.GoToHero();
+                        return;
+                    case AccessibleKey.Back:
+                        _combatNavSection = CombatNavSection.None;
+                        TolkWrapper.Speak("Exited enemy stats view");
                         return;
                 }
             }
 
             switch (key)
             {
+                case AccessibleKey.GoToBoard: // B = Player board
+                    if (!StateChangePatch.IsCombatBoardReady)
+                        break;
+                    _combatNavSection = CombatNavSection.PlayerBoard;
+                    _navigator.GoToBoard();
+                    break;
+
+                case AccessibleKey.GoToStash: // G = Enemy board
+                    if (!StateChangePatch.IsCombatBoardReady)
+                        break;
+                    _combatNavSection = CombatNavSection.EnemyBoard;
+                    _navigator.EnterOpponentBoardMode();
+                    break;
+
                 case AccessibleKey.GoToHero:
+                    _combatNavSection = CombatNavSection.None;
                     _navigator.GoToHero();
                     break;
 
-                case AccessibleKey.GoToEnemy:
-                    _navigator.ReadEnemyInfo();
+                case AccessibleKey.GoToEnemy: // F = Enemy stats with navigation
+                    if (!StateChangePatch.IsCombatBoardReady)
+                        break;
+                    _combatNavSection = CombatNavSection.EnemyStats;
+                    _navigator.EnterCombatEnemyStatsMode();
                     break;
 
                 case AccessibleKey.ToggleCombatMode:
@@ -338,6 +444,9 @@ public class GameplayScreen : IAccessibleScreen
             }
             return;
         }
+
+        // Reset combat nav section when exiting combat
+        _combatNavSection = CombatNavSection.None;
 
         // Si estamos en modo enemigo, manejar navegación de items del enemigo
         if (_navigator.IsInEnemyMode)

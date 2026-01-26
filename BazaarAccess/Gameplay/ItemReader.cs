@@ -939,6 +939,140 @@ public static class ItemReader
     }
 
     /// <summary>
+    /// Gets detail lines optimized for enemy board reading.
+    /// Prioritizes combat-relevant info: name, cooldown, stats, effects first.
+    /// Metadata like tier, size, price comes at the end.
+    /// </summary>
+    public static List<string> GetEnemyDetailLines(Card card)
+    {
+        var lines = new List<string>();
+        if (card == null) return lines;
+
+        // Name first
+        lines.Add(GetCardName(card));
+
+        // Description and abilities first - what the item does
+        string desc = GetDescription(card);
+        if (!string.IsNullOrEmpty(desc))
+        {
+            lines.Add(desc);
+        }
+
+        string abilities = GetAbilityTooltips(card);
+        if (!string.IsNullOrEmpty(abilities))
+        {
+            lines.Add(abilities);
+        }
+
+        // Cooldown
+        var cooldown = card.GetAttributeValue(ECardAttributeType.Cooldown);
+        if (!cooldown.HasValue || cooldown.Value <= 0)
+        {
+            cooldown = card.GetAttributeValue(ECardAttributeType.CooldownMax);
+        }
+        if (cooldown.HasValue && cooldown.Value > 0)
+        {
+            float seconds = cooldown.Value / 1000f;
+            lines.Add($"Cooldown {seconds:F1} seconds");
+        }
+
+        // Combat stats
+        AddStatLine(lines, card, ECardAttributeType.DamageAmount, "Damage");
+        AddStatLine(lines, card, ECardAttributeType.HealAmount, "Heal");
+        AddStatLine(lines, card, ECardAttributeType.ShieldApplyAmount, "Shield");
+        AddStatLine(lines, card, ECardAttributeType.PoisonApplyAmount, "Poison");
+        AddStatLine(lines, card, ECardAttributeType.BurnApplyAmount, "Burn");
+        AddStatLine(lines, card, ECardAttributeType.RegenApplyAmount, "Regeneration");
+
+        // Speed stats
+        AddStatLine(lines, card, ECardAttributeType.HasteAmount, "Haste");
+        AddStatLine(lines, card, ECardAttributeType.SlowAmount, "Slow");
+        AddStatLine(lines, card, ECardAttributeType.FreezeAmount, "Freeze");
+        AddStatLine(lines, card, ECardAttributeType.ChargeAmount, "Charge");
+
+        // Other combat stats
+        AddStatLine(lines, card, ECardAttributeType.Ammo, "Ammo");
+        AddStatLine(lines, card, ECardAttributeType.AmmoMax, "Max Ammo");
+        AddStatLine(lines, card, ECardAttributeType.CritChance, "Crit Chance");
+        AddStatLine(lines, card, ECardAttributeType.Lifesteal, "Lifesteal");
+        AddStatLine(lines, card, ECardAttributeType.Multicast, "Multicast");
+
+        // Metadata at the end (less important for enemy analysis)
+        lines.Add(GetTierName(card));
+
+        string tags = GetTags(card);
+        if (!string.IsNullOrEmpty(tags))
+        {
+            lines.Add(tags);
+        }
+
+        var template = card.Template;
+        if (template != null)
+        {
+            int size = (int)template.Size;
+            string sizeName = template.Size switch
+            {
+                ECardSize.Small => "Small",
+                ECardSize.Medium => "Medium",
+                ECardSize.Large => "Large",
+                _ => ""
+            };
+            lines.Add($"Size: {size} slots ({sizeName})");
+        }
+
+        return lines;
+    }
+
+    /// <summary>
+    /// Gets a compact combat-focused description for enemy item navigation.
+    /// Format: "Name, Cooldown Xs, Damage X" (key stats only)
+    /// </summary>
+    public static string GetEnemyCompactDescription(Card card)
+    {
+        if (card == null) return "Empty slot";
+
+        var parts = new List<string>();
+        parts.Add(GetCardName(card));
+
+        // Cooldown
+        var cooldown = card.GetAttributeValue(ECardAttributeType.Cooldown);
+        if (!cooldown.HasValue || cooldown.Value <= 0)
+        {
+            cooldown = card.GetAttributeValue(ECardAttributeType.CooldownMax);
+        }
+        if (cooldown.HasValue && cooldown.Value > 0)
+        {
+            float seconds = cooldown.Value / 1000f;
+            parts.Add($"{seconds:F1}s");
+        }
+
+        // Key combat stat (just one primary stat for quick reading)
+        var damage = card.GetAttributeValue(ECardAttributeType.DamageAmount);
+        if (damage.HasValue && damage.Value > 0)
+        {
+            parts.Add($"{damage.Value} damage");
+        }
+        else
+        {
+            var heal = card.GetAttributeValue(ECardAttributeType.HealAmount);
+            if (heal.HasValue && heal.Value > 0)
+            {
+                parts.Add($"{heal.Value} heal");
+            }
+            else
+            {
+                var shield = card.GetAttributeValue(ECardAttributeType.ShieldApplyAmount);
+                if (shield.HasValue && shield.Value > 0)
+                {
+                    parts.Add($"{shield.Value} shield");
+                }
+            }
+        }
+
+        return string.Join(", ", parts);
+    }
+
+    /// <summary>
     /// Añade una línea de stat si tiene valor.
     /// </summary>
     private static void AddStatLine(List<string> lines, Card card, ECardAttributeType type, string label)

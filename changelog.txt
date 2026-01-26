@@ -2,6 +2,28 @@
 
 ---
 
+## January 26, 2026
+
+### New Features
+- Combat board navigation: View boards during combat (after items load)
+  - B = Navigate your board with arrow keys
+  - G = Navigate enemy board with arrow keys
+  - F = Navigate enemy stats, Right arrow to access skills
+  - V = Navigate your hero stats
+  - Backspace = Exit current navigation mode
+- Enemy board reading optimized for combat analysis:
+  - Navigation shows compact info: "Item Name, 4.0s, 50 damage"
+  - Detail reading (Up/Down) prioritizes: Name → Description → Abilities → Cooldown → Stats
+  - Metadata (tier, tags, size) moved to end of detail list
+
+### Improvements
+- Simplified announcements:
+  - G key now says "Opponent's board, X items" (removed skills count)
+  - F key now says "Enemy stats" (access skills with Right arrow)
+- Combat navigation only available after 1.5s delay (waits for items to appear)
+
+---
+
 ## January 19, 2026
 
 ### New Features

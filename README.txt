@@ -59,12 +59,27 @@ OTHER
 
 DURING COMBAT
 -------------
-1 through 4 on number row: your health, enemy health, damage delt, damage taken.
-- V (hero stats) and F (enemy stats)
-- H                  Combat summary (damage dealt/taken, health)
-- if in batched combat mode,  Wave-based narration: effects grouped into summaries
-- If in individual action mode, You will hear every card trigger. auto health announcements are disabled, use the 1 through 4 row number keys to quickly read health related info.
-- "Low health!" / "Critical health!" alerts
+Board Navigation (available after items appear):
+  B                  Navigate your board (arrow keys to move, Up/Down for details)
+  G                  Navigate enemy board (arrow keys to move, Up/Down for details)
+  F                  Navigate enemy stats (Right arrow for skills)
+  V                  Navigate your hero stats
+  Backspace          Exit current navigation mode
+
+Quick Stats (number row):
+  1                  Your health
+  2                  Enemy health
+  3                  Damage dealt
+  4                  Damage taken
+
+Other Combat Keys:
+  H                  Combat summary (damage dealt/taken, health)
+  Ctrl+M             Toggle combat mode (batched waves vs individual actions)
+
+Combat Modes:
+- Batched mode: Wave-based narration, effects grouped into summaries
+- Individual mode: Every card trigger announced, use 1-4 for health info
+- "Low health!" / "Critical health!" alerts in both modes
 - "Victory! X wins" or "Defeat! Lost X prestige" at end
 
 POST-COMBAT

@@ -291,3 +291,38 @@ Press **Enter** on a board/stash item to open the action menu:
 - `RefreshBoard()` now uses `HashSet<InstanceId>` to track seen items
 - Large items (size 2-3) only appear once in navigation, not multiple times
 - Prevents incorrect slot calculation when moving items
+
+---
+
+## Combat Board Navigation & Enemy Reading Improvements (Jan 26, 2026)
+
+### Combat Navigation (`GameplayScreen.cs`)
+During combat, after a 1.5s delay for items to load:
+- **B**: Navigate player board with arrow keys
+- **G**: Navigate enemy board with arrow keys
+- **F**: Navigate enemy stats, Right arrow for skills
+- **V**: Navigate hero stats
+- **Backspace**: Exit current navigation mode
+
+Combat navigation state tracked via `CombatNavSection` enum.
+
+### Combat Board Ready Detection (`StateChangePatch.cs`)
+- `_combatBoardReady` flag prevents navigation before items appear
+- `DelayedSetCombatBoardReady()` coroutine sets flag after 1.5s
+- `IsCombatBoardReady` property for checking state
+
+### Enemy Board Reading Improvements (`ItemReader.cs`)
+New `GetEnemyDetailLines()` method optimized for enemy analysis:
+1. Name
+2. Description (what it does)
+3. Abilities/effects
+4. Cooldown
+5. Combat stats (Damage, Heal, Shield, etc.)
+6. Speed stats
+7. Tier, Tags, Size (metadata at end)
+
+New `GetEnemyCompactDescription()` for quick navigation: "Name, Xs, X damage"
+
+### Simplified Announcements
+- Enemy board (G): Just "Opponent's board, X items" (no skills count)
+- Enemy stats (F): Just "Enemy stats" (skills via Right arrow)
