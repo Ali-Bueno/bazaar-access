@@ -33,6 +33,16 @@ ITEM MANAGEMENT
   Shift+Down         Move item to Board
   Shift+Left/Right   Reorder items on Board
 
+ACTION MENU (press Enter on board/stash item)
+  Up/Down            Navigate options (Sell, Upgrade, Enchant, Move)
+  Enter              Confirm selected option
+  Backspace          Exit action menu
+  S                  Sell item directly
+  U                  Upgrade/Enchant item directly
+  M                  Move to stash/board directly
+  Left/Right         Reorder item on board
+  Home/End           Move item to left/right edge of board
+
 DETAILED INFO
 up/down arrows, Read card text line by line and hero stats
 Alternative keys,   Ctrl+Up/Down       Read item details line by line / Navigate hero stats

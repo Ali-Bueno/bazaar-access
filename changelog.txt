@@ -5,6 +5,17 @@
 ## January 26, 2026
 
 ### New Features
+- Action menu system: Press Enter on a board/stash item to open action menu
+  - Up/Down: Navigate options (Sell, Upgrade, Enchant, Move to Stash/Board)
+  - Enter: Confirm selected option
+  - Backspace: Exit action menu
+  - Keyboard shortcuts in action menu:
+    - S: Sell item directly
+    - U: Upgrade/Enchant item directly
+    - M: Move to stash/board directly
+    - Left/Right: Reorder item on board
+    - Home/End: Move item to left/right edge of board
+  - Reorder feedback: "Between [item1] and [item2]", "Left edge", "Right edge"
 - Combat board navigation: View boards during combat (after items load)
   - B = Navigate your board with arrow keys
   - G = Navigate enemy board with arrow keys
@@ -17,6 +28,8 @@
   - Metadata (tier, tags, size) moved to end of detail list
 
 ### Improvements
+- Health display now includes shield: "400 with 50 shield"
+- Pedestal detection for upgrade/enchant altars
 - Simplified announcements:
   - G key now says "Opponent's board, X items" (removed skills count)
   - F key now says "Enemy stats" (access skills with Right arrow)
