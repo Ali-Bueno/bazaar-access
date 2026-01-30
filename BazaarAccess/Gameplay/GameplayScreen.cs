@@ -382,28 +382,6 @@ public class GameplayScreen : IAccessibleScreen
                     CombatDescriber.ToggleMode();
                     break;
 
-                // Ctrl+Up/Down para navegar stats/skills en Hero durante combate
-                case AccessibleKey.DetailUp:
-                    if (_navigator.IsInHeroSection)
-                        _navigator.HeroNext();
-                    break;
-
-                case AccessibleKey.DetailDown:
-                    if (_navigator.IsInHeroSection)
-                        _navigator.HeroPrevious();
-                    break;
-
-                // Ctrl+Left/Right para cambiar subsección en Hero durante combate
-                case AccessibleKey.DetailLeft:
-                    if (_navigator.IsInHeroSection)
-                        _navigator.HeroPreviousSubsection();
-                    break;
-
-                case AccessibleKey.DetailRight:
-                    if (_navigator.IsInHeroSection)
-                        _navigator.HeroNextSubsection();
-                    break;
-
                 case AccessibleKey.Confirm:
                     if (_navigator.IsInHeroSection)
                         _navigator.ReadAllHeroStats();
@@ -454,12 +432,12 @@ public class GameplayScreen : IAccessibleScreen
         {
             switch (key)
             {
-                case AccessibleKey.DetailUp:
-                    _navigator.EnemyNext();
+                case AccessibleKey.Up:
+                    _navigator.EnemyPrevious();
                     return;
 
-                case AccessibleKey.DetailDown:
-                    _navigator.EnemyPrevious();
+                case AccessibleKey.Down:
+                    _navigator.EnemyNext();
                     return;
 
                 case AccessibleKey.Confirm:
@@ -521,11 +499,17 @@ public class GameplayScreen : IAccessibleScreen
 
             // Navegación dentro de la sección actual
             case AccessibleKey.Right:
-                _navigator.Next();
+                if (_navigator.IsInHeroSection)
+                    _navigator.HeroNextSubsection();
+                else
+                    _navigator.Next();
                 break;
 
             case AccessibleKey.Left:
-                _navigator.Previous();
+                if (_navigator.IsInHeroSection)
+                    _navigator.HeroPreviousSubsection();
+                else
+                    _navigator.Previous();
                 break;
 
             // Up/Down: Navigate hero stats in Hero section, or read item details elsewhere
@@ -558,32 +542,6 @@ public class GameplayScreen : IAccessibleScreen
 
             case AccessibleKey.PageDown:
                 _navigator.NavigatePage(1);
-                break;
-
-            // Ctrl+Up/Down: En Hero navega stats/skills, en otras secciones lee detalles
-            case AccessibleKey.DetailUp:
-                if (_navigator.IsInHeroSection)
-                    _navigator.HeroNext();  // Ctrl+Up = siguiente stat/skill
-                else
-                    _navigator.ReadDetailNext();  // Ctrl+Up = siguiente línea (invertido)
-                break;
-
-            case AccessibleKey.DetailDown:
-                if (_navigator.IsInHeroSection)
-                    _navigator.HeroPrevious();  // Ctrl+Down = anterior stat/skill
-                else
-                    _navigator.ReadDetailPrevious();  // Ctrl+Down = línea anterior (invertido)
-                break;
-
-            // Ctrl+Left/Right: Cambiar subsección en Hero (Stats/Skills)
-            case AccessibleKey.DetailLeft:
-                if (_navigator.IsInHeroSection)
-                    _navigator.HeroPreviousSubsection();
-                break;
-
-            case AccessibleKey.DetailRight:
-                if (_navigator.IsInHeroSection)
-                    _navigator.HeroNextSubsection();
                 break;
 
             // Acción principal

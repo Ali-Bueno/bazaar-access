@@ -2802,56 +2802,6 @@ public class GameplayNavigator
     }
 
     /// <summary>
-    /// Lee la línea de detalle anterior (Ctrl+Up).
-    /// </summary>
-    public void ReadDetailPrevious()
-    {
-        InitDetailLines();
-
-        if (_detailLines.Count == 0)
-        {
-            TolkWrapper.Speak("No details");
-            return;
-        }
-
-        if (_detailIndex <= 0)
-        {
-            _detailIndex = 0;
-            TolkWrapper.Speak(_detailLines[0]);
-        }
-        else
-        {
-            _detailIndex--;
-            TolkWrapper.Speak(_detailLines[_detailIndex]);
-        }
-    }
-
-    /// <summary>
-    /// Lee la siguiente línea de detalle (Ctrl+Down).
-    /// </summary>
-    public void ReadDetailNext()
-    {
-        InitDetailLines();
-
-        if (_detailLines.Count == 0)
-        {
-            TolkWrapper.Speak("No details");
-            return;
-        }
-
-        if (_detailIndex < 0)
-        {
-            _detailIndex = 0;
-        }
-        else if (_detailIndex < _detailLines.Count - 1)
-        {
-            _detailIndex++;
-        }
-
-        TolkWrapper.Speak(_detailLines[_detailIndex]);
-    }
-
-    /// <summary>
     /// Limpia el cache de detalles (llamar cuando cambia el item seleccionado).
     /// </summary>
     public void ClearDetailCache()

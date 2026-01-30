@@ -93,25 +93,21 @@ public class KeyboardNavigator : MonoBehaviour
 
         switch (keyCode)
         {
-            // Ctrl = detailed reading, Shift = move between board/stash
+            // Shift = move between board/stash
             case KeyCode.UpArrow:
-                if (ctrl) return AccessibleKey.DetailUp;
                 if (shift) return AccessibleKey.MoveToStash;
                 return AccessibleKey.Up;
 
             case KeyCode.DownArrow:
-                if (ctrl) return AccessibleKey.DetailDown;
                 if (shift) return AccessibleKey.MoveToBoard;
                 return AccessibleKey.Down;
 
-            // Shift+Left/Right = reorder items, Ctrl+Left/Right = change Hero subsection
+            // Shift+Left/Right = reorder items
             case KeyCode.LeftArrow:
-                if (ctrl) return AccessibleKey.DetailLeft;
                 if (shift) return AccessibleKey.ReorderLeft;
                 return AccessibleKey.Left;
 
             case KeyCode.RightArrow:
-                if (ctrl) return AccessibleKey.DetailRight;
                 if (shift) return AccessibleKey.ReorderRight;
                 return AccessibleKey.Right;
 

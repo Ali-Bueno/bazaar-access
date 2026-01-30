@@ -37,7 +37,6 @@ public class CollectionScreen : BaseScreen
     private int _currentCategoryIndex = 0;
     private int _currentItemIndex = 0;
     private BazaarSaleItem[] _currentItems = Array.Empty<BazaarSaleItem>();
-    private int _detailLineIndex = 0;
     private bool _inItemNavigation = false;
 
     public CollectionScreen(Transform root, CollectionUIController uiController) : base(root)
@@ -87,7 +86,6 @@ public class CollectionScreen : BaseScreen
         }
 
         _currentItemIndex = 0;
-        _detailLineIndex = 0;
 
         Plugin.Logger.LogInfo($"CollectionScreen: Loaded {_currentItems.Length} items for {collectionType}");
     }
@@ -130,35 +128,6 @@ public class CollectionScreen : BaseScreen
             parts.Add("equipped");
 
         return string.Join(", ", parts);
-    }
-
-    private List<string> GetItemDetailLines(BazaarSaleItem item)
-    {
-        var lines = new List<string>();
-
-        // Name
-        if (!string.IsNullOrEmpty(item.Name))
-            lines.Add(item.Name);
-
-        // Type info (e.g., "Legendary Vanessa Hero Skin")
-        string typeInfo = item.GetCollectionTypeInfo();
-        if (!string.IsNullOrEmpty(typeInfo))
-            lines.Add(typeInfo);
-
-        // Description
-        if (!string.IsNullOrEmpty(item.Description))
-            lines.Add(item.Description);
-
-        // Equipped status
-        if (_collectionManager != null)
-        {
-            if (_collectionManager.IsCollectibleOfIDEquipped(item))
-                lines.Add("Currently equipped");
-            else
-                lines.Add("Not equipped");
-        }
-
-        return lines;
     }
 
     public override void OnFocus()
@@ -228,14 +197,6 @@ public class CollectionScreen : BaseScreen
                 NavigateItem(1);
                 return;
 
-            case AccessibleKey.DetailUp:
-                ReadDetailLine(-1);
-                return;
-
-            case AccessibleKey.DetailDown:
-                ReadDetailLine(1);
-                return;
-
             case AccessibleKey.Confirm:
                 ConfirmItem();
                 return;
@@ -267,7 +228,6 @@ public class CollectionScreen : BaseScreen
 
         _inItemNavigation = true;
         _currentItemIndex += direction;
-        _detailLineIndex = 0;
 
         if (_currentItemIndex < 0)
             _currentItemIndex = _currentItems.Length - 1;
@@ -275,40 +235,6 @@ public class CollectionScreen : BaseScreen
             _currentItemIndex = 0;
 
         AnnounceCurrentItem();
-    }
-
-    private void ReadDetailLine(int direction)
-    {
-        if (_currentItems.Length == 0)
-        {
-            TolkWrapper.Speak("No item selected");
-            return;
-        }
-
-        var item = _currentItems[_currentItemIndex];
-        var lines = GetItemDetailLines(item);
-
-        if (lines.Count == 0)
-        {
-            TolkWrapper.Speak("No details available");
-            return;
-        }
-
-        // Navigate through detail lines
-        if (direction > 0)
-        {
-            _detailLineIndex++;
-            if (_detailLineIndex >= lines.Count)
-                _detailLineIndex = 0;
-        }
-        else
-        {
-            _detailLineIndex--;
-            if (_detailLineIndex < 0)
-                _detailLineIndex = lines.Count - 1;
-        }
-
-        TolkWrapper.Speak(lines[_detailLineIndex]);
     }
 
     private void ConfirmItem()

@@ -375,12 +375,6 @@ public enum AccessibleKey
     // Reorder items on the board
     ReorderLeft,    // Shift+Left - Move item left
     ReorderRight,   // Shift+Right - Move item right
-    // Detailed reading line by line (or Hero stats navigation)
-    DetailUp,       // Ctrl+Up - Next line/stat
-    DetailDown,     // Ctrl+Down - Previous line/stat
-    // Change subsection in Hero (Stats/Skills)
-    DetailLeft,     // Ctrl+Left - Previous subsection
-    DetailRight,    // Ctrl+Right - Next subsection
     // Message buffer
     NextMessage,    // Period - Most recent message
     PrevMessage,    // Comma - Previous message
