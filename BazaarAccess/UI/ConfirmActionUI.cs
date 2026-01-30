@@ -83,6 +83,15 @@ public class ConfirmActionUI : IAccessibleUI
                 Close();
                 break;
 
+            case AccessibleKey.Upgrade:
+                // U key confirms directly for upgrade/enchant dialogs
+                if (_actionType == ConfirmActionType.Upgrade)
+                {
+                    _onConfirm?.Invoke();
+                    Close();
+                }
+                break;
+
             case AccessibleKey.Back:
                 _onCancel?.Invoke();
                 Close();

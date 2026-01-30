@@ -818,22 +818,11 @@ public class GameplayScreen : IAccessibleScreen
                 break;
 
             case ActionOption.Upgrade:
-                if (itemCard != null)
-                {
-                    string upgradeName = ItemReader.GetCardName(itemCard);
-                    TolkWrapper.Speak($"Upgrading {upgradeName}");
-                    ActionHelper.UpgradeItem(itemCard);
-                    Plugin.Instance.StartCoroutine(DelayedRefreshAfterUpgrade());
-                }
-                break;
-
             case ActionOption.Enchant:
+                // Show confirmation dialog with preview instead of executing directly
                 if (itemCard != null)
                 {
-                    string enchantItemName = ItemReader.GetCardName(itemCard);
-                    TolkWrapper.Speak($"Enchanting {enchantItemName}");
-                    ActionHelper.UseCurrentPedestal(itemCard);
-                    Plugin.Instance.StartCoroutine(DelayedRefreshAfterUpgrade());
+                    HandleUpgradeConfirm(itemCard);
                 }
                 break;
 
@@ -1577,10 +1566,13 @@ public class GameplayScreen : IAccessibleScreen
     /// </summary>
     private void HandleUpgradeConfirm(Card card)
     {
+        Plugin.Logger.LogInfo($"HandleUpgradeConfirm called for card: {card?.GetType().Name ?? "null"}");
+
         string name = ItemReader.GetCardName(card);
 
         // Get pedestal info to determine if it's upgrade or enchant
         var pedestalInfo = ActionHelper.GetCurrentPedestalInfo();
+        Plugin.Logger.LogInfo($"HandleUpgradeConfirm: pedestalInfo.Type={pedestalInfo.Type}, name={name}");
 
         if (pedestalInfo.Type == ActionHelper.PedestalType.Enchant ||
             pedestalInfo.Type == ActionHelper.PedestalType.EnchantRandom)

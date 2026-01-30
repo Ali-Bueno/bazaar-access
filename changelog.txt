@@ -2,6 +2,16 @@
 
 ---
 
+## January 30, 2026 (v1.5.3)
+
+### Bug Fixes
+- Fixed upgrade/enchant preview not showing in confirmation dialog
+  - Action menu U key shortcut now shows preview before executing (was bypassing confirmation)
+  - Preview dialog supports U key to confirm (in addition to Enter)
+  - Preview now correctly shows stat changes: "Changes: Damage 10 to 15, Cooldown 3.0s to 2.5s"
+
+---
+
 ## January 30, 2026 (v1.5.2)
 
 ### New Features
