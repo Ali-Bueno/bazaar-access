@@ -425,10 +425,20 @@ public class OptionsUI : BaseUI
 
         // Usar normalizedValue para ajustar correctamente en el rango del slider
         float step = 0.1f;
-        slider.normalizedValue = Mathf.Clamp01(slider.normalizedValue + (step * direction));
+        float oldValue = slider.normalizedValue;
+        float newValue = Mathf.Clamp01(oldValue + (step * direction));
 
-        int percent = Mathf.RoundToInt(slider.normalizedValue * 100);
+        // Set using the actual value property to ensure proper event triggering
+        // This maps normalizedValue (0-1) to the slider's actual range (minValue to maxValue)
+        slider.value = Mathf.Lerp(slider.minValue, slider.maxValue, newValue);
+
+        // Force invoke onValueChanged in case the game needs explicit notification
+        slider.onValueChanged?.Invoke(slider.value);
+
+        int percent = Mathf.RoundToInt(newValue * 100);
         Core.TolkWrapper.Speak($"{percent}%");
+
+        Plugin.Logger.LogDebug($"AdjustSlider {name}: {oldValue:F2} -> {newValue:F2} (value={slider.value:F2}, min={slider.minValue}, max={slider.maxValue})");
     }
 
     private void ToggleValue(string name)

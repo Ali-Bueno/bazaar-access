@@ -2,6 +2,19 @@
 
 ---
 
+## January 30, 2026 (v1.5.4)
+
+### Bug Fixes
+- Fixed Escape key loop between pause menu and options menu
+  - Escape now properly triggers Back action when a popup is open
+  - Removed duplicate UI creation that caused menu conflicts
+  - Menus now properly clean up when transitioning between each other
+- Fixed volume sliders not applying changes correctly
+  - Now explicitly triggers onValueChanged event when adjusting
+  - Uses proper value mapping between slider min/max range
+
+---
+
 ## January 30, 2026 (v1.5.3)
 
 ### Bug Fixes

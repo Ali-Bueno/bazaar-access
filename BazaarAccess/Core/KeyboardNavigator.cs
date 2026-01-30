@@ -123,7 +123,12 @@ public class KeyboardNavigator : MonoBehaviour
             case KeyCode.Backspace:
                 return AccessibleKey.Back;
 
-            // Note: Escape is NOT mapped here because the game uses it for options menu
+            // Escape = Back only when there's a UI popup on the stack
+            // This prevents the game from handling Escape when we should handle it
+            case KeyCode.Escape:
+                if (AccessibilityMgr.GetFocusedUI() != null)
+                    return AccessibleKey.Back;
+                return AccessibleKey.None; // Let game handle Escape when no popup
 
             case KeyCode.Tab:
                 return AccessibleKey.Tab;
