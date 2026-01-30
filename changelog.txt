@@ -2,9 +2,14 @@
 
 ---
 
-## January 30, 2026
+## January 30, 2026 (v1.5.1)
 
 ### Bug Fixes
+- Fixed upgrade preview showing wrong tier: Now reads actual target tier from the altar
+  - If upgrade only improves stats (same tier): "Upgrade Bronze stats (U)"
+  - If upgrade changes tier: "Upgrade to Silver (U)"
+
+### Bug Fixes (v1.5.0)
 - Fixed item reordering via action menu (Home/End keys) causing adjacency effects to not update correctly
   - Now uses delayed step-by-step movement to let the game properly recalculate effects
   - Example: Swash Buckle's crit bonus should now correctly apply after moving

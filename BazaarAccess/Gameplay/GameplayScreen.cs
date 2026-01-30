@@ -747,7 +747,22 @@ public class GameplayScreen : IAccessibleScreen
                 return $"Sell for {sellPrice} gold (S)";
 
             case ActionOption.Upgrade:
+                var upgradeInfo = ActionHelper.GetCurrentPedestalInfo();
                 string currentTier = ItemReader.GetTierName(_actionCard);
+                // Use actual target tier from pedestal if available
+                if (upgradeInfo.TargetTier.HasValue)
+                {
+                    if (upgradeInfo.TargetTier.Value == _actionCard.Tier)
+                    {
+                        // Same tier - just improving stats
+                        return $"Upgrade {currentTier} stats (U)";
+                    }
+                    else
+                    {
+                        return $"Upgrade to {upgradeInfo.TargetTier.Value} (U)";
+                    }
+                }
+                // Fallback to assuming next tier
                 string nextTier = GetNextTierName(_actionCard.Tier);
                 return $"Upgrade to {nextTier} (U)";
 
@@ -1598,7 +1613,7 @@ public class GameplayScreen : IAccessibleScreen
         {
             // Upgrade altar
             string currentTier = ItemReader.GetTierName(card);
-            string nextTier = GetNextTierName(card.Tier);
+            var upgradeInfo = ActionHelper.GetCurrentPedestalInfo();
 
             // Check if already at max tier
             if (card.Tier == ETier.Diamond || card.Tier == ETier.Legendary)
@@ -1607,7 +1622,26 @@ public class GameplayScreen : IAccessibleScreen
                 return;
             }
 
-            string message = $"Upgrade {name} from {currentTier} to {nextTier}?";
+            // Build message based on actual pedestal target
+            string message;
+            if (upgradeInfo.TargetTier.HasValue)
+            {
+                if (upgradeInfo.TargetTier.Value == card.Tier)
+                {
+                    // Same tier - just improving stats
+                    message = $"Upgrade {name} stats? (stays {currentTier})";
+                }
+                else
+                {
+                    message = $"Upgrade {name} from {currentTier} to {upgradeInfo.TargetTier.Value}?";
+                }
+            }
+            else
+            {
+                // Fallback
+                string nextTier = GetNextTierName(card.Tier);
+                message = $"Upgrade {name} from {currentTier} to {nextTier}?";
+            }
 
             var ui = new ConfirmActionUI(ConfirmActionType.Upgrade, name, 0, message,
                 onConfirm: () => {
