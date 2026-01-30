@@ -141,6 +141,8 @@ public static class StateChangePatch
                 (Action<Card>)OnNotEnoughSpace);
             SubscribeToEvent("CantAffordCard", typeof(Action<Card>),
                 (Action<Card>)OnCantAffordCard);
+            SubscribeToEvent("UnsellableItemSaleAttempt", typeof(Action<Card>),
+                (Action<Card>)OnUnsellableItemAttempt);
 
             // === BoardManager events (cards revealed) ===
             SubscribeToBoardManagerEvent("ItemCardsRevealed", OnItemCardsRevealed);
@@ -728,6 +730,16 @@ public static class StateChangePatch
         int price = card != null ? Gameplay.ItemReader.GetBuyPrice(card) : 0;
         Plugin.Logger.LogInfo($"CantAffordCard: {name} costs {price}");
         TolkWrapper.Speak($"Cannot afford {name}");
+    }
+
+    /// <summary>
+    /// When the game rejects a sale because the item is unsellable.
+    /// </summary>
+    private static void OnUnsellableItemAttempt(Card card)
+    {
+        string name = card != null ? Gameplay.ItemReader.GetCardName(card) : "item";
+        Plugin.Logger.LogInfo($"UnsellableItemAttempt: {name}");
+        TolkWrapper.Speak($"{name} cannot be sold");
     }
 
     /// <summary>

@@ -450,6 +450,24 @@ public static class CombatDescriber
                     wave.StatusEffects.Add("freeze");
                 }
                 break;
+
+            case ActionType.CardReload:
+                // Announce reload immediately (not batched, since it's important feedback)
+                if (isPlayerItem && !string.IsNullOrEmpty(itemName))
+                {
+                    string reloadMsg = amount > 0 ? $"{itemName} reloaded {amount}" : $"{itemName} reloaded";
+                    TolkWrapper.Speak(reloadMsg, interrupt: false);
+                }
+                break;
+
+            case ActionType.CardModifyAttribute:
+                // Announce attribute modification (buff/debuff) immediately
+                if (isPlayerItem && !string.IsNullOrEmpty(itemName))
+                {
+                    string modMsg = amount != 0 ? $"{itemName} modified by {amount}" : $"{itemName} modified";
+                    TolkWrapper.Speak(modMsg, interrupt: false);
+                }
+                break;
         }
 
         if (isCrit) wave.HadCrit = true;
@@ -502,6 +520,8 @@ public static class CombatDescriber
             ActionType.PlayerPoisonApply => "poison",
             ActionType.CardSlow => "slow",
             ActionType.CardFreeze => isPlayerItem ? "freeze" : null, // Enemy freeze uses special "Frozen!" alert
+            ActionType.CardReload => amount > 0 ? $"reloaded {amount}" : "reloaded",
+            ActionType.CardModifyAttribute => amount != 0 ? $"modified by {amount}" : "modified",
             _ => null
         };
 
@@ -733,6 +753,8 @@ public static class CombatDescriber
             ActionType.PlayerPoisonApply => true,
             ActionType.CardSlow => true,
             ActionType.CardFreeze => true,
+            ActionType.CardReload => true,
+            ActionType.CardModifyAttribute => true,
             _ => false
         };
     }

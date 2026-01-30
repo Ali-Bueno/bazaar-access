@@ -220,8 +220,12 @@ public static class ActionHelper
     {
         if (card == null) return false;
 
-        // Los items del jugador se pueden vender
-        // TODO: Verificar si el item tiene la etiqueta "Unsellable"
+        // Check for Unsellable hidden tag
+        if (card.HiddenTags != null && card.HiddenTags.Contains(EHiddenTag.Unsellable))
+        {
+            return false;
+        }
+
         return true;
     }
 

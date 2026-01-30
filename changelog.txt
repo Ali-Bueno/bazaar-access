@@ -2,6 +2,38 @@
 
 ---
 
+## January 30, 2026
+
+### Bug Fixes
+- Fixed item reordering via action menu (Home/End keys) causing adjacency effects to not update correctly
+  - Now uses delayed step-by-step movement to let the game properly recalculate effects
+  - Example: Swash Buckle's crit bonus should now correctly apply after moving
+- Fixed action menu reorder (Left/Right arrows) not triggering visual selection update
+- Fixed potential "item disappearing" issues caused by stale navigation state:
+  - Refresh() now clears detail cache to prevent stale card references
+  - Reorder operations now track items by InstanceId instead of slot position (more reliable)
+  - GoToBoardSlot() now validates index and logs warnings when slot not found
+  - Added GoToItemById() method for reliable item tracking after moves
+
+### Improvements
+- Action menu now shows Upgrade/Enchant option first when at a pedestal (altar)
+  - This prioritizes the main action when at upgrade or enchant altars
+  - Sell and other options follow after
+
+### New Features
+- Ammo reload announcements during combat: "[Item name] reloaded [amount]"
+- Attribute modification announcements: "[Item name] modified by [amount]" when items receive temporary buffs
+- Unsellable item detection: Action menu no longer shows "Sell" for items that cannot be sold
+- New feedback when trying to sell unsellable items: "[Item name] cannot be sold"
+
+### Known Limitations (Game Restrictions)
+- Item stats (damage, heal, etc.) show BASE values only, not combat-modified values
+  - Example: Orange Julian's "+100 Damage for the fight" buff won't show in item reading
+  - During combat, the ACTUAL damage dealt IS announced correctly via combat events
+- Items may have game-side restrictions on selling from stash that we cannot override
+
+---
+
 ## January 26, 2026
 
 ### New Features

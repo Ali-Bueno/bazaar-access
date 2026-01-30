@@ -183,6 +183,10 @@ public class GameplayNavigator
         RefreshStash();
         RefreshSkills();
 
+        // Clear detail cache to prevent stale card references
+        // This is important after items are moved, sold, or upgraded
+        ClearDetailCache();
+
         // Don't auto-switch sections when current section is empty
         // This prevents unwanted navigation changes when user sells/moves items
         // Section changes should be explicit (via AutoFocusForState, GoToSection, etc.)
@@ -2324,6 +2328,43 @@ public class GameplayNavigator
                 return true;
             }
         }
+
+        // Slot not found - log warning and stay on current valid index
+        Plugin.Logger.LogWarning($"GoToBoardSlot: targetSlot {targetSlot} not found in _boardIndices. Count={_boardIndices.Count}");
+
+        // Ensure current index is still valid
+        if (_boardIndices.Count > 0 && _currentIndex >= _boardIndices.Count)
+        {
+            _currentIndex = _boardIndices.Count - 1;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Finds and navigates to an item by its InstanceId.
+    /// More reliable than slot-based navigation after items are moved.
+    /// </summary>
+    /// <param name="instanceId">The InstanceId of the item to find</param>
+    /// <returns>True if the item was found</returns>
+    public bool GoToItemById(BazaarGameShared.Domain.Core.InstanceId instanceId)
+    {
+        if (_currentSection != NavigationSection.Board) return false;
+
+        var bm = GetBoardManager();
+        if (bm?.playerItemSockets == null) return false;
+
+        for (int i = 0; i < _boardIndices.Count; i++)
+        {
+            int slot = _boardIndices[i];
+            var card = bm.playerItemSockets[slot]?.CardController?.CardData;
+            if (card != null && card.InstanceId == instanceId)
+            {
+                _currentIndex = i;
+                return true;
+            }
+        }
+
+        Plugin.Logger.LogWarning($"GoToItemById: item with InstanceId not found on board");
         return false;
     }
 

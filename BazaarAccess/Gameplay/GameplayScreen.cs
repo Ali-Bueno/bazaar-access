@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using BazaarAccess.Accessibility;
 using BazaarAccess.Core;
@@ -684,18 +685,15 @@ public class GameplayScreen : IAccessibleScreen
         _actionIndex = 0;
 
         var currentState = StateChangePatch.GetCurrentRunState();
-        bool canSell = _navigator.CanSellInCurrentState();
+        bool canSellState = _navigator.CanSellInCurrentState();
+        bool canSellCard = ActionHelper.CanSell(card);
         bool canMove = _navigator.CanMoveInCurrentState();
         bool isInBoard = _navigator.CurrentSection == NavigationSection.Board;
         bool isInStash = _navigator.CurrentSection == NavigationSection.Stash;
         bool stashOpen = _navigator.IsStashOpen();
 
         // Build available options
-        if (canSell)
-        {
-            _actionOptions.Add(ActionOption.Sell);
-        }
-
+        // At pedestal, show Upgrade/Enchant first (primary action)
         if (currentState == ERunState.Pedestal && ActionHelper.CanUpgrade())
         {
             if (ActionHelper.IsEnchantPedestal())
@@ -706,6 +704,11 @@ public class GameplayScreen : IAccessibleScreen
             {
                 _actionOptions.Add(ActionOption.Upgrade);
             }
+        }
+
+        if (canSellState && canSellCard)
+        {
+            _actionOptions.Add(ActionOption.Sell);
         }
 
         if (canMove && isInBoard && stashOpen)
@@ -931,12 +934,17 @@ public class GameplayScreen : IAccessibleScreen
                 if (canReorder && itemCard != null)
                 {
                     int currentSlot = _navigator.GetCurrentBoardSlot();
+                    var itemId = itemCard.InstanceId;
                     if (ActionHelper.ReorderItem(itemCard, currentSlot, -1, silent: true))
                     {
                         _navigator.Refresh();
-                        int newSlot = currentSlot - 1;
-                        _navigator.GoToBoardSlot(newSlot);
-                        AnnounceReorderPosition(newSlot, itemCard);
+                        // Use ID-based tracking for reliability
+                        if (!_navigator.GoToItemById(itemId))
+                        {
+                            _navigator.GoToBoardSlot(currentSlot - 1);
+                        }
+                        AnnounceReorderPosition(_navigator.GetCurrentBoardSlot(), itemCard);
+                        _navigator.TriggerVisualSelection();
                     }
                     // ReorderItem announces "At left edge" if at limit
                 }
@@ -950,12 +958,17 @@ public class GameplayScreen : IAccessibleScreen
                 if (canReorder && itemCard != null)
                 {
                     int currentSlot = _navigator.GetCurrentBoardSlot();
+                    var itemId = itemCard.InstanceId;
                     if (ActionHelper.ReorderItem(itemCard, currentSlot, 1, silent: true))
                     {
                         _navigator.Refresh();
-                        int newSlot = currentSlot + 1;
-                        _navigator.GoToBoardSlot(newSlot);
-                        AnnounceReorderPosition(newSlot, itemCard);
+                        // Use ID-based tracking for reliability
+                        if (!_navigator.GoToItemById(itemId))
+                        {
+                            _navigator.GoToBoardSlot(currentSlot + 1);
+                        }
+                        AnnounceReorderPosition(_navigator.GetCurrentBoardSlot(), itemCard);
+                        _navigator.TriggerVisualSelection();
                     }
                     // ReorderItem announces "At right edge" if at limit
                 }
@@ -1070,6 +1083,7 @@ public class GameplayScreen : IAccessibleScreen
 
     /// <summary>
     /// Moves an item to the left or right edge of the board.
+    /// Uses a coroutine with delays to let the game properly update adjacency effects.
     /// </summary>
     private void MoveItemToEdge(ItemCard card, int direction)
     {
@@ -1107,10 +1121,27 @@ public class GameplayScreen : IAccessibleScreen
             return;
         }
 
-        // Calculate how many moves we need
-        int stepDirection = (targetSlot > currentSlot) ? 1 : -1;
+        // Use coroutine to move with delays between steps
+        Plugin.Instance.StartCoroutine(MoveItemToEdgeCoroutine(card, currentSlot, targetSlot));
+    }
 
-        // Move step by step (the game doesn't support direct multi-slot moves)
+    /// <summary>
+    /// Coroutine that moves an item step by step with delays.
+    /// This allows the game to properly update adjacency effects between moves.
+    /// </summary>
+    private IEnumerator MoveItemToEdgeCoroutine(ItemCard card, int startSlot, int targetSlot)
+    {
+        int currentSlot = startSlot;
+        int stepDirection = (targetSlot > currentSlot) ? 1 : -1;
+        int moveCount = System.Math.Abs(targetSlot - startSlot);
+
+        // Store the item's InstanceId for reliable tracking after moves
+        var itemId = card.InstanceId;
+
+        string edge = stepDirection < 0 ? "left" : "right";
+        TolkWrapper.Speak($"Moving to {edge} edge");
+
+        // Move step by step with small delays
         while (currentSlot != targetSlot)
         {
             if (!ActionHelper.ReorderItem(card, currentSlot, stepDirection, silent: true))
@@ -1118,14 +1149,19 @@ public class GameplayScreen : IAccessibleScreen
                 break; // Stop if a move fails
             }
             currentSlot += stepDirection;
+
+            // Small delay to let the game process adjacency effects
+            yield return new WaitForSeconds(0.05f);
         }
 
-        // Refresh and announce
+        // Final refresh and navigate to the moved item by its ID (more reliable than slot)
         _navigator.Refresh();
-        _navigator.GoToBoardSlot(currentSlot); // Use actual position reached
-
-        // Announce with context
-        AnnounceReorderPosition(currentSlot, card);
+        if (!_navigator.GoToItemById(itemId))
+        {
+            // Fallback to slot-based navigation
+            _navigator.GoToBoardSlot(currentSlot);
+        }
+        AnnounceReorderPosition(_navigator.GetCurrentBoardSlot(), card);
         _navigator.TriggerVisualSelection();
     }
 
@@ -1718,17 +1754,20 @@ public class GameplayScreen : IAccessibleScreen
             return;
         }
 
-        // Calcular el nuevo slot donde estará el item
-        int newSlot = currentSlot + direction;
+        // Store item ID for reliable tracking after move
+        var itemId = card.InstanceId;
 
         if (ActionHelper.ReorderItem(card, currentSlot, direction, silent: true))
         {
             // Refrescar primero para actualizar _boardIndices
             _navigator.Refresh();
-            // Ahora mover el índice del navegador al nuevo slot para seguir al item
-            _navigator.GoToBoardSlot(newSlot);
+            // Use ID-based tracking for reliability, fallback to slot-based
+            if (!_navigator.GoToItemById(itemId))
+            {
+                _navigator.GoToBoardSlot(currentSlot + direction);
+            }
             // Announce position with context
-            AnnounceReorderPosition(newSlot, card);
+            AnnounceReorderPosition(_navigator.GetCurrentBoardSlot(), card);
             // Activar selección visual
             _navigator.TriggerVisualSelection();
         }
