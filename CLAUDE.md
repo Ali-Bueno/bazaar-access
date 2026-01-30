@@ -374,7 +374,18 @@ Both batched and individual modes handle these events.
 - Compares target tier to current tier:
   - Same tier → "Upgrade Bronze stats (U)" (stats only, no tier change)
   - Different tier → "Upgrade to Silver (U)"
-- Confirmation dialog also updated with accurate info
+
+### Upgrade/Enchant Preview in Dialogs (v1.5.2)
+New methods in `ActionHelper.cs`:
+- `GetUpgradePreview(Card card)` - Returns list of stat changes like "Damage 10 to 15"
+  - Uses reflection to access `Template.GetAttributeBaseValueAtTier(attrType, tier)`
+  - Compares current tier vs target tier attributes
+- `GetEnchantPreview(Card card, string enchantmentName)` - Returns enchantment effects
+  - Accesses `Template.Enchantments` dictionary via reflection
+
+Confirmation dialogs (`HandleUpgradeConfirm` in `GameplayScreen.cs`) now include:
+- Upgrade: "Changes: Damage 10 to 15, Cooldown 3.0s to 2.5s"
+- Enchant: "Effects: DamageAmount +5, BurnApplyAmount +10"
 
 ### Known Game Limitations
 - **Item stats show BASE values only** - Combat-modified values (e.g., Orange Julian's +100 damage buff) are not accessible via the game's API
