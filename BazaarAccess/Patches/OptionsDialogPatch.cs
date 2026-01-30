@@ -24,37 +24,65 @@ public static class OptionsDialogShowPatch
         // Cooldown para evitar reabrir inmediatamente después de cerrar
         if (Time.time - _lastCloseTime < 0.3f)
         {
-            Plugin.Logger.LogDebug("OptionsDialogShowPatch: Skipping due to cooldown");
             return;
         }
 
         // Evitar abrir múltiples veces
-        if (_isOpen)
+        if (_isOpen) return;
+
+        // Verificar si el diálogo está realmente visible antes de crear UI
+        if (!IsReallyVisible(__instance.transform))
         {
-            Plugin.Logger.LogDebug("OptionsDialogShowPatch: Already open");
             return;
         }
 
-        // Usar coroutine para esperar a que el diálogo esté listo
-        Plugin.Instance.StartCoroutine(CreateOptionsUIDelayed(__instance.transform));
+        _isOpen = true;
+        _currentOptionsUI = new OptionsUI(__instance.transform);
+        AccessibilityMgr.ShowUI(_currentOptionsUI);
+        Plugin.Logger.LogInfo("OptionsUI abierta (desde OnEnable)");
     }
 
-    private static System.Collections.IEnumerator CreateOptionsUIDelayed(Transform root)
+    /// <summary>
+    /// Verifica si el menú está realmente visible para el usuario.
+    /// </summary>
+    private static bool IsReallyVisible(Transform root)
     {
-        // Esperar frames para que el UI esté completamente visible
-        yield return null;
-        yield return null;
+        if (root == null) return false;
+        if (!root.gameObject.activeInHierarchy) return false;
 
-        // Double-check que no se haya abierto mientras esperábamos
-        if (_isOpen) yield break;
-
-        if (root != null && root.gameObject.activeInHierarchy)
+        // Verificar CanvasGroup (alpha > 0, interactable)
+        var canvasGroup = root.GetComponent<CanvasGroup>();
+        if (canvasGroup != null)
         {
-            _isOpen = true;
-            _currentOptionsUI = new OptionsUI(root);
-            AccessibilityMgr.ShowUI(_currentOptionsUI);
-            Plugin.Logger.LogInfo("OptionsUI abierta (desde OnEnable)");
+            if (canvasGroup.alpha < 0.5f) return false; // Más estricto
+            if (!canvasGroup.interactable) return false;
+            if (canvasGroup.blocksRaycasts == false) return false;
         }
+
+        // Verificar escala (no es 0)
+        var scale = root.localScale;
+        if (scale.x < 0.5f || scale.y < 0.5f) return false;
+
+        // IMPORTANTE: Verificar que hay sliders activos e interactuables
+        // Esto es la mejor forma de saber si el menú de opciones está realmente visible
+        var sliders = root.GetComponentsInChildren<UnityEngine.UI.Slider>(false);
+        bool hasActiveSlider = false;
+        foreach (var slider in sliders)
+        {
+            if (slider.gameObject.activeInHierarchy && slider.interactable)
+            {
+                hasActiveSlider = true;
+                break;
+            }
+        }
+
+        if (!hasActiveSlider)
+        {
+            Plugin.Logger.LogDebug("IsReallyVisible: No active interactable sliders found");
+            return false;
+        }
+
+        return true;
     }
 
     public static void SetClosed()

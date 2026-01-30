@@ -177,6 +177,22 @@ These always point to the latest release (keep filenames consistent!):
 - **Game data**: Access via `Data.` singleton (Data.Run, Data.CurrentState, etc.)
 - **Reflection**: Event subscriptions use reflection to avoid compile-time dependencies
 
+## Pause Menu System (FightMenuPatch.cs)
+
+**IMPORTANT**: The game's Escape key closes the ENTIRE pause system, not just one level.
+
+### Flow
+1. Escape opens pause menu → `FightMenuShowPatch` creates `FightMenuUI`
+2. User clicks Settings → `FightMenuOptionsClickPatch` hides FightMenuUI, creates `OptionsUI`
+3. Escape closes everything → `HideDialogs` fires, cleans up all UIs
+
+### Key Design Decisions
+- **Don't map Escape**: Let the game handle Escape natively. Our patches detect when menus close.
+- **Don't reset `_isOpen` when going to Options**: Prevents duplicate FightMenuUI creation
+- **Check UI stack before creating**: `FightMenuShowPatch` skips if any UI is already on stack
+- **HideDialogs cleans everything**: Both OptionsUI and FightMenuUI are closed
+- **OptionsUI from main menu**: Must be cleaned up when opening Options from pause menu during gameplay
+
 ---
 
 ## Recent Merge: oasis1701 Contributions (Jan 18, 2026)

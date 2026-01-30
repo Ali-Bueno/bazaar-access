@@ -20,6 +20,13 @@ public static class FightMenuShowPatch
     [HarmonyPostfix]
     public static void Postfix(MonoBehaviour __instance)
     {
+        // No crear si ya hay alguna UI en el stack (OptionsUI, etc.)
+        if (AccessibilityMgr.GetFocusedUI() != null)
+        {
+            Plugin.Logger.LogInfo("FightMenuShowPatch: Skipped - UI already on stack");
+            return;
+        }
+
         // Cooldown para evitar reabrir inmediatamente
         if (Time.time - _lastCloseTime < COOLDOWN)
         {
@@ -31,7 +38,7 @@ public static class FightMenuShowPatch
 
         // Buscar el fightMenuDialog activo
         var fightMenuDialogField = __instance.GetType().GetField("fightMenuDialog",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            BindingFlags.NonPublic | BindingFlags.Instance);
 
         if (fightMenuDialogField != null)
         {
@@ -67,13 +74,27 @@ public static class FightMenuHidePatch
     [HarmonyPostfix]
     public static void Postfix()
     {
-        var currentUI = FightMenuShowPatch.GetCurrentUI();
-        if (currentUI != null)
+        Plugin.Logger.LogInfo("HideDialogs: Cerrando todo el sistema de pausa");
+
+        // Cerrar OptionsUI si existe
+        var optionsUI = OptionsDialogShowPatch.GetCurrentUI();
+        if (optionsUI != null)
         {
-            AccessibilityMgr.HideUI(currentUI);
-            FightMenuShowPatch.SetClosed();
-            Plugin.Logger.LogInfo("FightMenuUI cerrada");
+            AccessibilityMgr.HideUI(optionsUI);
+            OptionsDialogShowPatch.SetClosed();
+            Plugin.Logger.LogInfo("OptionsUI cerrada desde HideDialogs");
         }
+
+        // Cerrar FightMenuUI si existe
+        var fightMenuUI = FightMenuShowPatch.GetCurrentUI();
+        if (fightMenuUI != null)
+        {
+            AccessibilityMgr.HideUI(fightMenuUI);
+            Plugin.Logger.LogInfo("FightMenuUI cerrada desde HideDialogs");
+        }
+
+        // Siempre resetear el estado
+        FightMenuShowPatch.SetClosed();
     }
 }
 
@@ -86,12 +107,14 @@ public static class FightMenuOptionsClickPatch
     [HarmonyPostfix]
     public static void Postfix(MonoBehaviour __instance)
     {
-        // Cerrar el FightMenuUI primero
+        Plugin.Logger.LogInfo("OnOptionsClick: Abriendo settings");
+
+        // Cerrar el FightMenuUI pero NO resetear _isOpen para evitar que se cree otra
         var fightMenuUI = FightMenuShowPatch.GetCurrentUI();
         if (fightMenuUI != null)
         {
             AccessibilityMgr.HideUI(fightMenuUI);
-            FightMenuShowPatch.SetClosed();
+            // NO llamar SetClosed() - mantenemos _isOpen = true
         }
 
         // Buscar el optionsDialogParent y crear OptionsUI
@@ -113,17 +136,19 @@ public static class FightMenuOptionsClickPatch
         yield return null;
         yield return null;
 
-        // Check if already created by OptionsDialogShowPatch
-        if (OptionsDialogShowPatch.GetCurrentUI() != null)
+        // Si hay una OptionsUI vieja, limpiarla
+        var oldUI = OptionsDialogShowPatch.GetCurrentUI();
+        if (oldUI != null)
         {
-            Plugin.Logger.LogInfo("OptionsUI ya existe, no crear duplicado");
-            yield break;
+            Plugin.Logger.LogInfo("Limpiando OptionsUI anterior");
+            AccessibilityMgr.HideUI(oldUI);
+            OptionsDialogShowPatch.SetClosed();
         }
 
         if (root != null && root.gameObject.activeInHierarchy)
         {
             var optionsUI = new OptionsUI(root);
-            OptionsDialogShowPatch.RegisterUI(optionsUI); // Register so HidePatch can find it
+            OptionsDialogShowPatch.RegisterUI(optionsUI);
             AccessibilityMgr.ShowUI(optionsUI);
             Plugin.Logger.LogInfo("OptionsUI abierta desde menú de pausa");
         }
@@ -131,9 +156,8 @@ public static class FightMenuOptionsClickPatch
 }
 
 /// <summary>
-/// Hook para cuando se cierra Options y vuelve al menú de pausa.
-/// OptionsDialogHidePatch handles popping the OptionsUI.
-/// This just recreates the FightMenuUI.
+/// Hook para cuando se cierra Options.
+/// Escape cierra todo el sistema de pausa, así que solo limpiamos OptionsUI.
 /// </summary>
 [HarmonyPatch(typeof(FightMenuDialog), "OnOptionsClosed")]
 public static class FightMenuOptionsClosedPatch
@@ -141,39 +165,17 @@ public static class FightMenuOptionsClosedPatch
     [HarmonyPostfix]
     public static void Postfix(MonoBehaviour __instance)
     {
-        Plugin.Logger.LogInfo("OnOptionsClosed: Volviendo al menú de pausa");
+        Plugin.Logger.LogInfo("OnOptionsClosed: Cerrando OptionsUI");
 
-        // Recrear FightMenuUI (OptionsDialogHidePatch maneja el pop de OptionsUI)
-        var fightMenuDialogField = __instance.GetType().GetField("fightMenuDialog",
-            BindingFlags.NonPublic | BindingFlags.Instance);
-
-        if (fightMenuDialogField != null)
+        // Cerrar OptionsUI
+        var optionsUI = OptionsDialogShowPatch.GetCurrentUI();
+        if (optionsUI != null)
         {
-            var fightMenuDialog = fightMenuDialogField.GetValue(__instance) as GameObject;
-            if (fightMenuDialog != null && fightMenuDialog.activeInHierarchy)
-            {
-                Plugin.Instance.StartCoroutine(CreateFightMenuUIDelayed(fightMenuDialog.transform));
-            }
+            AccessibilityMgr.HideUI(optionsUI);
+            OptionsDialogShowPatch.SetClosed();
         }
-    }
 
-    private static System.Collections.IEnumerator CreateFightMenuUIDelayed(Transform root)
-    {
-        // Wait for OptionsDialogHidePatch to pop the OptionsUI first
-        yield return null;
-        yield return null;
-
-        // Only create if no UI is currently on stack (OptionsUI should be gone)
-        if (AccessibilityMgr.GetFocusedUI() == null)
-        {
-            var fightMenuUI = new FightMenuUI(root);
-            FightMenuShowPatch.SetCurrentUI(fightMenuUI);
-            AccessibilityMgr.ShowUI(fightMenuUI);
-            Plugin.Logger.LogInfo("FightMenuUI reabierta");
-        }
-        else
-        {
-            Plugin.Logger.LogInfo("FightMenuUI no creada - ya hay una UI en el stack");
-        }
+        // NO crear FightMenuUI aquí - Escape cierra todo el sistema de pausa
+        // Si el usuario quiere volver a pausar, presionará Escape de nuevo
     }
 }
