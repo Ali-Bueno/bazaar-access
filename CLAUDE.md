@@ -369,6 +369,13 @@ Both batched and individual modes handle these events.
 - Allows game to properly update adjacency effects (e.g., Swash Buckle's crit)
 - Announces "Moving to [left/right] edge" before starting
 
+### Accurate Upgrade Preview (v1.5.1)
+- `GetActionOptionText()` now uses `ActionHelper.GetCurrentPedestalInfo().TargetTier`
+- Compares target tier to current tier:
+  - Same tier → "Upgrade Bronze stats (U)" (stats only, no tier change)
+  - Different tier → "Upgrade to Silver (U)"
+- Confirmation dialog also updated with accurate info
+
 ### Known Game Limitations
 - **Item stats show BASE values only** - Combat-modified values (e.g., Orange Julian's +100 damage buff) are not accessible via the game's API
 - During combat, ACTUAL damage IS announced correctly via combat events
