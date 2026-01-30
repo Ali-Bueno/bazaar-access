@@ -86,13 +86,46 @@ public static class FightMenuOptionsClickPatch
     [HarmonyPostfix]
     public static void Postfix(MonoBehaviour __instance)
     {
-        // Cerrar el FightMenuUI - OptionsDialogShowPatch creará la OptionsUI
+        // Cerrar el FightMenuUI primero
         var fightMenuUI = FightMenuShowPatch.GetCurrentUI();
         if (fightMenuUI != null)
         {
             AccessibilityMgr.HideUI(fightMenuUI);
             FightMenuShowPatch.SetClosed();
-            Plugin.Logger.LogInfo("FightMenuUI cerrada para abrir Options");
+        }
+
+        // Buscar el optionsDialogParent y crear OptionsUI
+        var optionsField = __instance.GetType().GetField("optionsDialogParent",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+
+        if (optionsField != null)
+        {
+            var optionsController = optionsField.GetValue(__instance) as MonoBehaviour;
+            if (optionsController != null)
+            {
+                Plugin.Instance.StartCoroutine(CreateOptionsUIDelayed(optionsController.transform));
+            }
+        }
+    }
+
+    private static System.Collections.IEnumerator CreateOptionsUIDelayed(Transform root)
+    {
+        yield return null;
+        yield return null;
+
+        // Check if already created by OptionsDialogShowPatch
+        if (OptionsDialogShowPatch.GetCurrentUI() != null)
+        {
+            Plugin.Logger.LogInfo("OptionsUI ya existe, no crear duplicado");
+            yield break;
+        }
+
+        if (root != null && root.gameObject.activeInHierarchy)
+        {
+            var optionsUI = new OptionsUI(root);
+            OptionsDialogShowPatch.RegisterUI(optionsUI); // Register so HidePatch can find it
+            AccessibilityMgr.ShowUI(optionsUI);
+            Plugin.Logger.LogInfo("OptionsUI abierta desde menú de pausa");
         }
     }
 }

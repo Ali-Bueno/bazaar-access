@@ -16,12 +16,24 @@ public static class OptionsDialogShowPatch
 {
     private static OptionsUI _currentOptionsUI;
     private static bool _isOpen = false;
+    private static float _lastCloseTime = 0f;
 
     [HarmonyPostfix]
     public static void Postfix(MonoBehaviour __instance)
     {
+        // Cooldown para evitar reabrir inmediatamente después de cerrar
+        if (Time.time - _lastCloseTime < 0.3f)
+        {
+            Plugin.Logger.LogDebug("OptionsDialogShowPatch: Skipping due to cooldown");
+            return;
+        }
+
         // Evitar abrir múltiples veces
-        if (_isOpen) return;
+        if (_isOpen)
+        {
+            Plugin.Logger.LogDebug("OptionsDialogShowPatch: Already open");
+            return;
+        }
 
         // Usar coroutine para esperar a que el diálogo esté listo
         Plugin.Instance.StartCoroutine(CreateOptionsUIDelayed(__instance.transform));
@@ -29,8 +41,9 @@ public static class OptionsDialogShowPatch
 
     private static System.Collections.IEnumerator CreateOptionsUIDelayed(Transform root)
     {
-        // Esperar un poco para que el UI esté completamente visible
-        yield return new WaitForSeconds(0.15f);
+        // Esperar frames para que el UI esté completamente visible
+        yield return null;
+        yield return null;
 
         // Double-check que no se haya abierto mientras esperábamos
         if (_isOpen) yield break;
@@ -40,7 +53,7 @@ public static class OptionsDialogShowPatch
             _isOpen = true;
             _currentOptionsUI = new OptionsUI(root);
             AccessibilityMgr.ShowUI(_currentOptionsUI);
-            Plugin.Logger.LogInfo("OptionsUI abierta");
+            Plugin.Logger.LogInfo("OptionsUI abierta (desde OnEnable)");
         }
     }
 
@@ -48,6 +61,16 @@ public static class OptionsDialogShowPatch
     {
         _isOpen = false;
         _currentOptionsUI = null;
+        _lastCloseTime = Time.time;
+    }
+
+    /// <summary>
+    /// Called by FightMenuOptionsClickPatch to register the OptionsUI it created.
+    /// </summary>
+    public static void RegisterUI(OptionsUI ui)
+    {
+        _currentOptionsUI = ui;
+        _isOpen = true;
     }
 
     public static OptionsUI GetCurrentUI() => _currentOptionsUI;
