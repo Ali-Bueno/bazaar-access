@@ -79,7 +79,6 @@ public static class FightMenuHidePatch
 
 /// <summary>
 /// Hook para cuando se abre Options desde el menú de pausa.
-/// Just closes FightMenuUI - OptionsDialogShowPatch will create the OptionsUI.
 /// </summary>
 [HarmonyPatch(typeof(FightMenuDialog), "OnOptionsClick")]
 public static class FightMenuOptionsClickPatch
@@ -87,7 +86,7 @@ public static class FightMenuOptionsClickPatch
     [HarmonyPostfix]
     public static void Postfix(MonoBehaviour __instance)
     {
-        // Cerrar el FightMenuUI - OptionsDialogShowPatch creará OptionsUI
+        // Cerrar el FightMenuUI - OptionsDialogShowPatch creará la OptionsUI
         var fightMenuUI = FightMenuShowPatch.GetCurrentUI();
         if (fightMenuUI != null)
         {
@@ -95,7 +94,6 @@ public static class FightMenuOptionsClickPatch
             FightMenuShowPatch.SetClosed();
             Plugin.Logger.LogInfo("FightMenuUI cerrada para abrir Options");
         }
-        // NOTE: No crear OptionsUI aquí - OptionsDialogShowPatch lo hace
     }
 }
 

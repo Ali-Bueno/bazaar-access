@@ -746,16 +746,62 @@ public static class ActionHelper
 
             // Get the card template to access tier data
             var templateProp = card.GetType().GetProperty("Template");
-            if (templateProp == null) return changes;
+            if (templateProp == null)
+            {
+                Plugin.Logger.LogWarning("GetUpgradePreview: Template property not found");
+                return changes;
+            }
 
             var template = templateProp.GetValue(card);
-            if (template == null) return changes;
+            if (template == null)
+            {
+                Plugin.Logger.LogWarning("GetUpgradePreview: Template is null");
+                return changes;
+            }
+
+            Plugin.Logger.LogInfo($"GetUpgradePreview: Template type = {template.GetType().FullName}");
 
             // Try to get attribute values at current and target tier
-            var getAttrMethod = template.GetType().GetMethod("GetAttributeBaseValueAtTier");
+            // The method might be on the concrete type or an interface
+            var getAttrMethod = template.GetType().GetMethod("GetAttributeBaseValueAtTier",
+                BindingFlags.Public | BindingFlags.Instance);
+
             if (getAttrMethod == null)
             {
-                Plugin.Logger.LogDebug("GetUpgradePreview: GetAttributeBaseValueAtTier not found");
+                // Try finding it in interfaces
+                foreach (var iface in template.GetType().GetInterfaces())
+                {
+                    getAttrMethod = iface.GetMethod("GetAttributeBaseValueAtTier");
+                    if (getAttrMethod != null)
+                    {
+                        Plugin.Logger.LogInfo($"GetUpgradePreview: Found method in interface {iface.Name}");
+                        break;
+                    }
+                }
+            }
+
+            if (getAttrMethod == null)
+            {
+                Plugin.Logger.LogWarning($"GetUpgradePreview: GetAttributeBaseValueAtTier not found on {template.GetType().Name}");
+
+                // Try alternative approach: access Tiers dictionary directly
+                var tiersProp = template.GetType().GetProperty("Tiers", BindingFlags.Public | BindingFlags.Instance);
+                if (tiersProp != null)
+                {
+                    Plugin.Logger.LogInfo("GetUpgradePreview: Found Tiers property, using direct access");
+                    var tiersDict = tiersProp.GetValue(template) as System.Collections.IDictionary;
+                    if (tiersDict != null)
+                    {
+                        return GetChangesFromTiersDictionary(tiersDict, card.Tier, targetTier);
+                    }
+                }
+
+                // List available properties for debugging
+                var props = template.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                foreach (var p in props)
+                {
+                    Plugin.Logger.LogDebug($"  Available property: {p.Name} ({p.PropertyType.Name})");
+                }
                 return changes;
             }
 
@@ -829,6 +875,112 @@ public static class ActionHelper
         {
             Plugin.Logger.LogError($"GetUpgradePreview error: {ex.Message}");
             changes.Add("Preview not available");
+        }
+
+        return changes;
+    }
+
+    /// <summary>
+    /// Gets stat changes by directly accessing the Tiers dictionary.
+    /// Fallback method when GetAttributeBaseValueAtTier is not accessible.
+    /// </summary>
+    private static List<string> GetChangesFromTiersDictionary(System.Collections.IDictionary tiersDict, ETier currentTier, ETier targetTier)
+    {
+        var changes = new List<string>();
+
+        try
+        {
+            // Get the TCardTier objects for current and target tiers
+            object currentTierData = null;
+            object targetTierData = null;
+
+            foreach (System.Collections.DictionaryEntry entry in tiersDict)
+            {
+                var tierKey = (ETier)entry.Key;
+                if (tierKey == currentTier || (tierKey == ETier.Diamond && currentTier == ETier.Legendary))
+                {
+                    currentTierData = entry.Value;
+                }
+                if (tierKey == targetTier || (tierKey == ETier.Diamond && targetTier == ETier.Legendary))
+                {
+                    targetTierData = entry.Value;
+                }
+            }
+
+            if (currentTierData == null || targetTierData == null)
+            {
+                Plugin.Logger.LogWarning("GetChangesFromTiersDictionary: Could not find tier data");
+                return changes;
+            }
+
+            // Get Attributes dictionary from each tier
+            var attrsProp = currentTierData.GetType().GetProperty("Attributes");
+            if (attrsProp == null)
+            {
+                Plugin.Logger.LogWarning("GetChangesFromTiersDictionary: Attributes property not found");
+                return changes;
+            }
+
+            var currentAttrs = attrsProp.GetValue(currentTierData) as System.Collections.IDictionary;
+            var targetAttrs = attrsProp.GetValue(targetTierData) as System.Collections.IDictionary;
+
+            if (currentAttrs == null || targetAttrs == null)
+            {
+                return changes;
+            }
+
+            // Compare attributes
+            var attrNameMap = new System.Collections.Generic.Dictionary<string, string>
+            {
+                {"DamageAmount", "Damage"},
+                {"HealAmount", "Heal"},
+                {"ShieldApplyAmount", "Shield"},
+                {"Cooldown", "Cooldown"},
+                {"CooldownMax", "Cooldown"},
+                {"Ammo", "Ammo"},
+                {"AmmoMax", "Max Ammo"},
+                {"CritChance", "Crit"},
+                {"Multicast", "Multicast"},
+                {"BurnApplyAmount", "Burn"},
+                {"PoisonApplyAmount", "Poison"},
+                {"HasteAmount", "Haste"},
+                {"SlowAmount", "Slow"},
+                {"FreezeAmount", "Freeze"},
+            };
+
+            foreach (System.Collections.DictionaryEntry entry in targetAttrs)
+            {
+                var attrType = entry.Key;
+                int targetVal = (int)entry.Value;
+                int currentVal = 0;
+
+                if (currentAttrs.Contains(attrType))
+                {
+                    currentVal = (int)currentAttrs[attrType];
+                }
+
+                if (currentVal != targetVal)
+                {
+                    string attrTypeName = attrType.ToString();
+                    string displayName = attrNameMap.ContainsKey(attrTypeName) ? attrNameMap[attrTypeName] : attrTypeName;
+
+                    // Format cooldown as seconds
+                    if (attrTypeName.Contains("Cooldown"))
+                    {
+                        float currentSec = currentVal / 1000f;
+                        float targetSec = targetVal / 1000f;
+                        changes.Add(string.Format("{0} {1:F1}s to {2:F1}s", displayName, currentSec, targetSec));
+                    }
+                    else
+                    {
+                        changes.Add(string.Format("{0} {1} to {2}", displayName, currentVal, targetVal));
+                    }
+                }
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"GetChangesFromTiersDictionary error: {ex.Message}");
         }
 
         return changes;

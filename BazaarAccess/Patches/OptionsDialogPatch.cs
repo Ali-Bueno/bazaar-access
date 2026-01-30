@@ -16,73 +16,38 @@ public static class OptionsDialogShowPatch
 {
     private static OptionsUI _currentOptionsUI;
     private static bool _isOpen = false;
-    private static float _lastCloseTime = 0f;
-    private const float COOLDOWN = 0.5f; // Medio segundo de cooldown
 
     [HarmonyPostfix]
     public static void Postfix(MonoBehaviour __instance)
     {
-        // Cooldown para evitar reabrir inmediatamente después de cerrar
-        if (Time.time - _lastCloseTime < COOLDOWN)
-        {
-            return;
-        }
-
-        // Verificar si el diálogo está realmente visible
-        if (!IsReallyVisible(__instance.transform))
-        {
-            return;
-        }
-
         // Evitar abrir múltiples veces
         if (_isOpen) return;
-        _isOpen = true;
 
-        // Crear UI accesible
-        _currentOptionsUI = new OptionsUI(__instance.transform);
-        AccessibilityMgr.ShowUI(_currentOptionsUI);
-
-        Plugin.Logger.LogInfo("OptionsUI abierta");
+        // Usar coroutine para esperar a que el diálogo esté listo
+        Plugin.Instance.StartCoroutine(CreateOptionsUIDelayed(__instance.transform));
     }
 
-    /// <summary>
-    /// Verifica si el menú está realmente visible para el usuario.
-    /// </summary>
-    private static bool IsReallyVisible(Transform root)
+    private static System.Collections.IEnumerator CreateOptionsUIDelayed(Transform root)
     {
-        if (root == null) return false;
-        if (!root.gameObject.activeInHierarchy) return false;
+        // Esperar un poco para que el UI esté completamente visible
+        yield return new WaitForSeconds(0.15f);
 
-        // Verificar CanvasGroup (alpha > 0, interactable)
-        var canvasGroup = root.GetComponent<CanvasGroup>();
-        if (canvasGroup != null)
+        // Double-check que no se haya abierto mientras esperábamos
+        if (_isOpen) yield break;
+
+        if (root != null && root.gameObject.activeInHierarchy)
         {
-            if (canvasGroup.alpha < 0.1f) return false;
-            if (!canvasGroup.interactable) return false;
+            _isOpen = true;
+            _currentOptionsUI = new OptionsUI(root);
+            AccessibilityMgr.ShowUI(_currentOptionsUI);
+            Plugin.Logger.LogInfo("OptionsUI abierta");
         }
-
-        // Verificar escala (no es 0)
-        var scale = root.localScale;
-        if (scale.x < 0.1f || scale.y < 0.1f) return false;
-
-        // Verificar que hay sliders activos (siempre hay sliders de audio en opciones)
-        var sliders = root.GetComponentsInChildren<UnityEngine.UI.Slider>(false);
-        foreach (var slider in sliders)
-        {
-            if (slider.gameObject.activeInHierarchy)
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     public static void SetClosed()
     {
         _isOpen = false;
         _currentOptionsUI = null;
-        _lastCloseTime = Time.time;
     }
 
     public static OptionsUI GetCurrentUI() => _currentOptionsUI;

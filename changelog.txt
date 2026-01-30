@@ -7,8 +7,8 @@
 ### Bug Fixes
 - Fixed Escape key loop between pause menu and options menu
   - Escape now properly triggers Back action when a popup is open
-  - Removed duplicate UI creation that caused menu conflicts
-  - Menus now properly clean up when transitioning between each other
+  - Proper coordination between pause menu and options menu patches
+  - Fixed options menu not appearing when opened from pause menu
 - Fixed volume sliders not applying changes correctly
   - Now explicitly triggers onValueChanged event when adjusting
   - Uses proper value mapping between slider min/max range
