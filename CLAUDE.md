@@ -326,3 +326,50 @@ New `GetEnemyCompactDescription()` for quick navigation: "Name, Xs, X damage"
 ### Simplified Announcements
 - Enemy board (G): Just "Opponent's board, X items" (no skills count)
 - Enemy stats (F): Just "Enemy stats" (skills via Right arrow)
+
+---
+
+## Bug Fixes & Combat Improvements (Jan 30, 2026)
+
+### Item Tracking Improvements (`Gameplay/GameplayNavigator.cs`)
+- New `GoToItemById(InstanceId)` method for reliable item tracking after moves
+- `GoToBoardSlot()` now validates index and logs warnings when slot not found
+- `Refresh()` now calls `ClearDetailCache()` to prevent stale card references
+- All reorder operations use ID-based tracking instead of slot-based (more reliable)
+
+**Why this matters:** Items could "disappear" from navigation when:
+- Large items (size 2-3) were moved and slot calculations were wrong
+- `_detailCard` held stale references after moves
+- `_currentIndex` pointed to invalid data after board changes
+
+### Combat Event Handling (`Gameplay/CombatDescriber.cs`)
+New action types added to `IsRelevantAction()`:
+- `ActionType.CardReload` (700) - Announces "[ItemName] reloaded [amount]"
+- `ActionType.CardModifyAttribute` (600) - Announces "[ItemName] modified by [amount]"
+
+Both batched and individual modes handle these events.
+
+### Unsellable Item Detection
+**ActionHelper.cs:**
+- `CanSell(card)` now checks `card.HiddenTags.Contains(EHiddenTag.Unsellable)`
+
+**GameplayScreen.cs:**
+- Action menu only shows "Sell" if both state and card allow selling
+
+**StateChangePatch.cs:**
+- Subscribed to `UnsellableItemSaleAttempt` event
+- Announces "[ItemName] cannot be sold" when game rejects sale
+
+### Action Menu Order at Pedestals (`GameplayScreen.cs`)
+- At pedestals, Upgrade/Enchant option now appears FIRST (before Sell)
+- This prioritizes the main action when at upgrade or enchant altars
+
+### Reorder with Delays (`GameplayScreen.cs`)
+- `MoveItemToEdgeCoroutine()` uses 50ms delays between moves
+- Allows game to properly update adjacency effects (e.g., Swash Buckle's crit)
+- Announces "Moving to [left/right] edge" before starting
+
+### Known Game Limitations
+- **Item stats show BASE values only** - Combat-modified values (e.g., Orange Julian's +100 damage buff) are not accessible via the game's API
+- During combat, ACTUAL damage IS announced correctly via combat events
+- When pressing I to read item properties, only base stats are shown
