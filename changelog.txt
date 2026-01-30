@@ -2,9 +2,15 @@
 
 ---
 
-## January 30, 2026 (v1.5.1)
+## January 30, 2026 (v1.5.2)
 
-### Bug Fixes
+### New Features
+- Upgrade/Enchant preview in confirmation dialog
+  - When pressing U to upgrade, the dialog now shows stat changes: "Changes: Damage 10 to 15, Cooldown 3.0s to 2.5s"
+  - When pressing U to enchant, the dialog shows enchantment effects when available
+  - Screen reader users now have the same preview information as sighted users
+
+### Bug Fixes (v1.5.1)
 - Fixed upgrade preview showing wrong tier: Now reads actual target tier from the altar
   - If upgrade only improves stats (same tier): "Upgrade Bronze stats (U)"
   - If upgrade changes tier: "Upgrade to Silver (U)"

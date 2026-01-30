@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Reflection;
 using BazaarAccess.Core;
 using BazaarAccess.Patches;
@@ -721,6 +722,219 @@ public static class ActionHelper
             default:
                 return $"Use {cardName} at pedestal";
         }
+    }
+
+    /// <summary>
+    /// Gets a preview of what stats will change when upgrading an item.
+    /// Returns a list of changes like "Damage 10 → 15"
+    /// </summary>
+    public static List<string> GetUpgradePreview(Card card)
+    {
+        var changes = new List<string>();
+        if (card == null) return changes;
+
+        try
+        {
+            var pedestalInfo = GetCurrentPedestalInfo();
+            ETier targetTier = pedestalInfo.TargetTier ?? GetNextTier(card.Tier);
+
+            if (targetTier == card.Tier)
+            {
+                changes.Add("Stats will improve (same tier)");
+                return changes;
+            }
+
+            // Get the card template to access tier data
+            var templateProp = card.GetType().GetProperty("Template");
+            if (templateProp == null) return changes;
+
+            var template = templateProp.GetValue(card);
+            if (template == null) return changes;
+
+            // Try to get attribute values at current and target tier
+            var getAttrMethod = template.GetType().GetMethod("GetAttributeBaseValueAtTier");
+            if (getAttrMethod == null)
+            {
+                Plugin.Logger.LogDebug("GetUpgradePreview: GetAttributeBaseValueAtTier not found");
+                return changes;
+            }
+
+            // Check common combat stats
+            var attrTypes = new ECardAttributeType[]
+            {
+                ECardAttributeType.DamageAmount,
+                ECardAttributeType.HealAmount,
+                ECardAttributeType.ShieldApplyAmount,
+                ECardAttributeType.Cooldown,
+                ECardAttributeType.CooldownMax,
+                ECardAttributeType.Ammo,
+                ECardAttributeType.AmmoMax,
+                ECardAttributeType.CritChance,
+                ECardAttributeType.Multicast,
+                ECardAttributeType.BurnApplyAmount,
+                ECardAttributeType.PoisonApplyAmount,
+                ECardAttributeType.HasteAmount,
+                ECardAttributeType.SlowAmount,
+                ECardAttributeType.FreezeAmount,
+            };
+            var attrNames = new string[]
+            {
+                "Damage", "Heal", "Shield", "Cooldown", "Cooldown",
+                "Ammo", "Max Ammo", "Crit", "Multicast",
+                "Burn", "Poison", "Haste", "Slow", "Freeze"
+            };
+
+            for (int i = 0; i < attrTypes.Length; i++)
+            {
+                var attrType = attrTypes[i];
+                var attrName = attrNames[i];
+                try
+                {
+                    var currentVal = getAttrMethod.Invoke(template, new object[] { attrType, card.Tier });
+                    var nextVal = getAttrMethod.Invoke(template, new object[] { attrType, targetTier });
+
+                    if (currentVal != null && nextVal != null)
+                    {
+                        int current = (int)currentVal;
+                        int next = (int)nextVal;
+
+                        if (current != next && (current > 0 || next > 0))
+                        {
+                            // Format cooldown as seconds
+                            if (attrType == ECardAttributeType.Cooldown || attrType == ECardAttributeType.CooldownMax)
+                            {
+                                float currentSec = current / 1000f;
+                                float nextSec = next / 1000f;
+                                changes.Add(string.Format("{0} {1:F1}s to {2:F1}s", attrName, currentSec, nextSec));
+                            }
+                            else
+                            {
+                                changes.Add(string.Format("{0} {1} to {2}", attrName, current, next));
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    // Attribute not available at this tier, skip
+                }
+            }
+
+            if (changes.Count == 0)
+            {
+                changes.Add("Stats will improve");
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"GetUpgradePreview error: {ex.Message}");
+            changes.Add("Preview not available");
+        }
+
+        return changes;
+    }
+
+    /// <summary>
+    /// Gets a preview of what an enchantment will add to an item.
+    /// </summary>
+    public static List<string> GetEnchantPreview(Card card, string enchantmentName)
+    {
+        var effects = new List<string>();
+        if (card == null) return effects;
+
+        try
+        {
+            // Get the card template
+            var templateProp = card.GetType().GetProperty("Template");
+            if (templateProp == null) return effects;
+
+            var template = templateProp.GetValue(card);
+            if (template == null) return effects;
+
+            // Try to find the enchantment in the template
+            var enchantmentsProp = template.GetType().GetProperty("Enchantments");
+            if (enchantmentsProp == null)
+            {
+                Plugin.Logger.LogDebug("GetEnchantPreview: Enchantments property not found");
+                effects.Add($"Adds {enchantmentName} enchantment");
+                return effects;
+            }
+
+            var enchantments = enchantmentsProp.GetValue(template) as System.Collections.IDictionary;
+            if (enchantments == null)
+            {
+                effects.Add($"Adds {enchantmentName} enchantment");
+                return effects;
+            }
+
+            // Find matching enchantment by name
+            foreach (System.Collections.DictionaryEntry entry in enchantments)
+            {
+                var enchant = entry.Value;
+                if (enchant == null) continue;
+
+                // Get localization to check name
+                var locProp = enchant.GetType().GetProperty("Localization");
+                if (locProp != null)
+                {
+                    var loc = locProp.GetValue(enchant);
+                    if (loc != null)
+                    {
+                        var titleProp = loc.GetType().GetProperty("Title");
+                        if (titleProp != null)
+                        {
+                            var title = titleProp.GetValue(loc) as string;
+                            if (title != null && title.Equals(enchantmentName, System.StringComparison.OrdinalIgnoreCase))
+                            {
+                                // Found the enchantment, get its attributes
+                                var attrsProp = enchant.GetType().GetProperty("Attributes");
+                                if (attrsProp != null)
+                                {
+                                    var attrs = attrsProp.GetValue(enchant) as System.Collections.IDictionary;
+                                    if (attrs != null && attrs.Count > 0)
+                                    {
+                                        foreach (System.Collections.DictionaryEntry attr in attrs)
+                                        {
+                                            string attrName = attr.Key.ToString();
+                                            int value = (int)attr.Value;
+                                            string sign = value >= 0 ? "+" : "";
+                                            effects.Add($"{attrName} {sign}{value}");
+                                        }
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (effects.Count == 0)
+            {
+                effects.Add($"Adds {enchantmentName} effects");
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"GetEnchantPreview error: {ex.Message}");
+            effects.Add($"Adds {enchantmentName} enchantment");
+        }
+
+        return effects;
+    }
+
+    /// <summary>
+    /// Gets the next tier enum value.
+    /// </summary>
+    private static ETier GetNextTier(ETier current)
+    {
+        return current switch
+        {
+            ETier.Bronze => ETier.Silver,
+            ETier.Silver => ETier.Gold,
+            ETier.Gold => ETier.Diamond,
+            _ => current
+        };
     }
 
     /// <summary>

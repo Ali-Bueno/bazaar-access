@@ -1595,9 +1595,26 @@ public class GameplayScreen : IAccessibleScreen
             }
 
             string enchantName = pedestalInfo.EnchantmentName ?? "random";
-            string message = pedestalInfo.Type == ActionHelper.PedestalType.EnchantRandom
-                ? $"Enchant {name} with a random enchantment?"
-                : $"Enchant {name} with {enchantName}?";
+
+            // Build message with preview
+            var messageParts = new List<string>();
+            if (pedestalInfo.Type == ActionHelper.PedestalType.EnchantRandom)
+            {
+                messageParts.Add($"Enchant {name} with a random enchantment?");
+            }
+            else
+            {
+                messageParts.Add($"Enchant {name} with {enchantName}.");
+                // Get enchantment preview
+                var preview = ActionHelper.GetEnchantPreview(card, enchantName);
+                if (preview.Count > 0)
+                {
+                    messageParts.Add("Effects: " + string.Join(", ", preview));
+                }
+            }
+            messageParts.Add("Press U to confirm, Backspace to cancel.");
+
+            string message = string.Join(" ", messageParts);
 
             var ui = new ConfirmActionUI(ConfirmActionType.Upgrade, name, 0, message,
                 onConfirm: () => {
@@ -1622,26 +1639,36 @@ public class GameplayScreen : IAccessibleScreen
                 return;
             }
 
-            // Build message based on actual pedestal target
-            string message;
+            // Build message with preview
+            var messageParts = new List<string>();
+
             if (upgradeInfo.TargetTier.HasValue)
             {
                 if (upgradeInfo.TargetTier.Value == card.Tier)
                 {
-                    // Same tier - just improving stats
-                    message = $"Upgrade {name} stats? (stays {currentTier})";
+                    messageParts.Add($"Upgrade {name} stats. Stays {currentTier}.");
                 }
                 else
                 {
-                    message = $"Upgrade {name} from {currentTier} to {upgradeInfo.TargetTier.Value}?";
+                    messageParts.Add($"Upgrade {name} from {currentTier} to {upgradeInfo.TargetTier.Value}.");
                 }
             }
             else
             {
-                // Fallback
                 string nextTier = GetNextTierName(card.Tier);
-                message = $"Upgrade {name} from {currentTier} to {nextTier}?";
+                messageParts.Add($"Upgrade {name} from {currentTier} to {nextTier}.");
             }
+
+            // Get upgrade preview (stat changes)
+            var preview = ActionHelper.GetUpgradePreview(card);
+            if (preview.Count > 0)
+            {
+                messageParts.Add("Changes: " + string.Join(", ", preview));
+            }
+
+            messageParts.Add("Press U to confirm, Backspace to cancel.");
+
+            string message = string.Join(" ", messageParts);
 
             var ui = new ConfirmActionUI(ConfirmActionType.Upgrade, name, 0, message,
                 onConfirm: () => {
