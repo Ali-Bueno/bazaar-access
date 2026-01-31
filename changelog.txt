@@ -2,7 +2,7 @@
 
 ---
 
-## January 31, 2026 (v1.5.6)
+## January 31, 2026 (v1.5.7)
 
 ### Improvements
 - Critical hits now announced prominently: "Critical hit! Sword: 180 damage" instead of "180 damage, crit"
