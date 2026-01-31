@@ -2,6 +2,19 @@
 
 ---
 
+## January 31, 2026 (v1.5.6)
+
+### Improvements
+- Critical hits now announced prominently: "Critical hit! Sword: 180 damage" instead of "180 damage, crit"
+- Reload announcements now always include item name and amount: "Grenade reloaded 2 ammo"
+- Modified attribute announcements now show what changed when possible: "damage increased by 50"
+- Batched mode now accumulates reloads and buffs/debuffs to prevent spam on fast builds:
+  - Instead of spamming "Sword modified" 10 times, announces "You: 150 damage, 10 buffs, Grenade reloaded 5"
+  - Multiple reloads summarized: "8 reloads" or "Grenade reloaded 3" for single item
+  - Buffs/debuffs counted: "3 buffs, 2 debuffs"
+
+---
+
 ## January 30, 2026 (v1.5.5)
 
 ### Bug Fixes

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using BazaarAccess.Core;
 using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameShared.Domain.Core.Types;
@@ -122,6 +123,11 @@ public static class CombatDescriber
         public HashSet<string> StatusEffects = new HashSet<string>();
         public bool HadCrit;
 
+        // Track reloads and modifications
+        public Dictionary<string, int> ReloadsByItem = new Dictionary<string, int>();
+        public int TotalBuffs;
+        public int TotalDebuffs;
+
         public void Clear()
         {
             TotalDamage = 0;
@@ -130,9 +136,14 @@ public static class CombatDescriber
             DamageByItem.Clear();
             StatusEffects.Clear();
             HadCrit = false;
+            ReloadsByItem.Clear();
+            TotalBuffs = 0;
+            TotalDebuffs = 0;
         }
 
-        public bool HasActivity => TotalDamage > 0 || TotalHeal > 0 || TotalShield > 0 || StatusEffects.Count > 0;
+        public bool HasActivity => TotalDamage > 0 || TotalHeal > 0 || TotalShield > 0 ||
+                                   StatusEffects.Count > 0 || ReloadsByItem.Count > 0 ||
+                                   TotalBuffs > 0 || TotalDebuffs > 0;
 
         public string GetTopItem()
         {
@@ -452,21 +463,24 @@ public static class CombatDescriber
                 break;
 
             case ActionType.CardReload:
-                // Announce reload immediately (not batched, since it's important feedback)
-                if (isPlayerItem && !string.IsNullOrEmpty(itemName))
+                // Accumulate reloads into wave
+                if (!string.IsNullOrEmpty(itemName))
                 {
-                    string reloadMsg = amount > 0 ? $"{itemName} reloaded {amount}" : $"{itemName} reloaded";
-                    TolkWrapper.Speak(reloadMsg, interrupt: false);
+                    if (wave.ReloadsByItem.ContainsKey(itemName))
+                        wave.ReloadsByItem[itemName] += amount > 0 ? amount : 1;
+                    else
+                        wave.ReloadsByItem[itemName] = amount > 0 ? amount : 1;
                 }
                 break;
 
             case ActionType.CardModifyAttribute:
-                // Announce attribute modification (buff/debuff) immediately
-                if (isPlayerItem && !string.IsNullOrEmpty(itemName))
-                {
-                    string modMsg = amount != 0 ? $"{itemName} modified by {amount}" : $"{itemName} modified";
-                    TolkWrapper.Speak(modMsg, interrupt: false);
-                }
+                // Accumulate buffs/debuffs into wave (don't announce each one)
+                if (amount > 0)
+                    wave.TotalBuffs++;
+                else if (amount < 0)
+                    wave.TotalDebuffs++;
+                else
+                    wave.TotalBuffs++; // Count unknown modifications as buffs
                 break;
         }
 
@@ -494,7 +508,7 @@ public static class CombatDescriber
             else _totalPlayerDamageTaken += amount;
         }
 
-        string announcement = FormatEffectAnnouncement(itemName, isPlayerItem, data.ActionType, amount, isCrit);
+        string announcement = FormatEffectAnnouncement(itemName, isPlayerItem, data.ActionType, amount, isCrit, data);
         if (!string.IsNullOrEmpty(announcement))
         {
             TolkWrapper.Speak(announcement, interrupt: false);
@@ -504,24 +518,31 @@ public static class CombatDescriber
     /// <summary>
     /// Formats an immediate effect announcement for individual mode.
     /// Player: "Sword: 10 damage" | Enemy: "Enemy Sword: 10 damage"
+    /// Critical hits: "Critical hit! Sword: 180 damage"
     /// </summary>
-    private static string FormatEffectAnnouncement(string itemName, bool isPlayerItem, ActionType actionType, int amount, bool isCrit)
+    private static string FormatEffectAnnouncement(string itemName, bool isPlayerItem, ActionType actionType, int amount, bool isCrit, CombatActionData data = null)
     {
         // Prefix with "Enemy" for opponent items
         string prefix = isPlayerItem ? "" : "Enemy ";
         string name = string.IsNullOrEmpty(itemName) ? "Item" : itemName;
+
+        // Handle critical hits prominently for damage
+        if (isCrit && actionType == ActionType.PlayerDamage && amount > 0)
+        {
+            return $"Critical hit! {prefix}{name}: {amount} damage";
+        }
 
         string effectText = actionType switch
         {
             ActionType.PlayerDamage => amount > 0 ? $"{amount} damage" : "damage",
             ActionType.PlayerHeal => amount > 0 ? $"{amount} heal" : "heal",
             ActionType.PlayerShieldApply => amount > 0 ? $"{amount} shield" : "shield",
-            ActionType.PlayerBurnApply => "burn",
-            ActionType.PlayerPoisonApply => "poison",
-            ActionType.CardSlow => "slow",
-            ActionType.CardFreeze => isPlayerItem ? "freeze" : null, // Enemy freeze uses special "Frozen!" alert
-            ActionType.CardReload => amount > 0 ? $"reloaded {amount}" : "reloaded",
-            ActionType.CardModifyAttribute => amount != 0 ? $"modified by {amount}" : "modified",
+            ActionType.PlayerBurnApply => amount > 0 ? $"{amount} burn" : "burn applied",
+            ActionType.PlayerPoisonApply => amount > 0 ? $"{amount} poison" : "poison applied",
+            ActionType.CardSlow => "slowed",
+            ActionType.CardFreeze => isPlayerItem ? "freeze applied" : null, // Enemy freeze uses special "Frozen!" alert
+            ActionType.CardReload => amount > 0 ? $"reloaded {amount} ammo" : "reloaded",
+            ActionType.CardModifyAttribute => FormatModifyAttributeText(data, amount),
             _ => null
         };
 
@@ -536,13 +557,52 @@ public static class CombatDescriber
             return null;
         }
 
-        // Add crit suffix if applicable
-        if (isCrit && actionType == ActionType.PlayerDamage)
+        return $"{prefix}{name}: {effectText}";
+    }
+
+    /// <summary>
+    /// Formats the modify attribute text with specific attribute info when available.
+    /// </summary>
+    private static string FormatModifyAttributeText(CombatActionData data, int fallbackAmount)
+    {
+        if (data == null)
         {
-            effectText += ", crit";
+            return fallbackAmount != 0 ? $"modified by {fallbackAmount}" : "modified";
         }
 
-        return $"{prefix}{name}: {effectText}";
+        var info = GetModifyAttributeInfo(data);
+
+        // Build a descriptive message
+        var parts = new List<string>();
+
+        if (!string.IsNullOrEmpty(info.AttrName))
+        {
+            string changeDir = info.Amount > 0 ? "increased" : (info.Amount < 0 ? "decreased" : "changed");
+            if (info.Amount != 0)
+            {
+                parts.Add($"{info.AttrName} {changeDir} by {Math.Abs(info.Amount)}");
+            }
+            else
+            {
+                parts.Add($"{info.AttrName} {changeDir}");
+            }
+        }
+        else if (info.Amount != 0 || fallbackAmount != 0)
+        {
+            int finalAmount = info.Amount != 0 ? info.Amount : fallbackAmount;
+            parts.Add($"modified by {finalAmount}");
+        }
+        else
+        {
+            parts.Add("modified");
+        }
+
+        if (!string.IsNullOrEmpty(info.TargetName))
+        {
+            parts.Add($"on {info.TargetName}");
+        }
+
+        return string.Join(" ", parts);
     }
 
     #endregion
@@ -614,6 +674,7 @@ public static class CombatDescriber
 
     /// <summary>
     /// Formats one side of the wave summary.
+    /// Critical hits are announced prominently at the start.
     /// </summary>
     private static string FormatWaveSide(string owner, WaveData wave)
     {
@@ -623,10 +684,21 @@ public static class CombatDescriber
         if (wave.TotalDamage > 0)
         {
             string topItem = wave.GetTopItem();
-            if (!string.IsNullOrEmpty(topItem))
-                elements.Add($"{wave.TotalDamage} damage ({topItem})");
+            string damageText;
+            if (wave.HadCrit)
+            {
+                // Prominent critical hit announcement
+                damageText = !string.IsNullOrEmpty(topItem)
+                    ? $"critical hit! {wave.TotalDamage} damage ({topItem})"
+                    : $"critical hit! {wave.TotalDamage} damage";
+            }
             else
-                elements.Add($"{wave.TotalDamage} damage");
+            {
+                damageText = !string.IsNullOrEmpty(topItem)
+                    ? $"{wave.TotalDamage} damage ({topItem})"
+                    : $"{wave.TotalDamage} damage";
+            }
+            elements.Add(damageText);
         }
 
         if (wave.TotalHeal > 0)
@@ -645,14 +717,42 @@ public static class CombatDescriber
             elements.AddRange(wave.StatusEffects);
         }
 
+        // Reloads - summarize briefly
+        if (wave.ReloadsByItem.Count > 0)
+        {
+            int totalReloads = wave.ReloadsByItem.Values.Sum();
+            if (wave.ReloadsByItem.Count == 1)
+            {
+                var item = wave.ReloadsByItem.First();
+                elements.Add($"{item.Key} reloaded {item.Value}");
+            }
+            else
+            {
+                elements.Add($"{totalReloads} reloads");
+            }
+        }
+
+        // Buffs/debuffs - summarize briefly
+        if (wave.TotalBuffs > 0 || wave.TotalDebuffs > 0)
+        {
+            if (wave.TotalBuffs > 0 && wave.TotalDebuffs > 0)
+            {
+                elements.Add($"{wave.TotalBuffs} buffs, {wave.TotalDebuffs} debuffs");
+            }
+            else if (wave.TotalBuffs > 0)
+            {
+                elements.Add(wave.TotalBuffs == 1 ? "1 buff" : $"{wave.TotalBuffs} buffs");
+            }
+            else
+            {
+                elements.Add(wave.TotalDebuffs == 1 ? "1 debuff" : $"{wave.TotalDebuffs} debuffs");
+            }
+        }
+
         if (elements.Count == 0)
             return null;
 
         string result = $"{owner}: {string.Join(", ", elements)}";
-
-        // Add critical if applicable
-        if (wave.HadCrit)
-            result += ", critical";
 
         return result;
     }
@@ -818,7 +918,7 @@ public static class CombatDescriber
     }
 
     /// <summary>
-    /// Calculates the effect amount from card attributes.
+    /// Calculates the effect amount from card attributes or event data.
     /// </summary>
     private static int CalculateEffectAmount(CombatActionData data)
     {
@@ -832,6 +932,7 @@ public static class CombatDescriber
             ActionType.PlayerShieldApply => card.GetAttributeValue(ECardAttributeType.ShieldApplyAmount) ?? 0,
             ActionType.PlayerBurnApply => card.GetAttributeValue(ECardAttributeType.BurnApplyAmount) ?? 0,
             ActionType.PlayerPoisonApply => card.GetAttributeValue(ECardAttributeType.PoisonApplyAmount) ?? 0,
+            ActionType.CardReload => card.GetAttributeValue(ECardAttributeType.ReloadAmount) ?? 1,
             _ => 0
         };
 
@@ -845,6 +946,95 @@ public static class CombatDescriber
         }
 
         return amount;
+    }
+
+    /// <summary>
+    /// Holds information about a modified attribute event.
+    /// </summary>
+    private struct ModifyAttributeInfo
+    {
+        public string TargetName;
+        public string AttrName;
+        public int Amount;
+    }
+
+    /// <summary>
+    /// Gets modified attribute information from CardModifyAttribute events.
+    /// </summary>
+    private static ModifyAttributeInfo GetModifyAttributeInfo(CombatActionData data)
+    {
+        var result = new ModifyAttributeInfo();
+
+        try
+        {
+            // Try to get TargetCard property via reflection
+            var targetCardProp = data.GetType().GetProperty("TargetCard");
+            Card targetCard = null;
+            if (targetCardProp != null)
+            {
+                targetCard = targetCardProp.GetValue(data) as Card;
+            }
+
+            result.TargetName = targetCard != null ? ItemReader.GetCardName(targetCard) : null;
+
+            // Try to get the attribute type from the event
+            var attrTypeProp = data.GetType().GetProperty("AttributeType");
+            if (attrTypeProp != null)
+            {
+                var attrValue = attrTypeProp.GetValue(data);
+                if (attrValue != null)
+                {
+                    result.AttrName = GetFriendlyAttributeName(attrValue.ToString());
+                }
+            }
+
+            // Try to get amount from event data
+            var amountProp = data.GetType().GetProperty("Amount");
+            if (amountProp != null)
+            {
+                var amountValue = amountProp.GetValue(data);
+                if (amountValue != null)
+                {
+                    int.TryParse(amountValue.ToString(), out result.Amount);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogDebug($"GetModifyAttributeInfo error: {ex.Message}");
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Converts attribute type enum names to friendly names.
+    /// </summary>
+    private static string GetFriendlyAttributeName(string attrType)
+    {
+        if (string.IsNullOrEmpty(attrType)) return null;
+
+        return attrType switch
+        {
+            "DamageAmount" => "damage",
+            "HealAmount" => "heal",
+            "ShieldApplyAmount" => "shield",
+            "CritChance" => "crit chance",
+            "Cooldown" => "cooldown",
+            "CooldownMax" => "cooldown",
+            "Ammo" => "ammo",
+            "AmmoMax" => "max ammo",
+            "HasteAmount" => "haste",
+            "SlowAmount" => "slow",
+            "FreezeAmount" => "freeze",
+            "BurnApplyAmount" => "burn",
+            "PoisonApplyAmount" => "poison",
+            "Lifesteal" => "lifesteal",
+            "Multicast" => "multicast",
+            "RegenApplyAmount" => "regen",
+            "Counter" => "counter",
+            _ => attrType.ToLower().Replace("amount", "").Trim()
+        };
     }
 
     #endregion

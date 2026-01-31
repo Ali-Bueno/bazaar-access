@@ -407,3 +407,30 @@ Confirmation dialogs (`HandleUpgradeConfirm` in `GameplayScreen.cs`) now include
 - **Item stats show BASE values only** - Combat-modified values (e.g., Orange Julian's +100 damage buff) are not accessible via the game's API
 - During combat, ACTUAL damage IS announced correctly via combat events
 - When pressing I to read item properties, only base stats are shown
+
+---
+
+## Combat Announcement Improvements (Jan 31, 2026)
+
+### Critical Hit Announcements (`Gameplay/CombatDescriber.cs`)
+- **Individual mode**: "Critical hit! Sword: 180 damage" (was "Sword: 180 damage, crit")
+- **Batched mode**: "You: critical hit! 180 damage (Sword)" (crit at start of damage text)
+
+### Reload Announcements
+- Always include item name and amount: "Grenade reloaded 2 ammo"
+- Added `ReloadAmount` to `CalculateEffectAmount()` for proper ammo tracking
+- Enemy reloads also announced: "Enemy Grenade reloaded 1 ammo"
+
+### Modified Attribute Announcements
+- New `ModifyAttributeInfo` struct and `GetModifyAttributeInfo()` method
+- Uses reflection to get `TargetCard`, `AttributeType`, and `Amount` from event
+- `GetFriendlyAttributeName()` converts enum to readable text (DamageAmount → "damage")
+- `FormatModifyAttributeText()` builds descriptive message: "damage increased by 50 on Dagger"
+
+### Batched Mode Anti-Spam
+Fast builds that modify items many times per second no longer spam announcements:
+- `WaveData` now tracks: `ReloadsByItem`, `TotalBuffs`, `TotalDebuffs`
+- Reloads and modifications accumulated into wave instead of immediate announcement
+- Summary format: "You: 150 damage, 10 buffs, Grenade reloaded 5"
+- Multiple items reloading: "8 reloads"
+- Buff/debuff counts: "3 buffs, 2 debuffs"
