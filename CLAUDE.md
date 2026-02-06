@@ -434,3 +434,34 @@ Fast builds that modify items many times per second no longer spam announcements
 - Summary format: "You: 150 damage, 10 buffs, Grenade reloaded 5"
 - Multiple items reloading: "8 reloads"
 - Buff/debuff counts: "3 buffs, 2 debuffs"
+
+---
+
+## Game Update Compatibility & New Features (Feb 6, 2026)
+
+### Hero Select Screen Fix (`Screens/HeroSelectScreen.cs`)
+Game update made hero loading async (`HeroSelectButtonsView.Awake()` now hides heroes during `RefreshButtons()`).
+- Hero options now use **visibility callbacks** instead of filtering by `activeInHierarchy` at build time
+- All heroes from the serialized `HeroItemViews` list are added to the menu
+- Each hero option checks `activeInHierarchy` dynamically when navigated
+- Heroes appear automatically once async loading completes
+
+### Random Hero Toggle (`Screens/HeroSelectScreen.cs`)
+New game feature: checkbox to play a random hero from owned heroes.
+- Added "Random Hero: on/off" option in hero select menu (Enter to toggle)
+- Toggle visibility respects tutorial state (hidden during tutorial)
+- `OnFocus()` announces "Random hero mode enabled" when active
+- Hero "selected" indicator hidden when random mode is on
+- Selecting a specific hero automatically disables random mode (game handles this)
+- Uses `HeroSelectButtonsView.IsRandomHeroEnabled` static property and `RandomHeroToggle` field
+
+### Repair Mechanic Support (`Gameplay/CombatDescriber.cs`, `Gameplay/ItemReader.cs`)
+New game mechanic: items/skills can repair destroyed items during combat.
+- `ActionType.CardRepair` (270) added to `IsRelevantAction()`
+- **Individual mode**: "[SourceName]: repaired [TargetName]" (e.g., "Medkit: repaired Sword")
+- **Batched mode**: Accumulates into wave - "repaired Sword" (single) or "3 repairs" (multiple)
+- `WaveData` tracks: `TotalRepairs`, `RepairedItems` list
+- Target card accessed via `CombatActionData.TargetCard` (public property)
+- `ECardAttributeType.RepairTargets` (99) added to item stat reading (I key)
+- `ItemReader.TokenToAttribute` maps "RepairTargets" and "Repair" aliases
+- All 3 stat listing functions (compact, detailed, enemy) show "Repair Targets: X"

@@ -2,6 +2,24 @@
 
 ---
 
+## February 6, 2026 (v1.5.8)
+
+### Bug Fixes
+- Fixed hero selection screen not working after game update
+  - Game now loads heroes asynchronously; mod adapted to handle heroes being invisible during loading
+  - Heroes appear in menu as they become available via visibility callbacks
+
+### New Features
+- Random Hero toggle: Navigate to "Random Hero: on/off" option and press Enter to toggle
+  - Screen announces "Random hero mode enabled" when entering hero select with random mode active
+  - Individual hero "selected" indicator hidden when random mode is on
+- Repair mechanic support in combat:
+  - Individual mode: "repaired [item name]" when a repair event fires
+  - Batched mode: "repaired [item name]" for single repairs, "X repairs" for multiple
+- Repair Targets stat now shown in item reading (I key) for items with repair abilities
+
+---
+
 ## January 31, 2026 (v1.5.7)
 
 ### Improvements

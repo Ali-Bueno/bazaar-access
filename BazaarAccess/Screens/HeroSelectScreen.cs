@@ -6,6 +6,7 @@ using BazaarGameShared.Domain.Core.Types;
 using TheBazaar;
 using TheBazaar.UI;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace BazaarAccess.Screens;
 
@@ -29,23 +30,20 @@ public class HeroSelectScreen : BaseScreen
         // Find all HeroItemView components in the scene
         FindHeroViews();
 
-        // Add hero selection options
+        // Add hero selection options with visibility callback for async loading
         foreach (var heroView in _heroViews)
         {
-            if (heroView == null || !heroView.gameObject.activeInHierarchy) continue;
+            if (heroView == null) continue;
 
             var view = heroView; // Capture for closure
             Menu.AddOption(
                 () => GetHeroOptionText(view),
-                () => SelectHero(view));
+                () => SelectHero(view),
+                () => view != null && view.gameObject.activeInHierarchy);
         }
 
-        // Separator - Game Mode selection
-        if (_heroViews.Count > 0)
-        {
-            // Add Play button first (shows after hero selection)
-            AddButtonIfExists("PlayButton", "PlayButtonController");
-        }
+        // Random Hero toggle
+        AddRandomHeroToggle();
 
         // Game mode buttons with selection state
         AddGameModeButtons();
@@ -61,6 +59,35 @@ public class HeroSelectScreen : BaseScreen
         {
             TryAddGenericButtons();
         }
+    }
+
+    /// <summary>
+    /// Adds the Random Hero toggle option.
+    /// </summary>
+    private void AddRandomHeroToggle()
+    {
+        var heroButtonsView = Object.FindObjectOfType<HeroSelectButtonsView>();
+        if (heroButtonsView == null) return;
+
+        var toggleField = typeof(HeroSelectButtonsView).GetField("RandomHeroToggle",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        if (toggleField == null) return;
+
+        var toggle = toggleField.GetValue(heroButtonsView) as Toggle;
+        if (toggle == null) return;
+
+        Menu.AddOption(
+            () => $"Random Hero: {(HeroSelectButtonsView.IsRandomHeroEnabled ? "on" : "off")}",
+            () =>
+            {
+                int currentIndex = Menu.CurrentIndex;
+                toggle.isOn = !toggle.isOn;
+                TolkWrapper.Speak($"Random Hero: {(toggle.isOn ? "on" : "off")}");
+                Menu.Clear();
+                BuildMenu();
+                Menu.SetIndex(currentIndex);
+            },
+            () => toggle != null && toggle.gameObject.activeInHierarchy && toggle.interactable);
     }
 
     /// <summary>
@@ -274,7 +301,10 @@ public class HeroSelectScreen : BaseScreen
                 var views = field.GetValue(heroButtonsView) as List<HeroItemView>;
                 if (views != null)
                 {
-                    _heroViews.AddRange(views.Where(v => v != null && v.gameObject.activeInHierarchy));
+                    // Include all heroes from the serialized list, even if inactive.
+                    // Heroes may be hidden during async loading (RefreshButtons).
+                    // Visibility is handled per-option via the menu's visible callback.
+                    _heroViews.AddRange(views.Where(v => v != null));
                 }
             }
         }
@@ -329,7 +359,7 @@ public class HeroSelectScreen : BaseScreen
             catch { }
         }
 
-        if (isSelected)
+        if (isSelected && !HeroSelectButtonsView.IsRandomHeroEnabled)
         {
             parts.Add("selected");
         }
@@ -371,11 +401,11 @@ public class HeroSelectScreen : BaseScreen
             // Remember current position
             int currentIndex = Menu.CurrentIndex;
 
-            // Select the hero
+            // Selecting a hero disables random hero mode automatically (game handles this)
             view.OnItemSelected();
             TolkWrapper.Speak($"{view.Hero} selected");
 
-            // Rebuild menu to update selection indicator but keep position
+            // Rebuild menu to update selection indicator and random hero state
             Menu.Clear();
             BuildMenu();
             Menu.SetIndex(currentIndex);
@@ -465,9 +495,15 @@ public class HeroSelectScreen : BaseScreen
 
     public override void OnFocus()
     {
-        // Announce current hero when entering the screen
-        string currentHero = Data.SelectedHero.ToString();
-        TolkWrapper.Speak($"Hero Select. Current hero: {currentHero}");
+        if (HeroSelectButtonsView.IsRandomHeroEnabled)
+        {
+            TolkWrapper.Speak("Hero Select. Random hero mode enabled");
+        }
+        else
+        {
+            string currentHero = Data.SelectedHero.ToString();
+            TolkWrapper.Speak($"Hero Select. Current hero: {currentHero}");
+        }
         // Don't call base.OnFocus() to avoid double announcement
     }
 

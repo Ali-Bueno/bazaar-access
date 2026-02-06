@@ -128,6 +128,10 @@ public static class CombatDescriber
         public int TotalBuffs;
         public int TotalDebuffs;
 
+        // Track repairs
+        public int TotalRepairs;
+        public List<string> RepairedItems = new List<string>();
+
         public void Clear()
         {
             TotalDamage = 0;
@@ -139,11 +143,13 @@ public static class CombatDescriber
             ReloadsByItem.Clear();
             TotalBuffs = 0;
             TotalDebuffs = 0;
+            TotalRepairs = 0;
+            RepairedItems.Clear();
         }
 
         public bool HasActivity => TotalDamage > 0 || TotalHeal > 0 || TotalShield > 0 ||
                                    StatusEffects.Count > 0 || ReloadsByItem.Count > 0 ||
-                                   TotalBuffs > 0 || TotalDebuffs > 0;
+                                   TotalBuffs > 0 || TotalDebuffs > 0 || TotalRepairs > 0;
 
         public string GetTopItem()
         {
@@ -482,6 +488,17 @@ public static class CombatDescriber
                 else
                     wave.TotalBuffs++; // Count unknown modifications as buffs
                 break;
+
+            case ActionType.CardRepair:
+                wave.TotalRepairs++;
+                var repairedCard = data.TargetCard;
+                if (repairedCard != null)
+                {
+                    string repairedName = ItemReader.GetCardName(repairedCard);
+                    if (!string.IsNullOrEmpty(repairedName))
+                        wave.RepairedItems.Add(repairedName);
+                }
+                break;
         }
 
         if (isCrit) wave.HadCrit = true;
@@ -543,6 +560,7 @@ public static class CombatDescriber
             ActionType.CardFreeze => isPlayerItem ? "freeze applied" : null, // Enemy freeze uses special "Frozen!" alert
             ActionType.CardReload => amount > 0 ? $"reloaded {amount} ammo" : "reloaded",
             ActionType.CardModifyAttribute => FormatModifyAttributeText(data, amount),
+            ActionType.CardRepair => FormatRepairText(data),
             _ => null
         };
 
@@ -558,6 +576,24 @@ public static class CombatDescriber
         }
 
         return $"{prefix}{name}: {effectText}";
+    }
+
+    /// <summary>
+    /// Formats repair text showing which item was repaired.
+    /// </summary>
+    private static string FormatRepairText(CombatActionData data)
+    {
+        if (data == null) return "repaired";
+
+        var targetCard = data.TargetCard;
+        if (targetCard != null)
+        {
+            string targetName = ItemReader.GetCardName(targetCard);
+            if (!string.IsNullOrEmpty(targetName))
+                return $"repaired {targetName}";
+        }
+
+        return "repaired";
     }
 
     /// <summary>
@@ -749,6 +785,23 @@ public static class CombatDescriber
             }
         }
 
+        // Repairs
+        if (wave.TotalRepairs > 0)
+        {
+            if (wave.RepairedItems.Count == 1)
+            {
+                elements.Add($"repaired {wave.RepairedItems[0]}");
+            }
+            else if (wave.RepairedItems.Count > 1)
+            {
+                elements.Add($"{wave.TotalRepairs} repairs");
+            }
+            else
+            {
+                elements.Add(wave.TotalRepairs == 1 ? "1 repair" : $"{wave.TotalRepairs} repairs");
+            }
+        }
+
         if (elements.Count == 0)
             return null;
 
@@ -855,6 +908,7 @@ public static class CombatDescriber
             ActionType.CardFreeze => true,
             ActionType.CardReload => true,
             ActionType.CardModifyAttribute => true,
+            ActionType.CardRepair => true,
             _ => false
         };
     }
@@ -1033,6 +1087,7 @@ public static class CombatDescriber
             "Multicast" => "multicast",
             "RegenApplyAmount" => "regen",
             "Counter" => "counter",
+            "RepairTargets" => "repair targets",
             _ => attrType.ToLower().Replace("amount", "").Trim()
         };
     }

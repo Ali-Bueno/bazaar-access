@@ -75,6 +75,8 @@ public static class ItemReader
         { "BuyPrice", ECardAttributeType.BuyPrice },
         { "SellPrice", ECardAttributeType.SellPrice },
         { "ReloadAmount", ECardAttributeType.ReloadAmount },
+        { "RepairTargets", ECardAttributeType.RepairTargets },
+        { "Repair", ECardAttributeType.RepairTargets },
     };
 
     // Atributos que están en milisegundos y necesitan conversión a segundos
@@ -507,6 +509,7 @@ public static class ItemReader
         AppendStatIfPresent(sb, card, ECardAttributeType.CritChance, "Crit%");
         AppendStatIfPresent(sb, card, ECardAttributeType.Lifesteal, "Lifesteal");
         AppendStatIfPresent(sb, card, ECardAttributeType.Multicast, "Multicast");
+        AppendStatIfPresent(sb, card, ECardAttributeType.RepairTargets, "Repair Targets");
 
         // Descripción del item y tooltips de habilidades
         string fullDesc = GetFullDescription(card);
@@ -913,6 +916,7 @@ public static class ItemReader
         AddStatLine(lines, card, ECardAttributeType.CritChance, "Crit Chance");
         AddStatLine(lines, card, ECardAttributeType.Lifesteal, "Lifesteal");
         AddStatLine(lines, card, ECardAttributeType.Multicast, "Multicast");
+        AddStatLine(lines, card, ECardAttributeType.RepairTargets, "Repair Targets");
 
         // Descripción básica (sin prefijo)
         string desc = GetDescription(card);
@@ -996,6 +1000,7 @@ public static class ItemReader
         AddStatLine(lines, card, ECardAttributeType.CritChance, "Crit Chance");
         AddStatLine(lines, card, ECardAttributeType.Lifesteal, "Lifesteal");
         AddStatLine(lines, card, ECardAttributeType.Multicast, "Multicast");
+        AddStatLine(lines, card, ECardAttributeType.RepairTargets, "Repair Targets");
 
         // Metadata at the end (less important for enemy analysis)
         lines.Add(GetTierName(card));
