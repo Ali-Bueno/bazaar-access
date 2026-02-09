@@ -142,9 +142,17 @@ BazaarAccess release/          # Complete BepInEx installation template
 └── winhttp.dll, doorstop_config.ini      # BepInEx loader
 
 releases/                      # Generated ZIPs for GitHub
-├── BazaarAccess-update.zip    # DLL + changelog only
-└── BazaarAccess-full.zip      # Complete installation
+├── BazaarAccess-update.zip    # DLL + changelog only (for existing BepInEx users)
+└── BazaarAccess-full.zip      # Complete installation (includes BepInEx)
 ```
+
+### Installation Simplification
+**IMPORTANT**: The full release ZIP includes BepInEx, so users only need to:
+1. Extract BazaarAccess-full.zip
+2. Copy all files to the game's main folder
+3. Launch the game
+
+No separate BepInEx installation required!
 
 ### Release Process
 1. Build the project: `dotnet build BazaarAccess/BazaarAccess.csproj`

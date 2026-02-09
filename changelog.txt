@@ -2,6 +2,16 @@
 
 ---
 
+## February 9, 2026 (v1.5.9)
+
+### Documentation Updates
+- Updated installation instructions: Full release now includes BepInEx, no separate installation needed
+- Simplified installation: Extract ZIP and copy all files to game folder
+- Fixed control descriptions: Backspace is the cancel key, not Escape
+- Clarified Enter key behavior: Opens Action Menu on board/stash items, buys from shop
+
+---
+
 ## February 6, 2026 (v1.5.8)
 
 ### Bug Fixes

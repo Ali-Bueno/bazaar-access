@@ -6,9 +6,17 @@ A BepInEx plugin that makes The Bazaar accessible for blind players using screen
 
 INSTALLATION
 ------------
-1. Install BepInEx 5.x in your game folder
-2. Copy BazaarAccess.dll to BepInEx/plugins/
-3. Copy Tolk.dll and TolkDotNet.dll to the game folder
+FULL RELEASE (includes BepInEx):
+1. Download BazaarAccess-full.zip
+2. Extract all files from the ZIP
+3. Copy all extracted files to your game's main folder
+   (e.g., D:\games\steam\steamapps\common\The Bazaar\)
+4. The mod will load automatically when you launch the game
+
+UPDATE ONLY (if you already have BepInEx installed):
+1. Download BazaarAccess-update.zip
+2. Extract BazaarAccess.dll
+3. Copy it to BepInEx/plugins/ in your game folder
 
 
 CONTROLS
@@ -18,8 +26,8 @@ NAVIGATION
   Up/Down arrows     Navigate options/items
   Left/Right arrows  Navigate within section / adjust values
   Tab                Cycle sections (Selection > Board > Stash > Skills > Hero)
-  Enter              Confirm / Buy / Select
-  Escape             Back / Cancel
+  Enter              Confirm / Open Action Menu on items / Buy from shop
+  Backspace          Back / Cancel
 
 QUICK NAVIGATION
   B                  Go to Board
