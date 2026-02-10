@@ -98,6 +98,10 @@ public class GameplayScreen : IAccessibleScreen
                         _navigator.AnnounceWins();
                         return;
 
+                    case AccessibleKey.CombatSummary: // H = Combat stats per card
+                        _navigator.EnterRecapCombatStatsMode();
+                        return;
+
                     case AccessibleKey.Back: // Backspace = Exit recap
                         _navigator.SetRecapMode(false);
                         TolkWrapper.Speak("Exited recap. Enter to continue, R to replay, E to return to recap.");
@@ -176,6 +180,18 @@ public class GameplayScreen : IAccessibleScreen
                             return;
                         case AccessibleKey.Down:
                             _navigator.ReadDetailLineDown();
+                            return;
+                    }
+                }
+                else if (recapSection == RecapSection.CombatStats)
+                {
+                    switch (key)
+                    {
+                        case AccessibleKey.Up:
+                            _navigator.RecapCombatStatsPrevious();
+                            return;
+                        case AccessibleKey.Down:
+                            _navigator.RecapCombatStatsNext();
                             return;
                     }
                 }
@@ -1146,10 +1162,15 @@ public class GameplayScreen : IAccessibleScreen
             return;
         }
 
-        if (ActionHelper.UpgradeItem(card))
+        // Route through confirmation dialog which properly detects enchant vs upgrade
+        var currentState = StateChangePatch.GetCurrentRunState();
+        if (currentState == ERunState.Pedestal && ActionHelper.CanUpgrade())
         {
-            // Refresh after successful upgrade
-            Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
+            HandleUpgradeConfirm(card);
+        }
+        else
+        {
+            TolkWrapper.Speak("Not at a pedestal");
         }
     }
 
@@ -1469,8 +1490,10 @@ public class GameplayScreen : IAccessibleScreen
 
     private void SelectEncounterDirect(Card card)
     {
-        // Solo decir el nombre, sin "Selecting"
-        string name = ItemReader.GetCardName(card);
+        // Use encounter info for PvP (includes hero name + rank), card name for others
+        string name = card.Type == ECardType.PvpEncounter
+            ? ItemReader.GetEncounterInfo(card)
+            : ItemReader.GetCardName(card);
         TolkWrapper.Speak(name);
 
         ActionHelper.SelectEncounter(card);
@@ -1610,10 +1633,17 @@ public class GameplayScreen : IAccessibleScreen
             }
 
             // Get upgrade preview (stat changes)
-            var preview = ActionHelper.GetUpgradePreview(card);
-            if (preview.Count > 0)
+            try
             {
-                messageParts.Add("Changes: " + string.Join(", ", preview));
+                var preview = ActionHelper.GetUpgradePreview(card);
+                if (preview.Count > 0)
+                {
+                    messageParts.Add("Changes: " + string.Join(", ", preview));
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Plugin.Logger.LogWarning($"GetUpgradePreview failed: {ex.Message}");
             }
 
             messageParts.Add("Press U to confirm, Backspace to cancel.");
@@ -1738,10 +1768,10 @@ public class GameplayScreen : IAccessibleScreen
 
     private void HandleReorder(int direction)
     {
-        // Solo funciona si estamos en el board
-        if (!_navigator.IsInBoardSection())
+        // Works for both board and stash
+        if (!_navigator.IsInPlayerSection())
         {
-            TolkWrapper.Speak("Select an item on your board first");
+            TolkWrapper.Speak("Select an item on your board or stash first");
             return;
         }
 
@@ -1758,31 +1788,50 @@ public class GameplayScreen : IAccessibleScreen
             return;
         }
 
-        int currentSlot = _navigator.GetCurrentBoardSlot();
-        if (currentSlot < 0)
-        {
-            TolkWrapper.Speak("Cannot determine position");
-            return;
-        }
-
-        // Store item ID for reliable tracking after move
         var itemId = card.InstanceId;
 
-        if (ActionHelper.ReorderItem(card, currentSlot, direction, silent: true))
+        if (_navigator.IsInBoardSection())
         {
-            // Refrescar primero para actualizar _boardIndices
-            _navigator.Refresh();
-            // Use ID-based tracking for reliability, fallback to slot-based
-            if (!_navigator.GoToItemById(itemId))
+            int currentSlot = _navigator.GetCurrentBoardSlot();
+            if (currentSlot < 0)
             {
-                _navigator.GoToBoardSlot(currentSlot + direction);
+                TolkWrapper.Speak("Cannot determine position");
+                return;
             }
-            // Announce position with context
-            AnnounceReorderPosition(_navigator.GetCurrentBoardSlot(), card);
-            // Activar selección visual
-            _navigator.TriggerVisualSelection();
+
+            if (ActionHelper.ReorderItem(card, currentSlot, direction, silent: true))
+            {
+                _navigator.Refresh();
+                if (!_navigator.GoToItemById(itemId))
+                {
+                    _navigator.GoToBoardSlot(currentSlot + direction);
+                }
+                AnnounceReorderPosition(_navigator.GetCurrentBoardSlot(), card);
+                _navigator.TriggerVisualSelection();
+            }
         }
-        // ReorderItem announces edge limits if at boundary
+        else if (_navigator.IsInStashSection())
+        {
+            int currentSlot = _navigator.GetCurrentStashSlot();
+            if (currentSlot < 0)
+            {
+                TolkWrapper.Speak("Cannot determine position");
+                return;
+            }
+
+            if (ActionHelper.ReorderStashItem(card, currentSlot, direction, silent: true))
+            {
+                _navigator.Refresh();
+                if (!_navigator.GoToItemById(itemId))
+                {
+                    _navigator.GoToStashSlot(currentSlot + direction);
+                }
+                string itemName = ItemReader.GetCardName(card);
+                int newSlot = _navigator.GetCurrentStashSlot();
+                TolkWrapper.Speak($"Position {newSlot + 1}");
+                _navigator.TriggerVisualSelection();
+            }
+        }
     }
 
     private void RefreshAndAnnounce()
@@ -2107,7 +2156,7 @@ public class GameplayScreen : IAccessibleScreen
             var recapMethod = replayStateType.GetMethod("Recap");
             if (recapMethod != null)
             {
-                TolkWrapper.Speak("Recap. Press G for opponent board.");
+                TolkWrapper.Speak("Recap. V hero, F enemy, G enemy board, B your board, H combat stats.");
                 recapMethod.Invoke(currentState, null);
                 // Activar modo recap - ahora G funcionará
                 _navigator.SetRecapMode(true);

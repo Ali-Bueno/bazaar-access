@@ -147,7 +147,11 @@ public class HeroSelectScreen : BaseScreen
                     Menu.Clear();
                     BuildMenu();
                     Menu.SetIndex(currentIndex);
-                    TolkWrapper.Speak("Ranked selected");
+                    string rank = Gameplay.ItemReader.GetPlayerRank();
+                    if (!string.IsNullOrEmpty(rank))
+                        TolkWrapper.Speak($"Ranked selected. Rank: {rank}");
+                    else
+                        TolkWrapper.Speak("Ranked selected");
                 });
         }
     }
@@ -171,6 +175,9 @@ public class HeroSelectScreen : BaseScreen
         {
             if (Data.RunConfiguration != null && Data.RunConfiguration.RunType == EPlayMode.Ranked)
             {
+                string rank = Gameplay.ItemReader.GetPlayerRank();
+                if (!string.IsNullOrEmpty(rank))
+                    return $"Ranked, selected. Rank: {rank}";
                 return "Ranked, selected";
             }
         }

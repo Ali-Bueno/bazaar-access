@@ -66,6 +66,10 @@ public static class CombatDescriber
     private static int _totalPlayerDamageDealt;
     private static int _totalPlayerDamageTaken;
 
+    // Persistent per-card combat stats (survive wave announcements, cleared at combat start)
+    private static Dictionary<string, CardCombatStats> _playerCardStats = new Dictionary<string, CardCombatStats>();
+    private static Dictionary<string, CardCombatStats> _enemyCardStats = new Dictionary<string, CardCombatStats>();
+
     /// <summary>
     /// Whether to use batched mode (wave summaries + auto health) or individual mode (per-card announcements).
     /// </summary>
@@ -159,6 +163,32 @@ public static class CombatDescriber
     }
 
     /// <summary>
+    /// Per-card stats accumulated over the entire combat. Persists until next combat starts.
+    /// </summary>
+    public class CardCombatStats
+    {
+        public int Damage;
+        public int Heal;
+        public int Shield;
+        public int Triggers;
+        public int Crits;
+        public int Repairs;
+
+        public string Format(string name)
+        {
+            var parts = new List<string>();
+            parts.Add(name);
+            if (Damage > 0) parts.Add($"{Damage} damage");
+            if (Heal > 0) parts.Add($"{Heal} heal");
+            if (Shield > 0) parts.Add($"{Shield} shield");
+            if (Repairs > 0) parts.Add($"{Repairs} repairs");
+            if (Crits > 0) parts.Add($"{Crits} crits");
+            parts.Add($"{Triggers} triggers");
+            return string.Join(", ", parts);
+        }
+    }
+
+    /// <summary>
     /// Starts combat narration.
     /// </summary>
     public static void StartDescribing()
@@ -183,6 +213,10 @@ public static class CombatDescriber
         // Reset totals
         _totalPlayerDamageDealt = 0;
         _totalPlayerDamageTaken = 0;
+
+        // Reset per-card stats
+        _playerCardStats.Clear();
+        _enemyCardStats.Clear();
 
         // Reset health threshold warnings
         _announcedPlayerLow = false;
@@ -395,6 +429,9 @@ public static class CombatDescriber
             string itemName = ItemReader.GetCardName(sourceCard);
             int amount = CalculateEffectAmount(data);
             bool isCrit = data.IsCrit;
+
+            // Track persistent per-card stats (for recap)
+            TrackCardStats(itemName, isPlayerItem, data.ActionType, amount, isCrit, data);
 
             // Dispatch to the appropriate mode handler
             if (UseBatchedMode)
@@ -886,6 +923,92 @@ public static class CombatDescriber
             Plugin.Logger.LogError($"CheckHealthThresholds error: {ex.Message}");
         }
     }
+
+    #endregion
+
+    #region ===== PER-CARD COMBAT STATS (FOR RECAP) =====
+
+    /// <summary>
+    /// Tracks per-card stats persistently across the entire combat.
+    /// </summary>
+    private static void TrackCardStats(string itemName, bool isPlayerItem, ActionType actionType, int amount, bool isCrit, CombatActionData data)
+    {
+        if (string.IsNullOrEmpty(itemName)) return;
+
+        var dict = isPlayerItem ? _playerCardStats : _enemyCardStats;
+        if (!dict.TryGetValue(itemName, out var stats))
+        {
+            stats = new CardCombatStats();
+            dict[itemName] = stats;
+        }
+
+        stats.Triggers++;
+        if (isCrit) stats.Crits++;
+
+        switch (actionType)
+        {
+            case ActionType.PlayerDamage:
+                stats.Damage += amount;
+                break;
+            case ActionType.PlayerHeal:
+                stats.Heal += amount;
+                break;
+            case ActionType.PlayerShieldApply:
+                stats.Shield += amount;
+                break;
+            case ActionType.CardRepair:
+                stats.Repairs++;
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Gets formatted per-card combat stats for the recap screen.
+    /// Returns a list of lines: summary first, then player items sorted by damage, then enemy items.
+    /// </summary>
+    public static List<string> GetCombatStatsLines()
+    {
+        var lines = new List<string>();
+
+        // Summary line
+        lines.Add($"Combat stats. You dealt {_totalPlayerDamageDealt}, took {_totalPlayerDamageTaken}");
+
+        // Player items sorted by damage (highest first), then by triggers
+        if (_playerCardStats.Count > 0)
+        {
+            lines.Add($"--- Your items: {_playerCardStats.Count} ---");
+            var sorted = _playerCardStats.OrderByDescending(kv => kv.Value.Damage)
+                                          .ThenByDescending(kv => kv.Value.Triggers);
+            foreach (var kv in sorted)
+            {
+                lines.Add(kv.Value.Format(kv.Key));
+            }
+        }
+
+        // Enemy items sorted by damage (highest first)
+        if (_enemyCardStats.Count > 0)
+        {
+            lines.Add($"--- Enemy items: {_enemyCardStats.Count} ---");
+            var sorted = _enemyCardStats.OrderByDescending(kv => kv.Value.Damage)
+                                         .ThenByDescending(kv => kv.Value.Triggers);
+            foreach (var kv in sorted)
+            {
+                lines.Add(kv.Value.Format(kv.Key));
+            }
+        }
+
+        if (_playerCardStats.Count == 0 && _enemyCardStats.Count == 0)
+        {
+            lines.Add("No combat data recorded");
+        }
+
+        return lines;
+    }
+
+    /// <summary>
+    /// Whether there are any per-card stats available (combat has occurred).
+    /// </summary>
+    public static bool HasCombatStats => _playerCardStats.Count > 0 || _enemyCardStats.Count > 0;
 
     #endregion
 

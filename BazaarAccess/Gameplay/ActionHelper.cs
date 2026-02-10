@@ -366,6 +366,59 @@ public static class ActionHelper
     }
 
     /// <summary>
+    /// Reorders an item in the stash (moves to an adjacent slot).
+    /// </summary>
+    public static bool ReorderStashItem(ItemCard card, int currentSlot, int direction, bool silent = false)
+    {
+        if (card == null)
+        {
+            Plugin.Logger.LogWarning("ReorderStashItem: card is null");
+            return false;
+        }
+
+        var state = AppState.CurrentState;
+        if (state == null)
+        {
+            Plugin.Logger.LogWarning("ReorderStashItem: AppState.CurrentState is null");
+            return false;
+        }
+
+        try
+        {
+            int newSlot = currentSlot + direction;
+
+            // Get stash size from BoardManager
+            var bm = Singleton<BoardManager>.Instance;
+            int stashSize = bm?.playerStorageSockets?.Length ?? 10;
+
+            if (newSlot < 0)
+            {
+                if (!silent) TolkWrapper.Speak("At start");
+                return false;
+            }
+            if (newSlot >= stashSize)
+            {
+                if (!silent) TolkWrapper.Speak("At end");
+                return false;
+            }
+
+            var desiredSockets = new System.Collections.Generic.List<EContainerSocketId>();
+            desiredSockets.Add((EContainerSocketId)newSlot);
+
+            state.MoveCardCommand(card, desiredSockets, EInventorySection.Stash);
+
+            Plugin.Logger.LogInfo($"ReorderStashItem: {ItemReader.GetCardName(card)} from slot {currentSlot} to {newSlot}");
+            return true;
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"ReorderStashItem failed: {ex.Message}");
+            if (!silent) TolkWrapper.Speak("Move failed");
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Upgrades an item at the pedestal.
     /// Only works when in Pedestal state.
     /// </summary>

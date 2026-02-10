@@ -2,6 +2,32 @@
 
 ---
 
+## February 10, 2026 (v1.6.0)
+
+### New Features
+- **Per-card combat stats in recap**: Press H in recap mode to see damage, heal, shield, triggers, and crits per item
+  - Up/Down arrows to navigate through items sorted by damage
+  - Shows both your items and enemy items with full stats
+  - Data accumulated during combat and preserved for recap review
+- **Player rank display**: Your ranked rank now shown in multiple places
+  - Hero select: Selecting Ranked announces your rank (e.g., "Ranked selected. Rank: Silver 3")
+  - Hero select: Ranked button shows rank when selected (e.g., "Ranked, selected. Rank: Silver 3")
+  - Hero stats (V key): Rank shown as last navigable stat when in ranked mode
+  - Recap hero stats also include rank announcement
+- **Quest item identification**: Quest items now labeled with "Quest:" prefix in shop and "Quest item" in detail view
+- **Stash rearranging**: Shift+Left/Right now works in stash section to reorder stash items
+
+### Bug Fixes
+- Fixed PvP encounters always showing "Viper" as enemy hero name
+  - Navigation now shows correct hero name (reads from opponent data instead of card template)
+  - Pressing Enter on PvP encounter now shows full info with correct hero name and rank
+- Fixed loot items not showing "Loot" tag (e.g., now shows "Loot, Weapon" instead of just "Weapon")
+- Fixed enchantment altar reading as upgrade instead of enchant when using Shift+U shortcut
+- Added error handling around upgrade preview to prevent silent failures
+- Updated recap entry message to list all available sections (V, F, G, B, H)
+
+---
+
 ## February 9, 2026 (v1.5.9)
 
 ### Documentation Updates

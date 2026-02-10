@@ -371,7 +371,8 @@ public static class ItemReader
         ECardTag.Reagent,
         ECardTag.Map,
         ECardTag.Key,
-        ECardTag.Drone
+        ECardTag.Drone,
+        ECardTag.Loot
     };
 
     /// <summary>
@@ -389,6 +390,15 @@ public static class ItemReader
             .ToList();
 
         return string.Join(", ", relevantTags);
+    }
+
+    /// <summary>
+    /// Checks if a card is a quest item (has Quest hidden tag).
+    /// </summary>
+    public static bool IsQuestItem(Card card)
+    {
+        if (card == null) return false;
+        return card.HiddenTags != null && card.HiddenTags.Contains(EHiddenTag.Quest);
     }
 
     /// <summary>
@@ -440,11 +450,17 @@ public static class ItemReader
         string name = GetCardName(card);
         string tier = GetTierName(card);
         string tempState = GetTemperatureState(card);
+        bool isQuest = IsQuestItem(card);
+
+        var parts = new List<string> { name, tier };
+
+        if (isQuest)
+            parts.Add("Quest");
 
         if (!string.IsNullOrEmpty(tempState))
-            return $"{name}, {tier}, {tempState}";
+            parts.Add(tempState);
 
-        return $"{name}, {tier}";
+        return string.Join(", ", parts);
     }
 
     /// <summary>
@@ -583,12 +599,14 @@ public static class ItemReader
             var pvpOpponent = Data.SimPvpOpponent;
             if (pvpOpponent != null && !string.IsNullOrEmpty(pvpOpponent.Name))
             {
+                // Use Hero enum for correct hero name instead of card template (which may be wrong)
+                string heroName = GetPvpOpponentHeroName(pvpOpponent) ?? name;
                 string rank = GetPvpOpponentRank(pvpOpponent);
                 if (!string.IsNullOrEmpty(rank))
                 {
-                    return $"{pvpOpponent.Name}, {name}, {type}, {rank}";
+                    return $"{pvpOpponent.Name}, {heroName}, {type}, {rank}";
                 }
-                return $"{pvpOpponent.Name}, {name}, {type}, {tier}";
+                return $"{pvpOpponent.Name}, {heroName}, {type}, {tier}";
             }
         }
 
@@ -613,7 +631,9 @@ public static class ItemReader
             {
                 sb.Append(pvpOpponent.Name);
                 sb.Append(", ");
-                sb.Append(GetCardName(card)); // Héroe
+                // Use Hero enum for correct hero name
+                string heroName = GetPvpOpponentHeroName(pvpOpponent) ?? GetCardName(card);
+                sb.Append(heroName);
 
                 // Incluir rango si está disponible
                 string rank = GetPvpOpponentRank(pvpOpponent);
@@ -832,6 +852,12 @@ public static class ItemReader
 
         // Tier
         lines.Add(GetTierName(card));
+
+        // Quest item indicator
+        if (IsQuestItem(card))
+        {
+            lines.Add("Quest item");
+        }
 
         // Tags/Tipos (Aquatic, Friend, Weapon, etc.)
         string tags = GetTags(card);
@@ -1239,8 +1265,8 @@ public static class ItemReader
             string name = GetPvpProperty<string>(pvpOpponent, type, "Name") ?? "Unknown";
             lines.Add($"Player: {name}");
 
-            // Héroe
-            string hero = GetCardName(card);
+            // Héroe - use Hero enum for correct name
+            string hero = GetPvpOpponentHeroName(pvpOpponent) ?? GetCardName(card);
             lines.Add($"Hero: {hero}");
 
             // Rango y división
@@ -1323,6 +1349,38 @@ public static class ItemReader
     }
 
     /// <summary>
+    /// Gets the hero name of the PvP opponent using the Hero enum property.
+    /// Returns the hero name (e.g., "Pygmalien", "Vanessa") or null if unavailable.
+    /// </summary>
+    public static string GetPvpOpponentHeroName(object pvpOpponent)
+    {
+        if (pvpOpponent == null) return null;
+
+        try
+        {
+            var type = pvpOpponent.GetType();
+            var heroProp = type.GetProperty("Hero", BindingFlags.Public | BindingFlags.Instance);
+            if (heroProp != null)
+            {
+                var value = heroProp.GetValue(pvpOpponent);
+                if (value != null)
+                {
+                    string heroName = value.ToString();
+                    // "Common" is the default/unknown value
+                    if (!string.IsNullOrEmpty(heroName) && heroName != "Common")
+                        return heroName;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogWarning($"GetPvpOpponentHeroName error: {ex.Message}");
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Obtiene el rango del oponente PvP.
     /// Devuelve formato: "Bronze 1" o "Gold 3" etc.
     /// </summary>
@@ -1374,5 +1432,80 @@ public static class ItemReader
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Gets the player's own ranked rank (e.g., "Silver 3", "Gold 1", "Legendary").
+    /// Uses reflection to access Data.Rank.CurrentSeasonRank.
+    /// </summary>
+    public static string GetPlayerRank()
+    {
+        try
+        {
+            var dataType = typeof(Data);
+            var rankProp = dataType.GetProperty("Rank", BindingFlags.Public | BindingFlags.Static);
+            if (rankProp == null) return null;
+
+            var rankObj = rankProp.GetValue(null);
+            if (rankObj == null) return null;
+
+            var seasonRankProp = rankObj.GetType().GetProperty("CurrentSeasonRank",
+                BindingFlags.Public | BindingFlags.Instance);
+            if (seasonRankProp == null) return null;
+
+            var seasonRank = seasonRankProp.GetValue(rankObj);
+            if (seasonRank == null) return null;
+
+            var seasonType = seasonRank.GetType();
+
+            // Get ERank (Bronze, Silver, Gold, Diamond, Legendary)
+            string rankName = null;
+            var rankEnumProp = seasonType.GetProperty("Rank", BindingFlags.Public | BindingFlags.Instance);
+            if (rankEnumProp != null)
+            {
+                var val = rankEnumProp.GetValue(seasonRank);
+                if (val != null) rankName = val.ToString();
+            }
+
+            if (string.IsNullOrEmpty(rankName)) return null;
+
+            // Legendary has no division
+            if (rankName == "Legendary") return "Legendary";
+
+            // Get Division (1-4)
+            var divProp = seasonType.GetProperty("Division", BindingFlags.Public | BindingFlags.Instance);
+            if (divProp != null)
+            {
+                var divVal = divProp.GetValue(seasonRank);
+                if (divVal != null)
+                {
+                    string div = divVal.ToString();
+                    if (!string.IsNullOrEmpty(div) && div != "0")
+                        return $"{rankName} {div}";
+                }
+            }
+
+            return rankName;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogDebug($"GetPlayerRank error: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Checks if the current game mode is ranked.
+    /// </summary>
+    public static bool IsRankedMode()
+    {
+        try
+        {
+            return Data.RunConfiguration?.RunType == EPlayMode.Ranked;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

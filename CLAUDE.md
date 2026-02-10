@@ -473,3 +473,65 @@ New game mechanic: items/skills can repair destroyed items during combat.
 - `ECardAttributeType.RepairTargets` (99) added to item stat reading (I key)
 - `ItemReader.TokenToAttribute` maps "RepairTargets" and "Repair" aliases
 - All 3 stat listing functions (compact, detailed, enemy) show "Repair Targets: X"
+
+---
+
+## Per-Card Combat Stats & Recap (Feb 10, 2026)
+
+### Persistent Combat Tracking (`Gameplay/CombatDescriber.cs`)
+- `CardCombatStats` class tracks per-card: Damage, Heal, Shield, Triggers, Crits, Repairs
+- `_playerCardStats` and `_enemyCardStats` dictionaries (keyed by card name)
+- `TrackCardStats()` called for every combat effect in both modes
+- Cleared at `StartDescribing()`, preserved through `StopDescribing()` for recap
+- `GetCombatStatsLines()` returns formatted lines sorted by damage (highest first)
+- `HasCombatStats` property for checking if data is available
+
+### Recap Combat Stats Navigation
+- `RecapSection.CombatStats` added to enum
+- **H key** in recap mode enters combat stats section
+- Up/Down navigates through formatted stat lines
+- Format: "Sword, 180 damage, 2 crits, 15 triggers"
+- Sections: summary → player items → enemy items
+
+---
+
+## Player Rank Display & Bug Fixes (Feb 10, 2026)
+
+### Player Rank (`Gameplay/ItemReader.cs`)
+- `GetPlayerRank()`: Uses reflection to access `Data.Rank.CurrentSeasonRank`
+  - Returns "Bronze 1", "Silver 3", "Legendary", etc.
+  - Legendary has no division number
+- `IsRankedMode()`: Checks `Data.RunConfiguration.RunType == EPlayMode.Ranked`
+
+### Hero Select Rank Display (`Screens/HeroSelectScreen.cs`)
+- Ranked button text includes rank when selected: "Ranked, selected. Rank: Silver 3"
+- Clicking Ranked announces rank: "Ranked selected. Rank: Silver 3"
+
+### Hero Stats Rank (`Gameplay/GameplayNavigator.cs`)
+- `GetHeroStatCount()` returns HeroStats.Length + 1 in ranked mode
+- `AnnounceHeroStat()` handles extra rank slot at end of stats list
+- `AnnounceHeroSubsection()` includes rank in announcement when in ranked mode
+- Recap hero mode also includes rank in count and announcement
+
+### Quest Item Detection (`Gameplay/ItemReader.cs`)
+- `IsQuestItem(Card)`: Checks `card.HiddenTags.Contains(EHiddenTag.Quest)`
+- Quest items show "Quest:" prefix in shop navigation
+- "Quest item" line added to detail view
+
+### Stash Reordering (`Gameplay/ActionHelper.cs`, `GameplayNavigator.cs`, `GameplayScreen.cs`)
+- `ReorderStashItem()` in ActionHelper uses `EInventorySection.Stash`
+- `GetCurrentStashSlot()` and `GoToStashSlot()` in GameplayNavigator
+- `HandleReorder()` now supports both board and stash sections
+- `GoToItemById()` works for both board and stash
+
+### PvP Hero Name Fix (`Gameplay/ItemReader.cs`)
+- `GetPvpOpponentHeroName()` reads `SimPvpOpponent.Hero` (EHero enum) via reflection
+- Used in `GetEncounterInfo()`, `GetEncounterDetailedInfo()`, `GetPvpEncounterDetailLines()`
+- `SelectEncounterDirect()` in GameplayScreen now uses `GetEncounterInfo()` for PvP cards
+
+### Loot Tag Fix (`Gameplay/ItemReader.cs`)
+- Added `ECardTag.Loot` (value 19) to `RelevantTags` HashSet
+
+### Enchant Altar Fix (`Gameplay/GameplayScreen.cs`)
+- `HandleUpgrade()` (Shift+U) now routes through `HandleUpgradeConfirm()`
+- Properly detects enchant vs upgrade pedestal type

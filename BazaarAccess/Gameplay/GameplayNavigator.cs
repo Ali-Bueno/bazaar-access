@@ -55,7 +55,8 @@ public enum RecapSection
     EnemyStats,     // Stats del héroe enemigo (F)
     EnemySkills,    // Skills del héroe enemigo (F + Right)
     EnemyBoard,     // Tablero del enemigo (G)
-    PlayerBoard     // Tablero propio (B)
+    PlayerBoard,    // Tablero propio (B)
+    CombatStats     // Per-card combat stats (H)
 }
 
 /// <summary>
@@ -139,6 +140,10 @@ public class GameplayNavigator
     private RecapSection _currentRecapSection = RecapSection.None;
     private int _enemyStatIndex = 0;  // For navigating enemy hero stats
     private int _enemyHeroSkillIndex = 0;  // For navigating enemy hero skills (separate from enemy board skills)
+
+    // Combat stats recap navigation
+    private List<string> _combatStatsLines = new List<string>();
+    private int _combatStatsIndex = 0;
 
     private static readonly EPlayerAttributeType[] HeroStats = new[]
     {
@@ -468,12 +473,28 @@ public class GameplayNavigator
         // User will hear the item when they press Ctrl+arrows
         if (_heroSubsection == HeroSubsection.Stats)
         {
-            TolkWrapper.Speak($"Hero stats, {HeroStats.Length} stats");
+            int count = GetHeroStatCount();
+            string msg = $"Hero stats, {count} stats";
+            // Include rank in announcement when in ranked mode
+            string rank = ItemReader.GetPlayerRank();
+            if (!string.IsNullOrEmpty(rank) && ItemReader.IsRankedMode())
+                msg += $". Rank: {rank}";
+            TolkWrapper.Speak(msg);
         }
         else
         {
             TolkWrapper.Speak($"Hero skills, {_playerSkills.Count} skills");
         }
+    }
+
+    /// <summary>
+    /// Returns the total number of hero stats including rank if in ranked mode.
+    /// </summary>
+    private int GetHeroStatCount()
+    {
+        int count = HeroStats.Length;
+        if (ItemReader.IsRankedMode()) count++; // Extra slot for rank
+        return count;
     }
 
     /// <summary>
@@ -572,8 +593,9 @@ public class GameplayNavigator
 
         if (_heroSubsection == HeroSubsection.Stats)
         {
+            int maxIndex = GetHeroStatCount() - 1;
             // No wrap - stay at end
-            if (_heroStatIndex >= HeroStats.Length - 1)
+            if (_heroStatIndex >= maxIndex)
             {
                 TolkWrapper.Speak("End of list");
                 return;
@@ -2056,6 +2078,14 @@ public class GameplayNavigator
 
     private void AnnounceHeroStat()
     {
+        // Check if this is the rank slot (last slot in ranked mode)
+        if (ItemReader.IsRankedMode() && _heroStatIndex >= HeroStats.Length)
+        {
+            string rank = ItemReader.GetPlayerRank();
+            TolkWrapper.Speak(!string.IsNullOrEmpty(rank) ? $"Rank: {rank}" : "Rank: unranked");
+            return;
+        }
+
         var player = Data.Run?.Player;
         if (player == null) { TolkWrapper.Speak("No hero data"); return; }
 
@@ -2343,28 +2373,86 @@ public class GameplayNavigator
     /// <summary>
     /// Finds and navigates to an item by its InstanceId.
     /// More reliable than slot-based navigation after items are moved.
+    /// Works for both Board and Stash sections.
     /// </summary>
     /// <param name="instanceId">The InstanceId of the item to find</param>
     /// <returns>True if the item was found</returns>
     public bool GoToItemById(BazaarGameShared.Domain.Core.InstanceId instanceId)
     {
-        if (_currentSection != NavigationSection.Board) return false;
-
         var bm = GetBoardManager();
-        if (bm?.playerItemSockets == null) return false;
 
-        for (int i = 0; i < _boardIndices.Count; i++)
+        if (_currentSection == NavigationSection.Board)
         {
-            int slot = _boardIndices[i];
-            var card = bm.playerItemSockets[slot]?.CardController?.CardData;
-            if (card != null && card.InstanceId == instanceId)
+            if (bm?.playerItemSockets == null) return false;
+
+            for (int i = 0; i < _boardIndices.Count; i++)
+            {
+                int slot = _boardIndices[i];
+                var card = bm.playerItemSockets[slot]?.CardController?.CardData;
+                if (card != null && card.InstanceId == instanceId)
+                {
+                    _currentIndex = i;
+                    return true;
+                }
+            }
+
+            Plugin.Logger.LogWarning($"GoToItemById: item with InstanceId not found on board");
+            return false;
+        }
+
+        if (_currentSection == NavigationSection.Stash)
+        {
+            if (bm?.playerStorageSockets == null) return false;
+
+            for (int i = 0; i < _stashIndices.Count; i++)
+            {
+                int slot = _stashIndices[i];
+                var card = bm.playerStorageSockets[slot]?.CardController?.CardData;
+                if (card != null && card.InstanceId == instanceId)
+                {
+                    _currentIndex = i;
+                    return true;
+                }
+            }
+
+            Plugin.Logger.LogWarning($"GoToItemById: item with InstanceId not found in stash");
+            return false;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Gets the current slot index in the stash.
+    /// </summary>
+    public int GetCurrentStashSlot()
+    {
+        if (_currentSection != NavigationSection.Stash) return -1;
+        if (_currentIndex < 0 || _currentIndex >= _stashIndices.Count) return -1;
+        return _stashIndices[_currentIndex];
+    }
+
+    /// <summary>
+    /// Navigates to a specific stash slot.
+    /// </summary>
+    public bool GoToStashSlot(int targetSlot)
+    {
+        if (_currentSection != NavigationSection.Stash) return false;
+
+        for (int i = 0; i < _stashIndices.Count; i++)
+        {
+            if (_stashIndices[i] == targetSlot)
             {
                 _currentIndex = i;
                 return true;
             }
         }
 
-        Plugin.Logger.LogWarning($"GoToItemById: item with InstanceId not found on board");
+        Plugin.Logger.LogWarning($"GoToStashSlot: targetSlot {targetSlot} not found");
+        if (_stashIndices.Count > 0 && _currentIndex >= _stashIndices.Count)
+        {
+            _currentIndex = _stashIndices.Count - 1;
+        }
         return false;
     }
 
@@ -2415,7 +2503,7 @@ public class GameplayNavigator
         NavigationSection.Board => _boardIndices.Count,
         NavigationSection.Stash => _stashIndices.Count,
         NavigationSection.Skills => _playerSkills.Count,
-        NavigationSection.Hero => HeroStats.Length,
+        NavigationSection.Hero => GetHeroStatCount(),
         _ => 0
     };
 
@@ -2428,6 +2516,8 @@ public class GameplayNavigator
                 return ItemReader.GetEncounterInfo(card);
 
             string shopName = ItemReader.GetCardName(card);
+            if (ItemReader.IsQuestItem(card))
+                shopName = $"Quest: {shopName}";
             string shopSize = card.Type != ECardType.Skill ? ItemReader.GetSizeName(card) : null;
             string shopTier = ItemReader.GetTierName(card);
 
@@ -2891,12 +2981,17 @@ public class GameplayNavigator
         _currentSection = NavigationSection.Hero;
         _heroSubsection = HeroSubsection.Stats;
 
-        int statCount = HeroStats.Length;
+        int statCount = GetHeroStatCount();
         int skillCount = _playerSkills.Count;
 
         string msg = $"Your hero. Stats: {statCount}";
         if (skillCount > 0)
             msg += $", Skills: {skillCount}. Right arrow for skills.";
+
+        // Include rank in recap hero announcement
+        string rank = ItemReader.GetPlayerRank();
+        if (!string.IsNullOrEmpty(rank) && ItemReader.IsRankedMode())
+            msg += $" Rank: {rank}";
 
         TolkWrapper.Speak(msg);
     }
@@ -2937,7 +3032,8 @@ public class GameplayNavigator
     {
         if (_currentRecapSection == RecapSection.HeroStats)
         {
-            if (_heroStatIndex >= HeroStats.Length - 1)
+            int maxIndex = GetHeroStatCount() - 1;
+            if (_heroStatIndex >= maxIndex)
             {
                 AnnounceHeroStat();
                 return;
@@ -2966,7 +3062,7 @@ public class GameplayNavigator
         {
             _currentRecapSection = RecapSection.HeroStats;
             _heroStatIndex = 0;
-            TolkWrapper.Speak($"Stats, {HeroStats.Length}");
+            TolkWrapper.Speak($"Stats, {GetHeroStatCount()}");
         }
     }
 
@@ -3195,6 +3291,63 @@ public class GameplayNavigator
         }
 
         TolkWrapper.Speak($"Your board, {_boardIndices.Count} items");
+    }
+
+    // COMBAT STATS RECAP NAVIGATION (H key in recap)
+    // ================================================
+
+    /// <summary>
+    /// Enter combat stats mode in recap (H key).
+    /// </summary>
+    public void EnterRecapCombatStatsMode()
+    {
+        _combatStatsLines = CombatDescriber.GetCombatStatsLines();
+        _combatStatsIndex = 0;
+        _currentRecapSection = RecapSection.CombatStats;
+
+        if (_combatStatsLines.Count > 0)
+        {
+            TolkWrapper.Speak(_combatStatsLines[0]);
+        }
+        else
+        {
+            TolkWrapper.Speak("No combat data");
+        }
+    }
+
+    /// <summary>
+    /// Navigate to previous combat stat line (Up key).
+    /// </summary>
+    public void RecapCombatStatsPrevious()
+    {
+        if (_combatStatsLines.Count == 0) return;
+
+        if (_combatStatsIndex <= 0)
+        {
+            _combatStatsIndex = 0;
+            TolkWrapper.Speak(_combatStatsLines[0]);
+            return;
+        }
+
+        _combatStatsIndex--;
+        TolkWrapper.Speak(_combatStatsLines[_combatStatsIndex]);
+    }
+
+    /// <summary>
+    /// Navigate to next combat stat line (Down key).
+    /// </summary>
+    public void RecapCombatStatsNext()
+    {
+        if (_combatStatsLines.Count == 0) return;
+
+        if (_combatStatsIndex >= _combatStatsLines.Count - 1)
+        {
+            TolkWrapper.Speak(_combatStatsLines[_combatStatsIndex]);
+            return;
+        }
+
+        _combatStatsIndex++;
+        TolkWrapper.Speak(_combatStatsLines[_combatStatsIndex]);
     }
 
 }
