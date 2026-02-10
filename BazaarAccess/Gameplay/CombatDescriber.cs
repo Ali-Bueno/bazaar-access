@@ -1037,7 +1037,7 @@ public static class CombatDescriber
     }
 
     /// <summary>
-    /// Determines if a card belongs to the player.
+    /// Determines if a card belongs to the player using the Owner property.
     /// </summary>
     private static bool IsPlayerCard(Card card)
     {
@@ -1045,48 +1045,15 @@ public static class CombatDescriber
 
         try
         {
-            var bm = Singleton<BoardManager>.Instance;
-            if (bm == null) return true; // Default to player
+            var player = Data.Run?.Player;
+            if (player == null) return true; // Default to player if no run data
 
-            // Check player sockets
-            if (bm.playerItemSockets != null)
-            {
-                foreach (var socket in bm.playerItemSockets)
-                {
-                    if (socket?.CardController?.CardData == card)
-                        return true;
-                }
-            }
-
-            if (bm.playerSkillSockets != null)
-            {
-                foreach (var socket in bm.playerSkillSockets)
-                {
-                    if (socket?.CardController?.CardData == card)
-                        return true;
-                }
-            }
-
-            // Check opponent sockets
-            if (bm.opponentItemSockets != null)
-            {
-                foreach (var socket in bm.opponentItemSockets)
-                {
-                    if (socket?.CardController?.CardData == card)
-                        return false;
-                }
-            }
-
-            if (bm.opponentSkillSockets != null)
-            {
-                foreach (var socket in bm.opponentSkillSockets)
-                {
-                    if (socket?.CardController?.CardData == card)
-                        return false;
-                }
-            }
-
-            return true; // Default to player
+            // Card.Owner is set to the owning Player instance
+            // Player cards have Owner == Data.Run.Player
+            // Enemy cards have Owner == Data.Run.Opponent
+            // Unowned cards (encounters, etc.) have Owner == null
+            if (card.Owner == null) return true; // Unowned cards default to player
+            return card.Owner == player;
         }
         catch
         {

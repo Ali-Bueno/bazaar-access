@@ -2517,7 +2517,10 @@ public class GameplayNavigator
 
             string shopName = ItemReader.GetCardName(card);
             if (ItemReader.IsQuestItem(card))
-                shopName = $"Quest: {shopName}";
+            {
+                string questProgress = ItemReader.GetQuestProgress(card);
+                shopName = questProgress != null ? $"{questProgress}: {shopName}" : $"Quest: {shopName}";
+            }
             string shopSize = card.Type != ECardType.Skill ? ItemReader.GetSizeName(card) : null;
             string shopTier = ItemReader.GetTierName(card);
 

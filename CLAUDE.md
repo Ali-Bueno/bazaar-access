@@ -513,10 +513,21 @@ New game mechanic: items/skills can repair destroyed items during combat.
 - `AnnounceHeroSubsection()` includes rank in announcement when in ranked mode
 - Recap hero mode also includes rank in count and announcement
 
-### Quest Item Detection (`Gameplay/ItemReader.cs`)
+### Quest Item Detection & Conditions (`Gameplay/ItemReader.cs`)
 - `IsQuestItem(Card)`: Checks `card.HiddenTags.Contains(EHiddenTag.Quest)`
-- Quest items show "Quest:" prefix in shop navigation
-- "Quest item" line added to detail view
+- `GetQuestLines(Card)`: Reads `TCardItem.Quests` → `TQuestGroup.Entries` → `TQuestEntry`
+  - Gets condition text from `TQuestEntry.Localization.Tooltips`
+  - Gets progress from `card.GetAttributeValue(entry.AttributeType)` vs `entry.Target`
+  - Format: "Quest: [condition text] (current/target)" or "Quest: [condition text] (Complete)"
+- `GetQuestProgress(Card)`: Compact progress for short descriptions ("Quest 350/500" or "Quest complete")
+- Quest attributes: `Quest_1` through `Quest_12` (ECardAttributeType 71-82), `QuestCompletedCount` (70)
+- Shop navigation shows progress: "Quest 350/500: Item Name"
+- Detail view shows full quest condition lines instead of just "Quest item"
+
+### Combat Recap Card Ownership Fix (`Gameplay/CombatDescriber.cs`)
+- `IsPlayerCard()` now uses `card.Owner == Data.Run.Player` instead of socket iteration
+- `Card.Owner` is `IPlayer?` set by the game's `CardContainer` when assigning cards to players
+- Fixes enemy skills and PvP opponent items being incorrectly counted as player stats in recap
 
 ### Stash Reordering (`Gameplay/ActionHelper.cs`, `GameplayNavigator.cs`, `GameplayScreen.cs`)
 - `ReorderStashItem()` in ActionHelper uses `EInventorySection.Stash`

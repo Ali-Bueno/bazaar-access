@@ -9,6 +9,7 @@ using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameClient.Domain.Tooltips;
 using BazaarGameShared.Domain.Cards.Enchantments;
 using BazaarGameShared.Domain.Cards.Item;
+using BazaarGameShared.Domain.Cards.Quests;
 using BazaarGameShared.Domain.Core;
 using BazaarGameShared.Domain.Core.Types;
 using BazaarGameShared.Domain.Tooltips;
@@ -402,6 +403,107 @@ public static class ItemReader
     }
 
     /// <summary>
+    /// Gets quest condition lines for a quest item, showing requirements and progress.
+    /// Returns empty list if the card is not a quest item or has no quest data.
+    /// </summary>
+    public static List<string> GetQuestLines(Card card)
+    {
+        var lines = new List<string>();
+        if (card == null || !IsQuestItem(card)) return lines;
+
+        try
+        {
+            var template = card.Template as TCardItem;
+            if (template?.Quests == null || template.Quests.Count == 0) return lines;
+
+            foreach (var questGroup in template.Quests)
+            {
+                if (questGroup?.Entries == null) continue;
+
+                foreach (var entry in questGroup.Entries)
+                {
+                    if (entry == null) continue;
+
+                    // Get quest description from localization tooltips
+                    string questDesc = null;
+                    if (entry.Localization?.Tooltips != null)
+                    {
+                        foreach (var tooltip in entry.Localization.Tooltips)
+                        {
+                            if (tooltip?.Content != null)
+                            {
+                                string text = GetLocalizedTextWithValues(tooltip.Content, card);
+                                if (!string.IsNullOrEmpty(text))
+                                {
+                                    questDesc = text;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    // Get progress: current value and target
+                    int current = card.GetAttributeValue(entry.AttributeType) ?? 0;
+                    int target = entry.Target;
+                    bool isComplete = current >= target;
+
+                    if (!string.IsNullOrEmpty(questDesc))
+                    {
+                        string status = isComplete ? "Complete" : $"{current}/{target}";
+                        lines.Add($"Quest: {questDesc} ({status})");
+                    }
+                    else
+                    {
+                        // Fallback if no localization available
+                        string status = isComplete ? "Complete" : $"{current}/{target}";
+                        lines.Add($"Quest: {status}");
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogDebug($"GetQuestLines error: {ex.Message}");
+        }
+
+        return lines;
+    }
+
+    /// <summary>
+    /// Gets a compact quest progress summary for short descriptions.
+    /// Returns null if not a quest item.
+    /// </summary>
+    public static string GetQuestProgress(Card card)
+    {
+        if (card == null || !IsQuestItem(card)) return null;
+
+        try
+        {
+            var template = card.Template as TCardItem;
+            if (template?.Quests == null || template.Quests.Count == 0) return null;
+
+            foreach (var questGroup in template.Quests)
+            {
+                if (questGroup?.Entries == null) continue;
+                foreach (var entry in questGroup.Entries)
+                {
+                    if (entry == null) continue;
+                    int current = card.GetAttributeValue(entry.AttributeType) ?? 0;
+                    int target = entry.Target;
+                    bool isComplete = current >= target;
+                    return isComplete ? "Quest complete" : $"Quest {current}/{target}";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogDebug($"GetQuestProgress error: {ex.Message}");
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Obtiene el estado de temperatura de un item (Heated/Chilled para Jules).
     /// </summary>
     public static string GetTemperatureState(Card card)
@@ -455,7 +557,10 @@ public static class ItemReader
         var parts = new List<string> { name, tier };
 
         if (isQuest)
-            parts.Add("Quest");
+        {
+            string questProgress = GetQuestProgress(card);
+            parts.Add(questProgress ?? "Quest");
+        }
 
         if (!string.IsNullOrEmpty(tempState))
             parts.Add(tempState);
@@ -853,10 +958,18 @@ public static class ItemReader
         // Tier
         lines.Add(GetTierName(card));
 
-        // Quest item indicator
+        // Quest conditions and progress
         if (IsQuestItem(card))
         {
-            lines.Add("Quest item");
+            var questLines = GetQuestLines(card);
+            if (questLines.Count > 0)
+            {
+                lines.AddRange(questLines);
+            }
+            else
+            {
+                lines.Add("Quest item");
+            }
         }
 
         // Tags/Tipos (Aquatic, Friend, Weapon, etc.)

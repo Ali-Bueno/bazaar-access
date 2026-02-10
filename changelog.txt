@@ -2,6 +2,22 @@
 
 ---
 
+## February 10, 2026 (v1.6.1)
+
+### Bug Fixes
+- Fixed enemy skills and items appearing under player's stats in combat recap
+  - Enemy skill triggers (e.g., heal, shield from opponent's skills) no longer count as your items
+  - PvP opponent items now correctly separated into "Enemy items" section
+  - Changed card ownership detection to use Card.Owner property instead of socket iteration
+- Fixed quest item conditions/requirements not being shown
+  - Quest items now display their requirements and progress: "Quest: Deal 500 damage (350/500)"
+  - Completed quests show: "Quest: Deal 500 damage (Complete)"
+  - Short description shows progress: "Item Name, Bronze, Quest 350/500"
+  - Shop navigation shows: "Quest 350/500: Item Name" instead of just "Quest: Item Name"
+  - Detail view (Up/Down arrows) shows full quest condition text from game data
+
+---
+
 ## February 10, 2026 (v1.6.0)
 
 ### New Features
