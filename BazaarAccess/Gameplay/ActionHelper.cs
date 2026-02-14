@@ -456,7 +456,7 @@ public static class ActionHelper
         }
 
         // Check if the card can be upgraded (not already at max tier)
-        if (card.Tier == ETier.Diamond || card.Tier == ETier.Legendary)
+        if (card.Tier == ETier.Legendary)
         {
             TolkWrapper.Speak("Item is already at maximum tier");
             return false;
@@ -466,7 +466,20 @@ public static class ActionHelper
         {
             string name = ItemReader.GetCardName(card);
             string currentTier = ItemReader.GetTierName(card);
-            string nextTier = GetNextTierName(card.Tier);
+            var pedestalInfo = GetCurrentPedestalInfo();
+            string nextTier;
+            if (pedestalInfo.TargetTier.HasValue && pedestalInfo.TargetTier.Value != card.Tier)
+            {
+                nextTier = pedestalInfo.TargetTier.Value.ToString();
+            }
+            else if (pedestalInfo.TargetTier.HasValue && pedestalInfo.TargetTier.Value == card.Tier)
+            {
+                nextTier = null; // stats-only upgrade
+            }
+            else
+            {
+                nextTier = GetNextTierName(card.Tier);
+            }
 
             // Trigger the same events as mouse drag-drop for full visual/audio feedback
             var controller = Data.CardAndSkillLookup?.GetCardController(card) as ItemController;
@@ -483,9 +496,16 @@ public static class ActionHelper
 
             state.CommitToPedestalCommand(card.InstanceId);
 
-            TolkWrapper.Speak($"Upgrading {name} from {currentTier} to {nextTier}");
-
-            Plugin.Logger.LogInfo($"UpgradeItem: {name} ({currentTier} -> {nextTier})");
+            if (nextTier != null)
+            {
+                TolkWrapper.Speak($"Upgrading {name} from {currentTier} to {nextTier}");
+                Plugin.Logger.LogInfo($"UpgradeItem: {name} ({currentTier} -> {nextTier})");
+            }
+            else
+            {
+                TolkWrapper.Speak($"Upgrading {name} stats");
+                Plugin.Logger.LogInfo($"UpgradeItem: {name} (stats upgrade, stays {currentTier})");
+            }
             return true;
         }
         catch (System.Exception ex)
@@ -506,6 +526,7 @@ public static class ActionHelper
             case ETier.Bronze: return "Silver";
             case ETier.Silver: return "Gold";
             case ETier.Gold: return "Diamond";
+            case ETier.Diamond: return "Legendary";
             default: return "max";
         }
     }
@@ -1138,6 +1159,7 @@ public static class ActionHelper
             ETier.Bronze => ETier.Silver,
             ETier.Silver => ETier.Gold,
             ETier.Gold => ETier.Diamond,
+            ETier.Diamond => ETier.Legendary,
             _ => current
         };
     }

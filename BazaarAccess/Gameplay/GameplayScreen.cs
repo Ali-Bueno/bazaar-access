@@ -668,13 +668,18 @@ public class GameplayScreen : IAccessibleScreen
 
         // Build available options
         // At pedestal, show Upgrade/Enchant first (primary action)
-        if (currentState == ERunState.Pedestal && ActionHelper.CanUpgrade())
+        if (currentState == ERunState.Pedestal)
         {
             if (ActionHelper.IsEnchantPedestal())
             {
-                _actionOptions.Add(ActionOption.Enchant);
+                // For enchant pedestals, check if item is already enchanted
+                var itemCardCheck = card as ItemCard;
+                if (itemCardCheck == null || !itemCardCheck.Enchantment.HasValue)
+                {
+                    _actionOptions.Add(ActionOption.Enchant);
+                }
             }
-            else
+            else if (ActionHelper.CanUpgrade() && card.Tier != ETier.Legendary)
             {
                 _actionOptions.Add(ActionOption.Upgrade);
             }
@@ -1164,7 +1169,7 @@ public class GameplayScreen : IAccessibleScreen
 
         // Route through confirmation dialog which properly detects enchant vs upgrade
         var currentState = StateChangePatch.GetCurrentRunState();
-        if (currentState == ERunState.Pedestal && ActionHelper.CanUpgrade())
+        if (currentState == ERunState.Pedestal)
         {
             HandleUpgradeConfirm(card);
         }
@@ -1606,7 +1611,7 @@ public class GameplayScreen : IAccessibleScreen
             var upgradeInfo = ActionHelper.GetCurrentPedestalInfo();
 
             // Check if already at max tier
-            if (card.Tier == ETier.Diamond || card.Tier == ETier.Legendary)
+            if (card.Tier == ETier.Legendary)
             {
                 TolkWrapper.Speak($"{name} is already at {currentTier}, cannot upgrade further");
                 return;
@@ -1672,6 +1677,7 @@ public class GameplayScreen : IAccessibleScreen
             ETier.Bronze => "Silver",
             ETier.Silver => "Gold",
             ETier.Gold => "Diamond",
+            ETier.Diamond => "Legendary",
             _ => "max"
         };
     }

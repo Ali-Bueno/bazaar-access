@@ -2,6 +2,19 @@
 
 ---
 
+## February 14, 2026 (v1.6.2)
+
+### Bug Fixes
+- Fixed Diamond tier items being incorrectly blocked from enchanting at enchant pedestals
+- Fixed upgrade preview incorrectly showing "upgrade to Diamond" for Gold stats-only upgrades
+  - Now correctly shows "Upgrading stats" when pedestal targets same tier
+  - Uses actual pedestal target tier instead of hardcoded next tier
+- Enchant option at pedestals no longer depends on upgrade capability check
+  - Only checks if item is already enchanted (no tier restriction)
+- Added Diamond to Legendary tier progression (was previously treated as max tier)
+
+---
+
 ## February 10, 2026 (v1.6.1)
 
 ### Bug Fixes

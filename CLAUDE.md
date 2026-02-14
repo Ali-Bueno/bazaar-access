@@ -546,3 +546,27 @@ New game mechanic: items/skills can repair destroyed items during combat.
 ### Enchant Altar Fix (`Gameplay/GameplayScreen.cs`)
 - `HandleUpgrade()` (Shift+U) now routes through `HandleUpgradeConfirm()`
 - Properly detects enchant vs upgrade pedestal type
+
+---
+
+## Upgrade & Enchant Tier Fix (Feb 14, 2026)
+
+### Diamond Tier No Longer Blocked (`ActionHelper.cs`, `GameplayScreen.cs`)
+- **Diamond items can now be enchanted** at enchant pedestals (was incorrectly blocked)
+- **Diamond items can now be upgraded** at upgrade pedestals (Diamond→Legendary supported)
+- Max tier restriction changed from Diamond/Legendary to Legendary only
+- Tier progression updated: Bronze→Silver→Gold→Diamond→Legendary (was stopping at Diamond)
+- `GetNextTierName()` and `GetNextTier()` both updated in ActionHelper and GameplayScreen
+
+### Enchant Pedestal Independence (`GameplayScreen.cs`)
+- `EnterActionMode()`: Enchant option no longer gated behind `CanUpgrade()` check
+  - Enchant pedestals show the option based on pedestal type detection only
+  - Only restriction: item must not already be enchanted
+- `HandleUpgrade()` (Shift+U): No longer requires `CanUpgrade()` for enchant pedestals
+  - Routes directly to `HandleUpgradeConfirm()` which detects pedestal type
+
+### Accurate Upgrade Announcements (`ActionHelper.cs`)
+- `UpgradeItem()` now uses pedestal's actual `TargetTier` for announcements
+  - Same tier pedestal: "Upgrading X stats" (was incorrectly saying "from Gold to Diamond")
+  - Different tier pedestal: "Upgrading X from Gold to Diamond" (uses actual target)
+  - Fallback to `GetNextTierName()` only when pedestal TargetTier unavailable
