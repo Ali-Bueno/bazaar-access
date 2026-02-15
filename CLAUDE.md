@@ -570,3 +570,22 @@ New game mechanic: items/skills can repair destroyed items during combat.
   - Same tier pedestal: "Upgrading X stats" (was incorrectly saying "from Gold to Diamond")
   - Different tier pedestal: "Upgrading X from Gold to Diamond" (uses actual target)
   - Fallback to `GetNextTierName()` only when pedestal TargetTier unavailable
+
+---
+
+## Enchant Preview Fix & Quest Rewards (Feb 15, 2026)
+
+### Enchant Pedestal Preview Fix (`GameplayScreen.cs`)
+- `HandleUpgradeConfirm()` now accepts `bool? isEnchant` parameter
+  - `ExecuteActionOption()` passes `isEnchant: true/false` based on already-detected action type
+  - `HandleUpgrade()` (Shift+U) explicitly detects pedestal type and passes it
+  - Prevents fallback to upgrade branch when `GetCurrentPedestalInfo()` reflection fails
+- Root cause: re-detecting pedestal type via reflection could return `PedestalType.None`, causing the upgrade preview text to show at enchant pedestals
+
+### Quest Completion Rewards (`Gameplay/ItemReader.cs`)
+- New `GetQuestRewardDescription(TQuestEntry, Card)` method
+  - Reads `entry.Reward?.Localization?.Tooltips` for reward/effect descriptions
+  - Uses `GetLocalizedTextWithValues()` to resolve tokens with card attribute values
+- `GetQuestLines()` now appends "Reward: [description]" after each quest condition
+  - Shows what happens when the quest is completed (e.g., stat changes, new abilities)
+  - Quest data structure: `TQuestEntry.Reward` (TQuestReward) → `Localization` → `Tooltips`

@@ -797,11 +797,17 @@ public class GameplayScreen : IAccessibleScreen
                 break;
 
             case ActionOption.Upgrade:
-            case ActionOption.Enchant:
                 // Show confirmation dialog with preview instead of executing directly
                 if (itemCard != null)
                 {
-                    HandleUpgradeConfirm(itemCard);
+                    HandleUpgradeConfirm(itemCard, isEnchant: false);
+                }
+                break;
+
+            case ActionOption.Enchant:
+                if (itemCard != null)
+                {
+                    HandleUpgradeConfirm(itemCard, isEnchant: true);
                 }
                 break;
 
@@ -1167,11 +1173,12 @@ public class GameplayScreen : IAccessibleScreen
             return;
         }
 
-        // Route through confirmation dialog which properly detects enchant vs upgrade
+        // Route through confirmation dialog with explicit enchant detection
         var currentState = StateChangePatch.GetCurrentRunState();
         if (currentState == ERunState.Pedestal)
         {
-            HandleUpgradeConfirm(card);
+            bool isEnchant = ActionHelper.IsEnchantPedestal();
+            HandleUpgradeConfirm(card, isEnchant: isEnchant);
         }
         else
         {
@@ -1550,18 +1557,31 @@ public class GameplayScreen : IAccessibleScreen
     /// <summary>
     /// Shows upgrade confirmation dialog with tier information.
     /// </summary>
-    private void HandleUpgradeConfirm(Card card)
+    /// <param name="card">The card to upgrade/enchant</param>
+    /// <param name="isEnchant">If known: true=enchant, false=upgrade. Null=auto-detect from pedestal.</param>
+    private void HandleUpgradeConfirm(Card card, bool? isEnchant = null)
     {
-        Plugin.Logger.LogInfo($"HandleUpgradeConfirm called for card: {card?.GetType().Name ?? "null"}");
+        Plugin.Logger.LogInfo($"HandleUpgradeConfirm called for card: {card?.GetType().Name ?? "null"}, isEnchant={isEnchant}");
 
         string name = ItemReader.GetCardName(card);
 
-        // Get pedestal info to determine if it's upgrade or enchant
+        // Get pedestal info
         var pedestalInfo = ActionHelper.GetCurrentPedestalInfo();
         Plugin.Logger.LogInfo($"HandleUpgradeConfirm: pedestalInfo.Type={pedestalInfo.Type}, name={name}");
 
-        if (pedestalInfo.Type == ActionHelper.PedestalType.Enchant ||
-            pedestalInfo.Type == ActionHelper.PedestalType.EnchantRandom)
+        // Determine if this is an enchant action
+        bool doEnchant;
+        if (isEnchant.HasValue)
+        {
+            doEnchant = isEnchant.Value;
+        }
+        else
+        {
+            doEnchant = pedestalInfo.Type == ActionHelper.PedestalType.Enchant ||
+                        pedestalInfo.Type == ActionHelper.PedestalType.EnchantRandom;
+        }
+
+        if (doEnchant)
         {
             // Enchantment altar
             // Check if already enchanted

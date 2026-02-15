@@ -424,7 +424,7 @@ public static class ItemReader
                 {
                     if (entry == null) continue;
 
-                    // Get quest description from localization tooltips
+                    // Get quest condition description from localization tooltips
                     string questDesc = null;
                     if (entry.Localization?.Tooltips != null)
                     {
@@ -457,6 +457,13 @@ public static class ItemReader
                         // Fallback if no localization available
                         string status = isComplete ? "Complete" : $"{current}/{target}";
                         lines.Add($"Quest: {status}");
+                    }
+
+                    // Get quest reward/completion effect description
+                    string rewardDesc = GetQuestRewardDescription(entry, card);
+                    if (!string.IsNullOrEmpty(rewardDesc))
+                    {
+                        lines.Add($"Reward: {rewardDesc}");
                     }
                 }
             }
@@ -498,6 +505,41 @@ public static class ItemReader
         catch (Exception ex)
         {
             Plugin.Logger.LogDebug($"GetQuestProgress error: {ex.Message}");
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Gets the reward/completion effect description for a quest entry.
+    /// Reads from entry.Reward.Localization.Tooltips.
+    /// </summary>
+    private static string GetQuestRewardDescription(TQuestEntry entry, Card card)
+    {
+        if (entry == null) return null;
+
+        try
+        {
+            // Try reading reward localization tooltips
+            var reward = entry.Reward;
+            if (reward?.Localization?.Tooltips != null)
+            {
+                foreach (var tooltip in reward.Localization.Tooltips)
+                {
+                    if (tooltip?.Content != null)
+                    {
+                        string text = GetLocalizedTextWithValues(tooltip.Content, card);
+                        if (!string.IsNullOrEmpty(text))
+                        {
+                            return text;
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogDebug($"GetQuestRewardDescription error: {ex.Message}");
         }
 
         return null;

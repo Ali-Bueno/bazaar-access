@@ -2,6 +2,18 @@
 
 ---
 
+## February 15, 2026 (v1.6.3)
+
+### Bug Fixes
+- Fixed enchant pedestal preview incorrectly showing upgrade tier text (e.g., "Upgrade from Diamond to Legendary" instead of "Enchant with X")
+  - Confirmation dialog now uses already-detected action type instead of re-detecting via reflection
+  - Shift+U shortcut also explicitly passes the detected pedestal type
+- Fixed quest items not showing completion rewards/effects
+  - Quest detail lines now include "Reward: [effect description]" showing what happens when the quest is completed
+  - Reads from the game's quest reward localization data (TQuestEntry.Reward.Localization.Tooltips)
+
+---
+
 ## February 14, 2026 (v1.6.2)
 
 ### Bug Fixes
