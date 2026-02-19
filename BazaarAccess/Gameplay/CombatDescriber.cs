@@ -419,18 +419,23 @@ public static class CombatDescriber
             var data = evt?.Data;
             if (data == null) return;
 
-            if (!IsRelevantAction(data.ActionType)) return;
-
             var sourceCard = data.SourceCard;
             if (sourceCard == null) return;
 
-            // Determine owner and effect details
+            // Determine owner
             bool isPlayerItem = IsPlayerCard(sourceCard);
             string itemName = ItemReader.GetCardName(sourceCard);
+
+            // Track trigger count for ALL events (so items like Water Wheel, Keychain appear in stats)
+            TrackTriggerCount(itemName, isPlayerItem);
+
+            if (!IsRelevantAction(data.ActionType)) return;
+
+            // Calculate details for relevant actions
             int amount = CalculateEffectAmount(data);
             bool isCrit = data.IsCrit;
 
-            // Track persistent per-card stats (for recap)
+            // Track detailed per-card stats (damage, heal, etc.)
             TrackCardStats(itemName, isPlayerItem, data.ActionType, amount, isCrit, data);
 
             // Dispatch to the appropriate mode handler
@@ -536,6 +541,46 @@ public static class CombatDescriber
                         wave.RepairedItems.Add(repairedName);
                 }
                 break;
+
+            case ActionType.PlayerRegenApply:
+                wave.TotalHeal += amount;
+                break;
+
+            case ActionType.PlayerGoldSteal:
+                wave.StatusEffects.Add(amount > 0 ? $"stole {amount} gold" : "gold stolen");
+                break;
+
+            case ActionType.PlayerMaxHealthIncrease:
+                wave.TotalBuffs++;
+                break;
+
+            case ActionType.PlayerMaxHealthDecrease:
+                wave.TotalDebuffs++;
+                break;
+
+            case ActionType.CardHaste:
+                wave.StatusEffects.Add("haste");
+                break;
+
+            case ActionType.CardCharge:
+                wave.StatusEffects.Add("charge");
+                break;
+
+            case ActionType.CardDestroy:
+                var destroyedCard = data.TargetCard;
+                if (destroyedCard != null)
+                {
+                    string destroyedName = ItemReader.GetCardName(destroyedCard);
+                    if (!string.IsNullOrEmpty(destroyedName))
+                        wave.StatusEffects.Add($"destroyed {destroyedName}");
+                    else
+                        wave.StatusEffects.Add("destroyed");
+                }
+                else
+                {
+                    wave.StatusEffects.Add("destroyed");
+                }
+                break;
         }
 
         if (isCrit) wave.HadCrit = true;
@@ -593,11 +638,18 @@ public static class CombatDescriber
             ActionType.PlayerShieldApply => amount > 0 ? $"{amount} shield" : "shield",
             ActionType.PlayerBurnApply => amount > 0 ? $"{amount} burn" : "burn applied",
             ActionType.PlayerPoisonApply => amount > 0 ? $"{amount} poison" : "poison applied",
+            ActionType.PlayerRegenApply => amount > 0 ? $"{amount} regen" : "regen applied",
+            ActionType.PlayerGoldSteal => amount > 0 ? $"stole {amount} gold" : "gold stolen",
+            ActionType.PlayerMaxHealthIncrease => amount > 0 ? $"max health +{amount}" : "max health increased",
+            ActionType.PlayerMaxHealthDecrease => amount > 0 ? $"max health -{amount}" : "max health decreased",
             ActionType.CardSlow => "slowed",
             ActionType.CardFreeze => isPlayerItem ? "freeze applied" : null, // Enemy freeze uses special "Frozen!" alert
+            ActionType.CardHaste => "hasted",
+            ActionType.CardCharge => "charged",
             ActionType.CardReload => amount > 0 ? $"reloaded {amount} ammo" : "reloaded",
             ActionType.CardModifyAttribute => FormatModifyAttributeText(data, amount),
             ActionType.CardRepair => FormatRepairText(data),
+            ActionType.CardDestroy => FormatDestroyText(data),
             _ => null
         };
 
@@ -613,6 +665,24 @@ public static class CombatDescriber
         }
 
         return $"{prefix}{name}: {effectText}";
+    }
+
+    /// <summary>
+    /// Formats destroy text showing which item was destroyed.
+    /// </summary>
+    private static string FormatDestroyText(CombatActionData data)
+    {
+        if (data == null) return "destroyed";
+
+        var targetCard = data.TargetCard;
+        if (targetCard != null)
+        {
+            string targetName = ItemReader.GetCardName(targetCard);
+            if (!string.IsNullOrEmpty(targetName))
+                return $"destroyed {targetName}";
+        }
+
+        return "destroyed";
     }
 
     /// <summary>
@@ -929,7 +999,26 @@ public static class CombatDescriber
     #region ===== PER-CARD COMBAT STATS (FOR RECAP) =====
 
     /// <summary>
-    /// Tracks per-card stats persistently across the entire combat.
+    /// Tracks trigger count for ALL combat events, regardless of action type.
+    /// This ensures passive items (Water Wheel, Keychain, etc.) appear in combat stats.
+    /// </summary>
+    private static void TrackTriggerCount(string itemName, bool isPlayerItem)
+    {
+        if (string.IsNullOrEmpty(itemName)) return;
+
+        var dict = isPlayerItem ? _playerCardStats : _enemyCardStats;
+        if (!dict.TryGetValue(itemName, out var stats))
+        {
+            stats = new CardCombatStats();
+            dict[itemName] = stats;
+        }
+
+        stats.Triggers++;
+    }
+
+    /// <summary>
+    /// Tracks detailed per-card stats (damage, heal, etc.) for relevant actions only.
+    /// Trigger count is handled separately by TrackTriggerCount.
     /// </summary>
     private static void TrackCardStats(string itemName, bool isPlayerItem, ActionType actionType, int amount, bool isCrit, CombatActionData data)
     {
@@ -942,7 +1031,7 @@ public static class CombatDescriber
             dict[itemName] = stats;
         }
 
-        stats.Triggers++;
+        // Don't increment Triggers here - TrackTriggerCount handles it
         if (isCrit) stats.Crits++;
 
         switch (actionType)
@@ -1027,11 +1116,18 @@ public static class CombatDescriber
             ActionType.PlayerShieldApply => true,
             ActionType.PlayerBurnApply => true,
             ActionType.PlayerPoisonApply => true,
+            ActionType.PlayerRegenApply => true,
+            ActionType.PlayerGoldSteal => true,
+            ActionType.PlayerMaxHealthIncrease => true,
+            ActionType.PlayerMaxHealthDecrease => true,
             ActionType.CardSlow => true,
             ActionType.CardFreeze => true,
+            ActionType.CardHaste => true,
+            ActionType.CardCharge => true,
             ActionType.CardReload => true,
             ActionType.CardModifyAttribute => true,
             ActionType.CardRepair => true,
+            ActionType.CardDestroy => true,
             _ => false
         };
     }
@@ -1076,12 +1172,16 @@ public static class CombatDescriber
             ActionType.PlayerShieldApply => card.GetAttributeValue(ECardAttributeType.ShieldApplyAmount) ?? 0,
             ActionType.PlayerBurnApply => card.GetAttributeValue(ECardAttributeType.BurnApplyAmount) ?? 0,
             ActionType.PlayerPoisonApply => card.GetAttributeValue(ECardAttributeType.PoisonApplyAmount) ?? 0,
+            ActionType.PlayerRegenApply => card.GetAttributeValue(ECardAttributeType.RegenApplyAmount) ?? 0,
             ActionType.CardReload => card.GetAttributeValue(ECardAttributeType.ReloadAmount) ?? 1,
+            ActionType.CardHaste => card.GetAttributeValue(ECardAttributeType.HasteAmount) ?? 0,
             _ => 0
         };
 
-        // Fallback to health diff for damage/heal if attribute not found
-        if (amount == 0 && (data.ActionType == ActionType.PlayerDamage || data.ActionType == ActionType.PlayerHeal))
+        // Fallback to health diff for health-related effects if attribute not found
+        if (amount == 0 && (data.ActionType == ActionType.PlayerDamage || data.ActionType == ActionType.PlayerHeal ||
+            data.ActionType == ActionType.PlayerGoldSteal || data.ActionType == ActionType.PlayerMaxHealthIncrease ||
+            data.ActionType == ActionType.PlayerMaxHealthDecrease))
         {
             if (data.HealthBefore > 0 || data.HealthAfter > 0)
             {

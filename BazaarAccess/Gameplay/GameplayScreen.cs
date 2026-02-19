@@ -45,7 +45,7 @@ public class GameplayScreen : IAccessibleScreen
     private Card _actionCard = null;
 
     // Combat navigation mode
-    private enum CombatNavSection { None, PlayerBoard, EnemyBoard, EnemyStats }
+    private enum CombatNavSection { None, PlayerBoard, EnemyBoard, EnemyStats, HeroStats }
     private CombatNavSection _combatNavSection = CombatNavSection.None;
 
     public GameplayScreen()
@@ -274,12 +274,12 @@ public class GameplayScreen : IAccessibleScreen
                         _navigator.EnterOpponentBoardMode();
                         return;
                     case AccessibleKey.GoToHero: // V switches to hero
-                        _combatNavSection = CombatNavSection.None;
+                        _combatNavSection = CombatNavSection.HeroStats;
                         _navigator.GoToHero();
                         return;
                     case AccessibleKey.GoToEnemy: // F switches to enemy stats
-                        _combatNavSection = CombatNavSection.None;
-                        _navigator.ReadEnemyInfo();
+                        _combatNavSection = CombatNavSection.EnemyStats;
+                        _navigator.EnterCombatEnemyStatsMode();
                         return;
                     case AccessibleKey.Back:
                         _combatNavSection = CombatNavSection.None;
@@ -312,7 +312,7 @@ public class GameplayScreen : IAccessibleScreen
                         _navigator.GoToBoard();
                         return;
                     case AccessibleKey.GoToHero: // V switches to hero
-                        _combatNavSection = CombatNavSection.None;
+                        _combatNavSection = CombatNavSection.HeroStats;
                         _navigator.ExitEnemyMode();
                         _navigator.GoToHero();
                         return;
@@ -356,12 +356,49 @@ public class GameplayScreen : IAccessibleScreen
                         _navigator.EnterOpponentBoardMode();
                         return;
                     case AccessibleKey.GoToHero: // V switches to hero
-                        _combatNavSection = CombatNavSection.None;
+                        _combatNavSection = CombatNavSection.HeroStats;
                         _navigator.GoToHero();
                         return;
                     case AccessibleKey.Back:
                         _combatNavSection = CombatNavSection.None;
                         TolkWrapper.Speak("Exited enemy stats view");
+                        return;
+                }
+            }
+            else if (_combatNavSection == CombatNavSection.HeroStats)
+            {
+                switch (key)
+                {
+                    case AccessibleKey.Up:
+                        _navigator.HeroPrevious();
+                        return;
+                    case AccessibleKey.Down:
+                        _navigator.HeroNext();
+                        return;
+                    case AccessibleKey.Left:
+                        _navigator.HeroPreviousSubsection();
+                        return;
+                    case AccessibleKey.Right:
+                        _navigator.HeroNextSubsection();
+                        return;
+                    case AccessibleKey.GoToHero: // V again re-announces
+                        _navigator.GoToHero();
+                        return;
+                    case AccessibleKey.GoToBoard: // B switches to player board
+                        _combatNavSection = CombatNavSection.PlayerBoard;
+                        _navigator.GoToBoard();
+                        return;
+                    case AccessibleKey.GoToStash: // G switches to enemy board
+                        _combatNavSection = CombatNavSection.EnemyBoard;
+                        _navigator.EnterOpponentBoardMode();
+                        return;
+                    case AccessibleKey.GoToEnemy: // F switches to enemy stats
+                        _combatNavSection = CombatNavSection.EnemyStats;
+                        _navigator.EnterCombatEnemyStatsMode();
+                        return;
+                    case AccessibleKey.Back:
+                        _combatNavSection = CombatNavSection.None;
+                        TolkWrapper.Speak("Exited hero stats view");
                         return;
                 }
             }
@@ -383,7 +420,7 @@ public class GameplayScreen : IAccessibleScreen
                     break;
 
                 case AccessibleKey.GoToHero:
-                    _combatNavSection = CombatNavSection.None;
+                    _combatNavSection = CombatNavSection.HeroStats;
                     _navigator.GoToHero();
                     break;
 

@@ -589,3 +589,33 @@ New game mechanic: items/skills can repair destroyed items during combat.
 - `GetQuestLines()` now appends "Reward: [description]" after each quest condition
   - Shows what happens when the quest is completed (e.g., stat changes, new abilities)
   - Quest data structure: `TQuestEntry.Reward` (TQuestReward) → `Localization` → `Tooltips`
+
+---
+
+## Combat Tracking & Hero Navigation Fixes (Feb 19, 2026)
+
+### Combat Stats Now Track ALL Items (`Gameplay/CombatDescriber.cs`)
+- **Root cause**: Items like Water Wheel, Keychain, and other passive/utility items were invisible in H key combat stats
+- `TrackTriggerCount()` new method called BEFORE `IsRelevantAction()` filter
+  - Counts triggers for ANY combat event, not just damage/heal/shield
+  - Passive items that produce haste, charge, aura, or other effects now appear in recap
+- `TrackCardStats()` no longer increments Triggers (handled by TrackTriggerCount to avoid double-counting)
+
+### New Combat Action Types
+Added 7 new action types to `IsRelevantAction()` and both announcement modes:
+- `CardHaste` (500) - "hasted"
+- `CardCharge` (100) - "charged"
+- `CardDestroy` (200) - "destroyed [target name]"
+- `PlayerRegenApply` (3000) - "X regen"
+- `PlayerGoldSteal` (1900) - "stole X gold"
+- `PlayerMaxHealthIncrease` (2400) - "max health +X"
+- `PlayerMaxHealthDecrease` (2300) - "max health -X"
+
+### Hero Stats Navigation During Combat (`GameplayScreen.cs`)
+- **Bug**: V key during combat set `CombatNavSection.None`, so Up/Down arrows didn't work for player hero stats
+- **Fix**: Added `CombatNavSection.HeroStats` enum value
+  - V key now sets `_combatNavSection = HeroStats`
+  - Up/Down arrows navigate hero stats (same as outside combat)
+  - Left/Right arrows switch between Stats and Skills subsections
+  - Backspace exits hero stats view
+- Enemy stats (F key) was already working because it had its own `CombatNavSection.EnemyStats`

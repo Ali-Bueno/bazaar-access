@@ -2,6 +2,28 @@
 
 ---
 
+## February 19, 2026 (v1.7.0)
+
+### Bug Fixes
+- Fixed player hero stats (V key) not navigable with arrow keys during combat
+  - Down/Up arrows now work to read hero stats during combat (was only working for enemy stats with F key)
+  - Left/Right arrows switch between Stats and Skills subsections
+  - Backspace exits hero stats view
+- Fixed passive/utility items (Water Wheel, Keychain, etc.) not appearing in combat stats (H key)
+  - Items that produce haste, charge, aura effects, or other non-damage actions now show trigger counts in recap
+  - Combat stat tracking now counts ALL item triggers, not just damage/heal/shield events
+
+### New Features
+- New combat action types announced during combat:
+  - Haste effects: "Item: hasted"
+  - Charge effects: "Item: charged"
+  - Item destruction: "Item: destroyed Target"
+  - Regen application: "Item: X regen"
+  - Gold steal: "Item: stole X gold"
+  - Max health changes: "Item: max health +X" / "Item: max health -X"
+
+---
+
 ## February 15, 2026 (v1.6.3)
 
 ### Bug Fixes
