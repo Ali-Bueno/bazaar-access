@@ -124,7 +124,7 @@ public class GameplayNavigator
 
     // Modo enemigo (para navegar items del oponente)
     private bool _enemyMode = false;
-    private List<int> _enemyItemIndices = new List<int>();
+    private List<Card> _enemyCards = new List<Card>();  // Enemy items from Data.GetCards API
     private List<int> _enemySkillIndices = new List<int>();
     private List<SkillCard> _enemySkills = new List<SkillCard>(); // Alternative source when sockets unavailable
     private int _enemyItemIndex = 0;
@@ -813,9 +813,10 @@ public class GameplayNavigator
                 RefreshEnemyItems();
 
                 // Items del enemigo
-                if (_enemyItemIndices.Count > 0)
+                int enemyItemCount = _enemyCards.Count;
+                if (enemyItemCount > 0)
                 {
-                    parts.Add($"{_enemyItemIndices.Count} items");
+                    parts.Add($"{enemyItemCount} items");
                 }
                 if (_enemySkillIndices.Count > 0)
                 {
@@ -838,27 +839,31 @@ public class GameplayNavigator
     /// </summary>
     private void RefreshEnemyItems()
     {
-        _enemyItemIndices.Clear();
+        _enemyCards.Clear();
         _enemySkillIndices.Clear();
         _enemySkills.Clear();
         _enemyItemIndex = 0;
         _enemySkillIndex = 0;
 
-        var bm = GetBoardManager();
-        if (bm == null) return;
-
-        // Items del enemigo
-        if (bm.opponentItemSockets != null)
+        // Use Data.GetCards API (source of truth) instead of socket array
+        // Sockets are UI-only and retain stale references after combat
+        try
         {
-            for (int i = 0; i < bm.opponentItemSockets.Length; i++)
+            var cards = Data.GetCards<Card>(ECombatantId.Opponent, EInventorySection.Hand);
+            foreach (var card in cards)
             {
-                if (bm.opponentItemSockets[i]?.CardController?.CardData != null)
-                    _enemyItemIndices.Add(i);
+                if (card is ItemCard)
+                    _enemyCards.Add(card);
             }
         }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogWarning($"RefreshEnemyItems: Data.GetCards failed: {ex.Message}");
+        }
 
-        // Skills del enemigo - primero intentar desde los sockets
-        if (bm.opponentSkillSockets != null)
+        // Skills del enemigo - from sockets for visual feedback
+        var bm = GetBoardManager();
+        if (bm?.opponentSkillSockets != null)
         {
             for (int i = 0; i < bm.opponentSkillSockets.Length; i++)
             {
@@ -867,14 +872,13 @@ public class GameplayNavigator
             }
         }
 
-        // Siempre intentar cargar skills desde Data.Run.Opponent.Skills como respaldo
+        // Always try to load skills from Data.Run.Opponent.Skills as fallback
         try
         {
             var opponent = Data.Run?.Opponent;
             if (opponent?.Skills != null)
             {
                 _enemySkills.AddRange(opponent.Skills);
-                Plugin.Logger.LogInfo($"RefreshEnemyItems: Got {_enemySkills.Count} skills from Opponent.Skills");
             }
         }
         catch (System.Exception ex)
@@ -882,7 +886,7 @@ public class GameplayNavigator
             Plugin.Logger.LogWarning($"RefreshEnemyItems: Failed to get Opponent.Skills: {ex.Message}");
         }
 
-        Plugin.Logger.LogInfo($"RefreshEnemyItems: {_enemyItemIndices.Count} items, {_enemySkillIndices.Count} socket skills, {_enemySkills.Count} data skills");
+        Plugin.Logger.LogInfo($"RefreshEnemyItems: {_enemyCards.Count} items (Data.GetCards), {_enemySkillIndices.Count} socket skills, {_enemySkills.Count} data skills");
     }
 
     /// <summary>
@@ -928,8 +932,9 @@ public class GameplayNavigator
 
             RefreshEnemyItems();
 
+            int itemCount = _enemyCards.Count;
             int skillCount = GetEnemySkillCount();
-            if (_enemyItemIndices.Count == 0 && skillCount == 0)
+            if (itemCount == 0 && skillCount == 0)
             {
                 TolkWrapper.Speak("No opponent items");
                 return;
@@ -956,7 +961,7 @@ public class GameplayNavigator
             }
 
             // Announce board
-            TolkWrapper.Speak($"{opponentName}'s board, {_enemyItemIndices.Count} items");
+            TolkWrapper.Speak($"{opponentName}'s board, {itemCount} items");
         }
         catch (System.Exception ex)
         {
@@ -1003,12 +1008,13 @@ public class GameplayNavigator
 
         if (_enemySubsection == EnemySubsection.Items)
         {
-            if (_enemyItemIndices.Count == 0)
+            int itemCount = _enemyCards.Count;
+            if (itemCount == 0)
             {
                 TolkWrapper.Speak("No items");
                 return;
             }
-            if (_enemyItemIndex >= _enemyItemIndices.Count - 1)
+            if (_enemyItemIndex >= itemCount - 1)
             {
                 AnnounceCurrentEnemyItem(); // Read current at limit
                 return;
@@ -1043,7 +1049,7 @@ public class GameplayNavigator
 
         if (_enemySubsection == EnemySubsection.Items)
         {
-            if (_enemyItemIndices.Count == 0)
+            if (_enemyCards.Count == 0)
             {
                 TolkWrapper.Speak("No items");
                 return;
@@ -1108,11 +1114,12 @@ public class GameplayNavigator
         if (!_enemyMode) return;
         ClearEnemyDetailReading();
 
-        if (_enemySubsection == EnemySubsection.Skills && _enemyItemIndices.Count > 0)
+        int itemCount = _enemyCards.Count;
+        if (_enemySubsection == EnemySubsection.Skills && itemCount > 0)
         {
             _enemySubsection = EnemySubsection.Items;
             _enemyItemIndex = 0;
-            TolkWrapper.Speak($"Items, {_enemyItemIndices.Count}");
+            TolkWrapper.Speak($"Items, {itemCount}");
         }
         else
         {
@@ -1296,20 +1303,15 @@ public class GameplayNavigator
     /// </summary>
     private Card GetCurrentEnemyCard()
     {
-        var bm = GetBoardManager();
-
         if (_enemySubsection == EnemySubsection.Items)
         {
-            if (bm == null) return null;
-            if (_enemyItemIndex < _enemyItemIndices.Count)
-            {
-                int idx = _enemyItemIndices[_enemyItemIndex];
-                return bm.opponentItemSockets[idx]?.CardController?.CardData;
-            }
+            if (_enemyItemIndex < _enemyCards.Count)
+                return _enemyCards[_enemyItemIndex];
         }
         else // Skills
         {
             // Try from sockets first
+            var bm = GetBoardManager();
             if (_enemySkillIndices.Count > 0 && bm != null)
             {
                 if (_enemySkillIndex < _enemySkillIndices.Count)
@@ -1330,23 +1332,21 @@ public class GameplayNavigator
 
     /// <summary>
     /// Gets the current enemy card controller based on subsection and index.
+    /// Uses Data.CardAndSkillLookup for items (reliable), sockets for skills.
     /// </summary>
     private CardController GetCurrentEnemyCardController()
     {
-        var bm = GetBoardManager();
-        if (bm == null) return null;
-
         if (_enemySubsection == EnemySubsection.Items)
         {
-            if (_enemyItemIndex < _enemyItemIndices.Count)
-            {
-                int idx = _enemyItemIndices[_enemyItemIndex];
-                return bm.opponentItemSockets[idx]?.CardController;
-            }
+            // Use CardAndSkillLookup to find controller from Card object
+            var card = GetCurrentEnemyCard();
+            if (card != null)
+                return Data.CardAndSkillLookup.GetCardController(card);
         }
         else // Skills
         {
-            if (_enemySkillIndex < _enemySkillIndices.Count)
+            var bm = GetBoardManager();
+            if (bm != null && _enemySkillIndex < _enemySkillIndices.Count)
             {
                 int idx = _enemySkillIndices[_enemySkillIndex];
                 return bm.opponentSkillSockets[idx]?.CardController;
@@ -1368,7 +1368,7 @@ public class GameplayNavigator
         int total, pos;
         if (_enemySubsection == EnemySubsection.Items)
         {
-            total = _enemyItemIndices.Count;
+            total = _enemyCards.Count;
             pos = _enemyItemIndex + 1;
         }
         else

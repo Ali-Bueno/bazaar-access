@@ -662,3 +662,40 @@ Added 7 more action types to `IsRelevantAction()` and both announcement modes:
 - **Fix**: `SetCurrentHeroForCollections()` calls `SetCurrentHero()` on screen creation and before each equip
 - Equip now uses `async void EquipItemAsync()` with proper `await` instead of fire-and-forget
 - Success feedback: "equipped" after completion, "Failed to equip" on error
+
+---
+
+## Enemy Board Data Source Fix (Feb 21, 2026)
+
+### Problem: `opponentItemSockets` is unreliable after combat
+- `BoardManager.opponentItemSockets` is a static array of 10 `ItemSocketController` slots
+- It is **never cleared** between combats - stale `CardController` references persist
+- During `ReplayState.OnEnter()`, `DisposeCurrentCards()` removes cards from `Data.Entities` but does NOT reset sockets
+- Result: Reading sockets after combat returns items from previous combats (wrong items)
+
+### Solution: Use `Data.GetCards` API (`Gameplay/GameplayNavigator.cs`)
+- **`RefreshEnemyItems()`**: Now calls `Data.GetCards<Card>(ECombatantId.Opponent, EInventorySection.Hand)` filtered by `ItemCard`
+  - This is the same API the game uses internally (`ReplayState.GetCardsInHand()`)
+  - Works reliably during combat, replay, AND recap (game re-spawns cards in `Data.Entities` on ReplayState entry)
+- **`_enemyCards`**: Replaced `_enemyItemIndices` (socket indices) with `List<Card>` storing actual card references
+- **`GetCurrentEnemyCard()`**: Reads directly from `_enemyCards[index]` instead of socket lookup
+- **`GetCurrentEnemyCardController()`**: Uses `Data.CardAndSkillLookup.GetCardController(card)` for visual feedback
+  - `CardAndSkillLookup` maintains a `Dictionary<Card, CardController>` updated when cards are spawned
+
+### Key Game APIs (from decompiled code at `bazaar code/`)
+```csharp
+// Source of truth for all cards (TheBazaar/Data.cs:380)
+Data.GetCards<T>(ECombatantId combatantId, EInventorySection? section = null)
+// Filters Data.Entities by card.Owner and card.Section
+
+// Card → Controller lookup (TheBazaar.Tooltips/CardAndSkillLookup.cs:21)
+Data.CardAndSkillLookup.GetCardController(Card cardInstance)
+
+// Game's own method for board items (ReplayState.cs:294)
+// (from x in Data.GetCards<Card>(combatantId) where x is ItemCard && x.Section == Hand)
+```
+
+### Important: DO NOT use `opponentItemSockets` for game logic
+- `opponentItemSockets` is a UI-only cache for visual rendering
+- Use `Data.GetCards<Card>(ECombatantId.Opponent, EInventorySection.Hand)` for data access
+- Player board (`playerItemSockets`) still works because player items persist across states

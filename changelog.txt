@@ -2,6 +2,18 @@
 
 ---
 
+## February 21, 2026 (v1.7.2)
+
+### Bug Fixes
+- Fixed enemy board showing wrong items during recap (G key after combat)
+  - Some enemy items were misread (e.g., showing "Gumball" for items not on the board)
+  - Items that dealt damage during combat (e.g., Boulder) were missing from board navigation
+  - Root cause: The game's `opponentItemSockets` array is never cleared between combats, retaining stale references
+  - Fix: Enemy board navigation now uses `Data.GetCards` API (the game's source of truth) instead of reading from UI socket array
+  - Visual feedback (card hover) now uses `Data.CardAndSkillLookup` for reliable Card-to-Controller mapping
+
+---
+
 ## February 21, 2026 (v1.7.1)
 
 ### Bug Fixes

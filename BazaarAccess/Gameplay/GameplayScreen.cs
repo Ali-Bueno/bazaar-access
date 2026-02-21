@@ -2032,6 +2032,7 @@ public class GameplayScreen : IAccessibleScreen
         // No anunciar "Exiting combat" - el siguiente estado lo dirá
     }
 
+
     /// <summary>
     /// Llamado cuando se abre/cierra el stash.
     /// </summary>
