@@ -775,7 +775,7 @@ public class GameplayScreen : IAccessibleScreen
                     }
                     else
                     {
-                        return $"Upgrade to {upgradeInfo.TargetTier.Value} (U)";
+                        return $"Upgrade to {ItemReader.GetTierName(upgradeInfo.TargetTier.Value)} (U)";
                     }
                 }
                 // Fallback to assuming next tier
@@ -1685,7 +1685,7 @@ public class GameplayScreen : IAccessibleScreen
                 }
                 else
                 {
-                    messageParts.Add($"Upgrade {name} from {currentTier} to {upgradeInfo.TargetTier.Value}.");
+                    messageParts.Add($"Upgrade {name} from {currentTier} to {ItemReader.GetTierName(upgradeInfo.TargetTier.Value)}.");
                 }
             }
             else
@@ -1694,13 +1694,13 @@ public class GameplayScreen : IAccessibleScreen
                 messageParts.Add($"Upgrade {name} from {currentTier} to {nextTier}.");
             }
 
-            // Get upgrade preview (stat changes)
+            // Get post-upgrade stats
             try
             {
                 var preview = ActionHelper.GetUpgradePreview(card);
                 if (preview.Count > 0)
                 {
-                    messageParts.Add("Changes: " + string.Join(", ", preview));
+                    messageParts.Add("After upgrade: " + string.Join(", ", preview));
                 }
             }
             catch (System.Exception ex)

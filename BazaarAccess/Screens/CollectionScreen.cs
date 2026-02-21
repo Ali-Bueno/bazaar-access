@@ -44,6 +44,7 @@ public class CollectionScreen : BaseScreen
         _root = root;
         _uiController = uiController;
         TryGetCollectionManager();
+        SetCurrentHeroForCollections();
         LoadCurrentCategory();
         Plugin.Logger.LogInfo($"CollectionScreen created. CollectionManager: {(_collectionManager != null ? "found" : "NULL")}, UIController: {(_uiController != null ? "found" : "NULL")}");
     }
@@ -58,6 +59,26 @@ public class CollectionScreen : BaseScreen
         if (_collectionManager == null)
         {
             _collectionManager = Services.Get<CollectionManager>();
+        }
+    }
+
+    /// <summary>
+    /// Sets the current hero on CollectionManager so equip operations work correctly.
+    /// The game requires this to be set before calling EquipCollectible.
+    /// </summary>
+    private void SetCurrentHeroForCollections()
+    {
+        if (_collectionManager == null) return;
+
+        try
+        {
+            var selectedHero = Data.SelectedHero;
+            _collectionManager.SetCurrentHero(selectedHero);
+            Plugin.Logger.LogInfo($"CollectionScreen: Set current hero to {selectedHero}");
+        }
+        catch (Exception e)
+        {
+            Plugin.Logger.LogError($"CollectionScreen: Failed to set current hero: {e.Message}");
         }
     }
 
@@ -265,17 +286,24 @@ public class CollectionScreen : BaseScreen
         // Equip the item
         if (_collectionManager != null)
         {
-            try
-            {
-                // Fire and forget the equip task
-                _ = _collectionManager.EquipCollectible(item);
-                TolkWrapper.Speak($"Equipping {item.Name}");
-            }
-            catch (Exception e)
-            {
-                Plugin.Logger.LogError($"Failed to equip item: {e.Message}");
-                TolkWrapper.Speak("Failed to equip item");
-            }
+            EquipItemAsync(item);
+        }
+    }
+
+    private async void EquipItemAsync(BazaarSaleItem item)
+    {
+        try
+        {
+            // Ensure current hero is set before equipping
+            SetCurrentHeroForCollections();
+            TolkWrapper.Speak($"Equipping {item.Name}");
+            await _collectionManager.EquipCollectible(item);
+            TolkWrapper.Speak($"{item.Name} equipped");
+        }
+        catch (Exception e)
+        {
+            Plugin.Logger.LogError($"Failed to equip item: {e.Message}");
+            TolkWrapper.Speak("Failed to equip item");
         }
     }
 

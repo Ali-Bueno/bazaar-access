@@ -619,3 +619,46 @@ Added 7 new action types to `IsRelevantAction()` and both announcement modes:
   - Left/Right arrows switch between Stats and Skills subsections
   - Backspace exits hero stats view
 - Enemy stats (F key) was already working because it had its own `CombatNavSection.EnemyStats`
+
+---
+
+## Pedestal Detection Overhaul & New Combat Actions (Feb 21, 2026)
+
+### Pedestal Detection Fix (`Gameplay/ActionHelper.cs`)
+- **Root cause**: `GetCurrentPedestalInfo()` used an 8-step reflection chain (`Data.GetStatic()` → `Task.Result` → `GetCardById()` → etc.) that frequently failed silently
+- When detection failed, `PedestalType.None` was returned, causing ALL pedestals to fall through to the upgrade path
+- Enchant pedestals incorrectly showed "upgrading from gold to diamond" instead of "enchanting with X"
+- **Fix**: Replaced entire reflection chain with 2-step approach:
+  - `AppState.CurrentState` → `PedestalState._pedestalTemplate` (via field reflection)
+  - Then `_pedestalTemplate.Behavior` to determine type
+- Same behavior type detection logic (name contains "Upgrade"/"EnchantRandom"/"Enchant")
+
+### Upgrade Preview Overhaul (`Gameplay/ActionHelper.cs`)
+- `GetUpgradePreview()` now shows **full post-upgrade stats** instead of diffs
+  - Before: "Changes: Damage 10 to 15, Cooldown 3.0s to 2.5s" (unreliable)
+  - After: "After upgrade: Damage 15, Cooldown 2.5s" (reads target tier values directly)
+- `GetStatsFromTiersDictionary()` replaces `GetChangesFromTiersDictionary()` as fallback
+- `GetTierDisplayName()` helper added for consistent ETier→string formatting
+- Fixed all `.Value.ToString()` tier displays to use `ItemReader.GetTierName(ETier)`
+
+### Tier Name Consistency (`Gameplay/ItemReader.cs`)
+- Added `GetTierName(ETier)` overload that accepts enum directly (was Card-only)
+- Used in `GameplayScreen.cs` for action menu and confirmation dialog tier display
+
+### New Combat Action Types (`Gameplay/CombatDescriber.cs`)
+Added 7 more action types to `IsRelevantAction()` and both announcement modes:
+- `FlyingStart` (11300) - "started flying" / "flying" (Freefall Simulator, etc.)
+- `FlyingStop` (11301) - "stopped flying" / "landed"
+- `FlyingToggle` (11302) - "toggled flying" / "flying toggled"
+- `CardDisable` (250) - "disabled [target name]"
+- `CardTransform` (900) - "transformed"
+- `CardUpgrade` (1000) - counted as buff in batched mode
+- `CardQuestComplete` (1010) - "quest complete"
+- `FormatDisableText()` helper for target name resolution (like destroy/repair)
+
+### Collection Screen Skin Equipping Fix (`Screens/CollectionScreen.cs`)
+- **Root cause**: `CollectionManager._currentHero` was never set before `EquipCollectible()`
+  - Game requires `SetCurrentHero(Data.SelectedHero)` to know which hero's loadout to modify
+- **Fix**: `SetCurrentHeroForCollections()` calls `SetCurrentHero()` on screen creation and before each equip
+- Equip now uses `async void EquipItemAsync()` with proper `await` instead of fire-and-forget
+- Success feedback: "equipped" after completion, "Failed to equip" on error

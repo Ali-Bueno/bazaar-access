@@ -470,7 +470,7 @@ public static class ActionHelper
             string nextTier;
             if (pedestalInfo.TargetTier.HasValue && pedestalInfo.TargetTier.Value != card.Tier)
             {
-                nextTier = pedestalInfo.TargetTier.Value.ToString();
+                nextTier = GetTierDisplayName(pedestalInfo.TargetTier.Value);
             }
             else if (pedestalInfo.TargetTier.HasValue && pedestalInfo.TargetTier.Value == card.Tier)
             {
@@ -519,6 +519,22 @@ public static class ActionHelper
     /// <summary>
     /// Gets the name of the next tier.
     /// </summary>
+    /// <summary>
+    /// Gets a display-friendly name for a tier enum value.
+    /// </summary>
+    private static string GetTierDisplayName(ETier tier)
+    {
+        return tier switch
+        {
+            ETier.Bronze => "Bronze",
+            ETier.Silver => "Silver",
+            ETier.Gold => "Gold",
+            ETier.Diamond => "Diamond",
+            ETier.Legendary => "Legendary",
+            _ => tier.ToString()
+        };
+    }
+
     private static string GetNextTierName(ETier currentTier)
     {
         switch (currentTier)
@@ -631,93 +647,46 @@ public static class ActionHelper
 
         try
         {
-            // Get the current encounter ID
-            var currentEncounterIdProp = typeof(Data).GetProperty("CurrentEncounterId",
-                BindingFlags.Public | BindingFlags.Static);
-            if (currentEncounterIdProp == null)
+            // Get PedestalState directly from AppState.CurrentState
+            var appState = AppState.CurrentState;
+            if (appState == null)
             {
-                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: CurrentEncounterId property not found");
+                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: AppState.CurrentState is null");
                 return info;
             }
 
-            var encounterId = currentEncounterIdProp.GetValue(null) as System.Guid?;
-            if (!encounterId.HasValue || encounterId.Value == System.Guid.Empty)
+            // Access _pedestalTemplate field via reflection (PedestalState stores it on enter)
+            var templateField = appState.GetType().GetField("_pedestalTemplate",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            if (templateField == null)
             {
-                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: No current encounter ID");
+                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: _pedestalTemplate field not found");
                 return info;
             }
 
-            // Get static data to retrieve the pedestal template
-            var getStaticMethod = typeof(Data).GetMethod("GetStatic",
-                BindingFlags.Public | BindingFlags.Static);
-            if (getStaticMethod == null)
+            var template = templateField.GetValue(appState);
+            if (template == null)
             {
-                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: GetStatic method not found");
+                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: _pedestalTemplate is null");
                 return info;
             }
 
-            // GetStatic returns a Task, we need to get the result
-            var staticDataTask = getStaticMethod.Invoke(null, null);
-            if (staticDataTask == null)
-            {
-                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: GetStatic returned null");
-                return info;
-            }
-
-            // Get the Result property from the Task
-            var resultProp = staticDataTask.GetType().GetProperty("Result");
-            if (resultProp == null)
-            {
-                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: Task.Result not found");
-                return info;
-            }
-
-            var staticData = resultProp.GetValue(staticDataTask);
-            if (staticData == null)
-            {
-                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: Static data is null");
-                return info;
-            }
-
-            // Get the card by ID
-            var getCardMethod = staticData.GetType().GetMethod("GetCardById");
-            if (getCardMethod == null)
-            {
-                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: GetCardById method not found");
-                return info;
-            }
-
-            var cardTemplate = getCardMethod.Invoke(staticData, new object[] { encounterId.Value });
-            if (cardTemplate == null)
-            {
-                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: Card template is null");
-                return info;
-            }
-
-            // Check if it's a pedestal encounter
-            var pedestalType = typeof(Data).Assembly.GetType("BazaarGameShared.Domain.Cards.Encounter.Pedestal.TCardEncounterPedestal");
-            if (pedestalType == null || !pedestalType.IsInstanceOfType(cardTemplate))
-            {
-                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: Not a pedestal encounter");
-                return info;
-            }
-
-            // Get the Behavior property
-            var behaviorProp = pedestalType.GetProperty("Behavior");
+            // Get the Behavior property from TCardEncounterPedestal
+            var behaviorProp = template.GetType().GetProperty("Behavior");
             if (behaviorProp == null)
             {
                 Plugin.Logger.LogDebug("GetCurrentPedestalInfo: Behavior property not found");
                 return info;
             }
 
-            var behavior = behaviorProp.GetValue(cardTemplate);
+            var behavior = behaviorProp.GetValue(template);
             if (behavior == null)
             {
                 Plugin.Logger.LogDebug("GetCurrentPedestalInfo: Behavior is null");
                 return info;
             }
 
-            // Check behavior type
+            // Check behavior type name to determine pedestal kind
             var behaviorTypeName = behavior.GetType().Name;
             Plugin.Logger.LogDebug($"GetCurrentPedestalInfo: Behavior type = {behaviorTypeName}");
 
@@ -783,7 +752,7 @@ public static class ActionHelper
                 string nextTier = GetNextTierName(card.Tier);
                 if (pedestalInfo.TargetTier.HasValue)
                 {
-                    nextTier = pedestalInfo.TargetTier.Value.ToString();
+                    nextTier = GetTierDisplayName(pedestalInfo.TargetTier.Value);
                 }
                 return $"Upgrade {cardName} from {currentTier} to {nextTier}";
 
@@ -799,13 +768,13 @@ public static class ActionHelper
     }
 
     /// <summary>
-    /// Gets a preview of what stats will change when upgrading an item.
-    /// Returns a list of changes like "Damage 10 → 15"
+    /// Gets a preview of post-upgrade stats for the target tier.
+    /// Shows full stats the item will have after upgrading.
     /// </summary>
     public static List<string> GetUpgradePreview(Card card)
     {
-        var changes = new List<string>();
-        if (card == null) return changes;
+        var stats = new List<string>();
+        if (card == null) return stats;
 
         try
         {
@@ -814,72 +783,44 @@ public static class ActionHelper
 
             if (targetTier == card.Tier)
             {
-                changes.Add("Stats will improve (same tier)");
-                return changes;
+                stats.Add("Stats will improve (same tier)");
+                return stats;
             }
 
             // Get the card template to access tier data
             var templateProp = card.GetType().GetProperty("Template");
-            if (templateProp == null)
-            {
-                Plugin.Logger.LogWarning("GetUpgradePreview: Template property not found");
-                return changes;
-            }
+            if (templateProp == null) return stats;
 
             var template = templateProp.GetValue(card);
-            if (template == null)
-            {
-                Plugin.Logger.LogWarning("GetUpgradePreview: Template is null");
-                return changes;
-            }
+            if (template == null) return stats;
 
-            Plugin.Logger.LogInfo($"GetUpgradePreview: Template type = {template.GetType().FullName}");
-
-            // Try to get attribute values at current and target tier
-            // The method might be on the concrete type or an interface
+            // Try GetAttributeBaseValueAtTier method first
             var getAttrMethod = template.GetType().GetMethod("GetAttributeBaseValueAtTier",
                 BindingFlags.Public | BindingFlags.Instance);
 
             if (getAttrMethod == null)
             {
-                // Try finding it in interfaces
                 foreach (var iface in template.GetType().GetInterfaces())
                 {
                     getAttrMethod = iface.GetMethod("GetAttributeBaseValueAtTier");
-                    if (getAttrMethod != null)
-                    {
-                        Plugin.Logger.LogInfo($"GetUpgradePreview: Found method in interface {iface.Name}");
-                        break;
-                    }
+                    if (getAttrMethod != null) break;
                 }
             }
 
             if (getAttrMethod == null)
             {
-                Plugin.Logger.LogWarning($"GetUpgradePreview: GetAttributeBaseValueAtTier not found on {template.GetType().Name}");
-
-                // Try alternative approach: access Tiers dictionary directly
+                // Fallback: try Tiers dictionary
                 var tiersProp = template.GetType().GetProperty("Tiers", BindingFlags.Public | BindingFlags.Instance);
                 if (tiersProp != null)
                 {
-                    Plugin.Logger.LogInfo("GetUpgradePreview: Found Tiers property, using direct access");
                     var tiersDict = tiersProp.GetValue(template) as System.Collections.IDictionary;
                     if (tiersDict != null)
-                    {
-                        return GetChangesFromTiersDictionary(tiersDict, card.Tier, targetTier);
-                    }
+                        return GetStatsFromTiersDictionary(tiersDict, targetTier);
                 }
-
-                // List available properties for debugging
-                var props = template.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
-                foreach (var p in props)
-                {
-                    Plugin.Logger.LogDebug($"  Available property: {p.Name} ({p.PropertyType.Name})");
-                }
-                return changes;
+                return stats;
             }
 
-            // Check common combat stats
+            // Read target tier stats
             var attrTypes = new ECardAttributeType[]
             {
                 ECardAttributeType.DamageAmount,
@@ -899,165 +840,94 @@ public static class ActionHelper
             };
             var attrNames = new string[]
             {
-                "Damage", "Heal", "Shield", "Cooldown", "Cooldown",
+                "Damage", "Heal", "Shield", "Cooldown", "Cooldown Max",
                 "Ammo", "Max Ammo", "Crit", "Multicast",
                 "Burn", "Poison", "Haste", "Slow", "Freeze"
             };
 
             for (int i = 0; i < attrTypes.Length; i++)
             {
-                var attrType = attrTypes[i];
-                var attrName = attrNames[i];
                 try
                 {
-                    var currentVal = getAttrMethod.Invoke(template, new object[] { attrType, card.Tier });
-                    var nextVal = getAttrMethod.Invoke(template, new object[] { attrType, targetTier });
+                    var val = getAttrMethod.Invoke(template, new object[] { attrTypes[i], targetTier });
+                    if (val == null) continue;
+                    int value = (int)val;
+                    if (value <= 0) continue;
 
-                    if (currentVal != null && nextVal != null)
-                    {
-                        int current = (int)currentVal;
-                        int next = (int)nextVal;
-
-                        if (current != next && (current > 0 || next > 0))
-                        {
-                            // Format cooldown as seconds
-                            if (attrType == ECardAttributeType.Cooldown || attrType == ECardAttributeType.CooldownMax)
-                            {
-                                float currentSec = current / 1000f;
-                                float nextSec = next / 1000f;
-                                changes.Add(string.Format("{0} {1:F1}s to {2:F1}s", attrName, currentSec, nextSec));
-                            }
-                            else
-                            {
-                                changes.Add(string.Format("{0} {1} to {2}", attrName, current, next));
-                            }
-                        }
-                    }
+                    if (attrTypes[i] == ECardAttributeType.Cooldown || attrTypes[i] == ECardAttributeType.CooldownMax)
+                        stats.Add($"{attrNames[i]} {value / 1000f:F1}s");
+                    else
+                        stats.Add($"{attrNames[i]} {value}");
                 }
-                catch
-                {
-                    // Attribute not available at this tier, skip
-                }
-            }
-
-            if (changes.Count == 0)
-            {
-                changes.Add("Stats will improve");
+                catch { }
             }
         }
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"GetUpgradePreview error: {ex.Message}");
-            changes.Add("Preview not available");
         }
 
-        return changes;
+        return stats;
     }
 
     /// <summary>
-    /// Gets stat changes by directly accessing the Tiers dictionary.
-    /// Fallback method when GetAttributeBaseValueAtTier is not accessible.
+    /// Gets stats from a Tiers dictionary for a specific tier.
     /// </summary>
-    private static List<string> GetChangesFromTiersDictionary(System.Collections.IDictionary tiersDict, ETier currentTier, ETier targetTier)
+    private static List<string> GetStatsFromTiersDictionary(System.Collections.IDictionary tiersDict, ETier targetTier)
     {
-        var changes = new List<string>();
+        var stats = new List<string>();
 
         try
         {
-            // Get the TCardTier objects for current and target tiers
-            object currentTierData = null;
             object targetTierData = null;
-
             foreach (System.Collections.DictionaryEntry entry in tiersDict)
             {
-                var tierKey = (ETier)entry.Key;
-                if (tierKey == currentTier || (tierKey == ETier.Diamond && currentTier == ETier.Legendary))
-                {
-                    currentTierData = entry.Value;
-                }
-                if (tierKey == targetTier || (tierKey == ETier.Diamond && targetTier == ETier.Legendary))
+                if ((ETier)entry.Key == targetTier)
                 {
                     targetTierData = entry.Value;
+                    break;
                 }
             }
 
-            if (currentTierData == null || targetTierData == null)
-            {
-                Plugin.Logger.LogWarning("GetChangesFromTiersDictionary: Could not find tier data");
-                return changes;
-            }
+            if (targetTierData == null) return stats;
 
-            // Get Attributes dictionary from each tier
-            var attrsProp = currentTierData.GetType().GetProperty("Attributes");
-            if (attrsProp == null)
-            {
-                Plugin.Logger.LogWarning("GetChangesFromTiersDictionary: Attributes property not found");
-                return changes;
-            }
+            var attrsProp = targetTierData.GetType().GetProperty("Attributes");
+            if (attrsProp == null) return stats;
 
-            var currentAttrs = attrsProp.GetValue(currentTierData) as System.Collections.IDictionary;
-            var targetAttrs = attrsProp.GetValue(targetTierData) as System.Collections.IDictionary;
+            var attrs = attrsProp.GetValue(targetTierData) as System.Collections.IDictionary;
+            if (attrs == null) return stats;
 
-            if (currentAttrs == null || targetAttrs == null)
+            var attrNameMap = new Dictionary<string, string>
             {
-                return changes;
-            }
-
-            // Compare attributes
-            var attrNameMap = new System.Collections.Generic.Dictionary<string, string>
-            {
-                {"DamageAmount", "Damage"},
-                {"HealAmount", "Heal"},
-                {"ShieldApplyAmount", "Shield"},
-                {"Cooldown", "Cooldown"},
-                {"CooldownMax", "Cooldown"},
-                {"Ammo", "Ammo"},
-                {"AmmoMax", "Max Ammo"},
-                {"CritChance", "Crit"},
-                {"Multicast", "Multicast"},
-                {"BurnApplyAmount", "Burn"},
-                {"PoisonApplyAmount", "Poison"},
-                {"HasteAmount", "Haste"},
-                {"SlowAmount", "Slow"},
-                {"FreezeAmount", "Freeze"},
+                {"DamageAmount", "Damage"}, {"HealAmount", "Heal"},
+                {"ShieldApplyAmount", "Shield"}, {"Cooldown", "Cooldown"},
+                {"CooldownMax", "Cooldown Max"}, {"Ammo", "Ammo"},
+                {"AmmoMax", "Max Ammo"}, {"CritChance", "Crit"},
+                {"Multicast", "Multicast"}, {"BurnApplyAmount", "Burn"},
+                {"PoisonApplyAmount", "Poison"}, {"HasteAmount", "Haste"},
+                {"SlowAmount", "Slow"}, {"FreezeAmount", "Freeze"},
             };
 
-            foreach (System.Collections.DictionaryEntry entry in targetAttrs)
+            foreach (System.Collections.DictionaryEntry entry in attrs)
             {
-                var attrType = entry.Key;
-                int targetVal = (int)entry.Value;
-                int currentVal = 0;
+                int value = (int)entry.Value;
+                if (value <= 0) continue;
 
-                if (currentAttrs.Contains(attrType))
-                {
-                    currentVal = (int)currentAttrs[attrType];
-                }
+                string attrTypeName = entry.Key.ToString();
+                string displayName = attrNameMap.ContainsKey(attrTypeName) ? attrNameMap[attrTypeName] : attrTypeName;
 
-                if (currentVal != targetVal)
-                {
-                    string attrTypeName = attrType.ToString();
-                    string displayName = attrNameMap.ContainsKey(attrTypeName) ? attrNameMap[attrTypeName] : attrTypeName;
-
-                    // Format cooldown as seconds
-                    if (attrTypeName.Contains("Cooldown"))
-                    {
-                        float currentSec = currentVal / 1000f;
-                        float targetSec = targetVal / 1000f;
-                        changes.Add(string.Format("{0} {1:F1}s to {2:F1}s", displayName, currentSec, targetSec));
-                    }
-                    else
-                    {
-                        changes.Add(string.Format("{0} {1} to {2}", displayName, currentVal, targetVal));
-                    }
-                }
+                if (attrTypeName.Contains("Cooldown"))
+                    stats.Add($"{displayName} {value / 1000f:F1}s");
+                else
+                    stats.Add($"{displayName} {value}");
             }
         }
         catch (System.Exception ex)
         {
-            Plugin.Logger.LogError($"GetChangesFromTiersDictionary error: {ex.Message}");
+            Plugin.Logger.LogError($"GetStatsFromTiersDictionary error: {ex.Message}");
         }
 
-        return changes;
+        return stats;
     }
 
     /// <summary>

@@ -299,15 +299,19 @@ public static class ItemReader
     public static string GetTierName(Card card)
     {
         if (card == null) return string.Empty;
+        return GetTierName(card.Tier);
+    }
 
-        return card.Tier switch
+    public static string GetTierName(ETier tier)
+    {
+        return tier switch
         {
             ETier.Bronze => "Bronze",
             ETier.Silver => "Silver",
             ETier.Gold => "Gold",
             ETier.Diamond => "Diamond",
             ETier.Legendary => "Legendary",
-            _ => card.Tier.ToString()
+            _ => tier.ToString()
         };
     }
 

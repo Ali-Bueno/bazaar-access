@@ -581,6 +581,46 @@ public static class CombatDescriber
                     wave.StatusEffects.Add("destroyed");
                 }
                 break;
+
+            case ActionType.CardDisable:
+                var disabledCard = data.TargetCard;
+                if (disabledCard != null)
+                {
+                    string disabledName = ItemReader.GetCardName(disabledCard);
+                    if (!string.IsNullOrEmpty(disabledName))
+                        wave.StatusEffects.Add($"disabled {disabledName}");
+                    else
+                        wave.StatusEffects.Add("disabled");
+                }
+                else
+                {
+                    wave.StatusEffects.Add("disabled");
+                }
+                break;
+
+            case ActionType.CardTransform:
+                wave.StatusEffects.Add("transformed");
+                break;
+
+            case ActionType.CardUpgrade:
+                wave.TotalBuffs++;
+                break;
+
+            case ActionType.CardQuestComplete:
+                wave.StatusEffects.Add("quest complete");
+                break;
+
+            case ActionType.FlyingStart:
+                wave.StatusEffects.Add("flying");
+                break;
+
+            case ActionType.FlyingStop:
+                wave.StatusEffects.Add("landed");
+                break;
+
+            case ActionType.FlyingToggle:
+                wave.StatusEffects.Add("flying toggled");
+                break;
         }
 
         if (isCrit) wave.HadCrit = true;
@@ -650,6 +690,13 @@ public static class CombatDescriber
             ActionType.CardModifyAttribute => FormatModifyAttributeText(data, amount),
             ActionType.CardRepair => FormatRepairText(data),
             ActionType.CardDestroy => FormatDestroyText(data),
+            ActionType.CardDisable => FormatDisableText(data),
+            ActionType.CardTransform => "transformed",
+            ActionType.CardUpgrade => "upgraded",
+            ActionType.CardQuestComplete => "quest complete",
+            ActionType.FlyingStart => "started flying",
+            ActionType.FlyingStop => "stopped flying",
+            ActionType.FlyingToggle => "toggled flying",
             _ => null
         };
 
@@ -683,6 +730,24 @@ public static class CombatDescriber
         }
 
         return "destroyed";
+    }
+
+    /// <summary>
+    /// Formats disable text showing which item was disabled.
+    /// </summary>
+    private static string FormatDisableText(CombatActionData data)
+    {
+        if (data == null) return "disabled";
+
+        var targetCard = data.TargetCard;
+        if (targetCard != null)
+        {
+            string targetName = ItemReader.GetCardName(targetCard);
+            if (!string.IsNullOrEmpty(targetName))
+                return $"disabled {targetName}";
+        }
+
+        return "disabled";
     }
 
     /// <summary>
@@ -1128,6 +1193,13 @@ public static class CombatDescriber
             ActionType.CardModifyAttribute => true,
             ActionType.CardRepair => true,
             ActionType.CardDestroy => true,
+            ActionType.CardDisable => true,
+            ActionType.CardTransform => true,
+            ActionType.CardUpgrade => true,
+            ActionType.CardQuestComplete => true,
+            ActionType.FlyingStart => true,
+            ActionType.FlyingStop => true,
+            ActionType.FlyingToggle => true,
             _ => false
         };
     }

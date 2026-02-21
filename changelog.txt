@@ -2,6 +2,28 @@
 
 ---
 
+## February 21, 2026 (v1.7.1)
+
+### Bug Fixes
+- Fixed enchant pedestals incorrectly showing "upgrading from gold to diamond" instead of enchantment info
+  - Completely rewrote pedestal detection to use a more reliable method (2-step reflection instead of 8-step)
+  - Fixed tier name formatting in all upgrade/enchant dialogs and action menus
+- Fixed skin equipping not working in the Collection screen
+  - The game's CollectionManager now receives the correct hero context before equipping
+  - Equip operations now properly await completion and announce success/failure
+- Fixed upgrade stat preview being unreliable
+  - Now shows full post-upgrade stats (e.g., "After upgrade: Damage 15, Cooldown 2.5s") instead of attempting to compute diffs
+
+### New Features
+- New combat action types announced during combat:
+  - Flying effects: "started flying", "stopped flying", "toggled flying" (Freefall Simulator and similar items)
+  - Item disable: "disabled [item name]"
+  - Card transform: "transformed"
+  - In-combat upgrades: counted as buff
+  - Quest completion: "quest complete"
+
+---
+
 ## February 19, 2026 (v1.7.0)
 
 ### Bug Fixes
