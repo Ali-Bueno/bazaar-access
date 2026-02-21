@@ -303,7 +303,8 @@ Press **Enter** on a board/stash item to open the action menu:
 - `GetCurrentPedestalInfo()`: Detects altar type (Upgrade, Enchant, EnchantRandom)
 - `GetPedestalActionDescription()`: Returns human-readable description
 - `IsEnchantPedestal()` / `IsUpgradePedestal()`: Quick type checks
-- Uses reflection to access `TCardEncounterPedestal.Behavior` property
+- Uses game's public Data API: `Data.GetStatic().Result.GetCardById(Data.CurrentEncounterId)`
+- Direct type checking with `is TPedestalBehaviorEnchant` etc. (no reflection, no string matching)
 
 ### Upgrade/Enchant Timing
 - `DelayedRefreshAfterUpgrade()`: Waits up to 10 seconds for game animations
@@ -625,13 +626,14 @@ Added 7 new action types to `IsRelevantAction()` and both announcement modes:
 ## Pedestal Detection Overhaul & New Combat Actions (Feb 21, 2026)
 
 ### Pedestal Detection Fix (`Gameplay/ActionHelper.cs`)
-- **Root cause**: `GetCurrentPedestalInfo()` used an 8-step reflection chain (`Data.GetStatic()` → `Task.Result` → `GetCardById()` → etc.) that frequently failed silently
+- **Root cause**: Previous approaches used reflection on `PedestalState._pedestalTemplate` private field, which silently failed
 - When detection failed, `PedestalType.None` was returned, causing ALL pedestals to fall through to the upgrade path
 - Enchant pedestals incorrectly showed "upgrading from gold to diamond" instead of "enchanting with X"
-- **Fix**: Replaced entire reflection chain with 2-step approach:
-  - `AppState.CurrentState` → `PedestalState._pedestalTemplate` (via field reflection)
-  - Then `_pedestalTemplate.Behavior` to determine type
-- Same behavior type detection logic (name contains "Upgrade"/"EnchantRandom"/"Enchant")
+- **Final fix (v1.7.3)**: Eliminated ALL reflection for pedestal detection
+  - Uses game's public API: `Data.GetStatic().Result.GetCardById(Data.CurrentEncounterId)` (same as PedestalState.OnEnter)
+  - `Data.GetStatic()` is synchronous (`Task.FromResult`), safe to call `.Result`
+  - Direct `as TCardEncounterPedestal` cast and `is TPedestalBehaviorEnchant` pattern matching
+  - No private field access, no string matching on type names
 
 ### Upgrade Preview Overhaul (`Gameplay/ActionHelper.cs`)
 - `GetUpgradePreview()` now shows **full post-upgrade stats** instead of diffs

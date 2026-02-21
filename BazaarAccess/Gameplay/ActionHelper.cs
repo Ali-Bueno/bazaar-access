@@ -1,9 +1,12 @@
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using BazaarAccess.Core;
 using BazaarAccess.Patches;
 using BazaarGameClient.Domain.Cards;
 using BazaarGameClient.Domain.Models.Cards;
+using BazaarGameShared.Domain.Cards.Encounter.Pedestal;
+using BazaarGameShared.Domain.Cards.Encounter.Pedestal.Behaviors;
 using BazaarGameShared.Domain.Core.Types;
 using BazaarGameShared.Domain.Runs;
 using TheBazaar;
@@ -633,7 +636,9 @@ public static class ActionHelper
 
     /// <summary>
     /// Gets information about the current pedestal/altar.
-    /// Uses reflection to access game's internal pedestal data.
+    /// Uses the game's public Data API to access the encounter card template directly,
+    /// the same way PedestalState.OnEnter() does (Data.GetStatic().GetCardById()).
+    /// No private field reflection needed.
     /// </summary>
     public static PedestalInfo GetCurrentPedestalInfo()
     {
@@ -647,90 +652,68 @@ public static class ActionHelper
 
         try
         {
-            // Get PedestalState directly from AppState.CurrentState
-            var appState = AppState.CurrentState;
-            if (appState == null)
+            // Get encounter ID - this is the card ID the game uses to load the pedestal template
+            var encounterId = Data.CurrentEncounterId;
+            if (encounterId == null || encounterId.Value == Guid.Empty)
             {
-                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: AppState.CurrentState is null");
+                Plugin.Logger.LogWarning("GetCurrentPedestalInfo: CurrentEncounterId is null/empty");
                 return info;
             }
 
-            // Access _pedestalTemplate field via reflection (PedestalState stores it on enter)
-            var templateField = appState.GetType().GetField("_pedestalTemplate",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            if (templateField == null)
+            // Data.GetStatic() is synchronous (returns Task.FromResult), safe to access .Result
+            var staticData = Data.GetStatic().Result;
+            if (staticData == null)
             {
-                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: _pedestalTemplate field not found");
+                Plugin.Logger.LogWarning("GetCurrentPedestalInfo: static data manager is null");
                 return info;
             }
 
-            var template = templateField.GetValue(appState);
-            if (template == null)
+            // Get the encounter card template by ID (same as PedestalState.OnEnter does)
+            var encounterCard = staticData.GetCardById(encounterId.Value);
+            if (encounterCard == null)
             {
-                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: _pedestalTemplate is null");
+                Plugin.Logger.LogWarning("GetCurrentPedestalInfo: encounter card not found");
                 return info;
             }
 
-            // Get the Behavior property from TCardEncounterPedestal
-            var behaviorProp = template.GetType().GetProperty("Behavior");
-            if (behaviorProp == null)
+            // Cast to pedestal type - direct type check, no string matching
+            var pedestal = encounterCard as TCardEncounterPedestal;
+            if (pedestal == null)
             {
-                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: Behavior property not found");
+                Plugin.Logger.LogWarning($"GetCurrentPedestalInfo: encounter card is {encounterCard.GetType().Name}, not TCardEncounterPedestal");
                 return info;
             }
 
-            var behavior = behaviorProp.GetValue(template);
+            // Access Behavior directly - public property, no reflection needed
+            var behavior = pedestal.Behavior;
             if (behavior == null)
             {
-                Plugin.Logger.LogDebug("GetCurrentPedestalInfo: Behavior is null");
+                Plugin.Logger.LogWarning("GetCurrentPedestalInfo: Behavior is null");
                 return info;
             }
 
-            // Check behavior type name to determine pedestal kind
-            var behaviorTypeName = behavior.GetType().Name;
-            Plugin.Logger.LogDebug($"GetCurrentPedestalInfo: Behavior type = {behaviorTypeName}");
-
-            if (behaviorTypeName.Contains("Upgrade"))
+            // Use pattern matching on concrete types instead of string matching
+            if (behavior is TPedestalBehaviorUpgrade upgradeBehavior)
             {
                 info.Type = PedestalType.Upgrade;
-
-                // Try to get TargetTier
-                var targetTierProp = behavior.GetType().GetProperty("TargetTier");
-                if (targetTierProp != null)
-                {
-                    var tierValue = targetTierProp.GetValue(behavior);
-                    if (tierValue != null)
-                    {
-                        info.TargetTier = (ETier)tierValue;
-                    }
-                }
+                info.TargetTier = upgradeBehavior.TargetTier;
             }
-            else if (behaviorTypeName.Contains("EnchantRandom"))
+            else if (behavior is TPedestalBehaviorEnchantRandom)
             {
                 info.Type = PedestalType.EnchantRandom;
                 info.EnchantmentName = "Random";
             }
-            else if (behaviorTypeName.Contains("Enchant"))
+            else if (behavior is TPedestalBehaviorEnchant enchantBehavior)
             {
                 info.Type = PedestalType.Enchant;
-
-                // Get the specific enchantment type
-                var enchantProp = behavior.GetType().GetProperty("Enchantment");
-                if (enchantProp != null)
-                {
-                    var enchantValue = enchantProp.GetValue(behavior);
-                    if (enchantValue != null)
-                    {
-                        info.EnchantmentName = enchantValue.ToString();
-                    }
-                }
+                info.EnchantmentName = enchantBehavior.Enchantment.ToString();
             }
 
             Plugin.Logger.LogInfo($"GetCurrentPedestalInfo: Type={info.Type}, Enchant={info.EnchantmentName}, TargetTier={info.TargetTier}");
         }
-        catch (System.Exception ex)
+        catch (Exception ex)
         {
-            Plugin.Logger.LogError($"GetCurrentPedestalInfo error: {ex.Message}");
+            Plugin.Logger.LogError($"GetCurrentPedestalInfo error: {ex}");
         }
 
         return info;

@@ -2,6 +2,18 @@
 
 ---
 
+## February 21, 2026 (v1.7.3)
+
+### Bug Fixes
+- Fixed pedestal type detection (enchant vs upgrade) once and for all
+  - Pressing U at enchant pedestals was showing "upgrade from tier X to Y" instead of enchant dialog
+  - Root cause: Previous approach used reflection on PedestalState's private `_pedestalTemplate` field, which silently failed and defaulted to upgrade
+  - Fix: Now uses the game's public Data API directly (`Data.GetStatic().GetCardById(Data.CurrentEncounterId)`) - the same approach the game itself uses
+  - Uses direct type checking (`is TPedestalBehaviorEnchant`) instead of fragile string matching on type names
+  - Zero reflection needed for pedestal detection
+
+---
+
 ## February 21, 2026 (v1.7.2)
 
 ### Bug Fixes
