@@ -634,89 +634,206 @@ public static class ActionHelper
         public ETier? TargetTier { get; set; }
     }
 
+    // Cached pedestal info - set once when entering Pedestal state, cleared on exit
+    private static PedestalInfo _cachedPedestalInfo;
+
+    /// <summary>
+    /// Caches pedestal info when entering Pedestal state.
+    /// Called from StateChangePatch on state transition.
+    /// </summary>
+    public static void CachePedestalInfo()
+    {
+        _cachedPedestalInfo = DetectPedestalInfo();
+        Plugin.Logger.LogInfo($"CachePedestalInfo: Type={_cachedPedestalInfo.Type}, Enchant={_cachedPedestalInfo.EnchantmentName}, TargetTier={_cachedPedestalInfo.TargetTier}");
+    }
+
+    /// <summary>
+    /// Clears cached pedestal info when leaving Pedestal state.
+    /// </summary>
+    public static void ClearPedestalCache()
+    {
+        _cachedPedestalInfo = null;
+    }
+
     /// <summary>
     /// Gets information about the current pedestal/altar.
-    /// Uses the game's public Data API to access the encounter card template directly,
-    /// the same way PedestalState.OnEnter() does (Data.GetStatic().GetCardById()).
-    /// No private field reflection needed.
+    /// Returns cached info if available, otherwise re-detects.
     /// </summary>
     public static PedestalInfo GetCurrentPedestalInfo()
     {
-        var info = new PedestalInfo();
-
         var currentState = StateChangePatch.GetCurrentRunState();
         if (currentState != ERunState.Pedestal)
         {
+            return new PedestalInfo();
+        }
+
+        // Return cached info if available
+        if (_cachedPedestalInfo != null && _cachedPedestalInfo.Type != PedestalType.None)
+        {
+            return _cachedPedestalInfo;
+        }
+
+        // Cache miss - try to detect now (may happen if state transition was missed)
+        var info = DetectPedestalInfo();
+        if (info.Type != PedestalType.None)
+        {
+            _cachedPedestalInfo = info;
+        }
+        return info;
+    }
+
+    /// <summary>
+    /// Detects pedestal type using two strategies:
+    /// 1. Public Data API (Data.GetStatic().GetCardById(CurrentEncounterId))
+    /// 2. Fallback: reflection on PedestalState._pedestalTemplate from AppState.CurrentState
+    /// </summary>
+    private static PedestalInfo DetectPedestalInfo()
+    {
+        var info = new PedestalInfo();
+
+        // Strategy 1: Public Data API
+        info = DetectViaDataApi();
+        if (info.Type != PedestalType.None)
+        {
+            Plugin.Logger.LogInfo($"DetectPedestalInfo: Data API succeeded - Type={info.Type}");
             return info;
         }
 
+        // Strategy 2: Reflection on PedestalState._pedestalTemplate
+        info = DetectViaPedestalStateReflection();
+        if (info.Type != PedestalType.None)
+        {
+            Plugin.Logger.LogInfo($"DetectPedestalInfo: PedestalState reflection succeeded - Type={info.Type}");
+            return info;
+        }
+
+        Plugin.Logger.LogWarning("DetectPedestalInfo: Both detection strategies failed");
+        return info;
+    }
+
+    /// <summary>
+    /// Detects pedestal type via Data.GetStatic().GetCardById(CurrentEncounterId).
+    /// </summary>
+    private static PedestalInfo DetectViaDataApi()
+    {
+        var info = new PedestalInfo();
+
         try
         {
-            // Get encounter ID - this is the card ID the game uses to load the pedestal template
             var encounterId = Data.CurrentEncounterId;
             if (encounterId == null || encounterId.Value == Guid.Empty)
             {
-                Plugin.Logger.LogWarning("GetCurrentPedestalInfo: CurrentEncounterId is null/empty");
+                Plugin.Logger.LogWarning("DetectViaDataApi: CurrentEncounterId is null/empty");
                 return info;
             }
 
-            // Data.GetStatic() is synchronous (returns Task.FromResult), safe to access .Result
             var staticData = Data.GetStatic().Result;
             if (staticData == null)
             {
-                Plugin.Logger.LogWarning("GetCurrentPedestalInfo: static data manager is null");
+                Plugin.Logger.LogWarning("DetectViaDataApi: static data manager is null");
                 return info;
             }
 
-            // Get the encounter card template by ID (same as PedestalState.OnEnter does)
             var encounterCard = staticData.GetCardById(encounterId.Value);
             if (encounterCard == null)
             {
-                Plugin.Logger.LogWarning("GetCurrentPedestalInfo: encounter card not found");
+                Plugin.Logger.LogWarning("DetectViaDataApi: encounter card not found");
                 return info;
             }
 
-            // Cast to pedestal type - direct type check, no string matching
             var pedestal = encounterCard as TCardEncounterPedestal;
             if (pedestal == null)
             {
-                Plugin.Logger.LogWarning($"GetCurrentPedestalInfo: encounter card is {encounterCard.GetType().Name}, not TCardEncounterPedestal");
+                Plugin.Logger.LogWarning($"DetectViaDataApi: encounter card is {encounterCard.GetType().Name}, not TCardEncounterPedestal");
                 return info;
             }
 
-            // Access Behavior directly - public property, no reflection needed
-            var behavior = pedestal.Behavior;
-            if (behavior == null)
-            {
-                Plugin.Logger.LogWarning("GetCurrentPedestalInfo: Behavior is null");
-                return info;
-            }
-
-            // Use pattern matching on concrete types instead of string matching
-            if (behavior is TPedestalBehaviorUpgrade upgradeBehavior)
-            {
-                info.Type = PedestalType.Upgrade;
-                info.TargetTier = upgradeBehavior.TargetTier;
-            }
-            else if (behavior is TPedestalBehaviorEnchantRandom)
-            {
-                info.Type = PedestalType.EnchantRandom;
-                info.EnchantmentName = "Random";
-            }
-            else if (behavior is TPedestalBehaviorEnchant enchantBehavior)
-            {
-                info.Type = PedestalType.Enchant;
-                info.EnchantmentName = enchantBehavior.Enchantment.ToString();
-            }
-
-            Plugin.Logger.LogInfo($"GetCurrentPedestalInfo: Type={info.Type}, Enchant={info.EnchantmentName}, TargetTier={info.TargetTier}");
+            ExtractBehaviorInfo(pedestal.Behavior, info);
         }
         catch (Exception ex)
         {
-            Plugin.Logger.LogError($"GetCurrentPedestalInfo error: {ex}");
+            Plugin.Logger.LogError($"DetectViaDataApi error: {ex.Message}");
         }
 
         return info;
+    }
+
+    /// <summary>
+    /// Fallback: Detects pedestal type via reflection on AppState.CurrentState (PedestalState._pedestalTemplate).
+    /// </summary>
+    private static PedestalInfo DetectViaPedestalStateReflection()
+    {
+        var info = new PedestalInfo();
+
+        try
+        {
+            var currentState = AppState.CurrentState;
+            if (currentState == null)
+            {
+                Plugin.Logger.LogWarning("DetectViaPedestalStateReflection: AppState.CurrentState is null");
+                return info;
+            }
+
+            // Check if currentState is PedestalState
+            var stateType = currentState.GetType();
+            if (!stateType.Name.Contains("Pedestal"))
+            {
+                Plugin.Logger.LogWarning($"DetectViaPedestalStateReflection: CurrentState is {stateType.Name}, not PedestalState");
+                return info;
+            }
+
+            // Access _pedestalTemplate private field
+            var templateField = stateType.GetField("_pedestalTemplate",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            if (templateField == null)
+            {
+                Plugin.Logger.LogWarning("DetectViaPedestalStateReflection: _pedestalTemplate field not found");
+                return info;
+            }
+
+            var pedestal = templateField.GetValue(currentState) as TCardEncounterPedestal;
+            if (pedestal == null)
+            {
+                Plugin.Logger.LogWarning("DetectViaPedestalStateReflection: _pedestalTemplate is null or wrong type");
+                return info;
+            }
+
+            ExtractBehaviorInfo(pedestal.Behavior, info);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogError($"DetectViaPedestalStateReflection error: {ex.Message}");
+        }
+
+        return info;
+    }
+
+    /// <summary>
+    /// Extracts pedestal type info from a behavior object into PedestalInfo.
+    /// </summary>
+    private static void ExtractBehaviorInfo(object behavior, PedestalInfo info)
+    {
+        if (behavior == null)
+        {
+            Plugin.Logger.LogWarning("ExtractBehaviorInfo: Behavior is null");
+            return;
+        }
+
+        if (behavior is TPedestalBehaviorUpgrade upgradeBehavior)
+        {
+            info.Type = PedestalType.Upgrade;
+            info.TargetTier = upgradeBehavior.TargetTier;
+        }
+        else if (behavior is TPedestalBehaviorEnchantRandom)
+        {
+            info.Type = PedestalType.EnchantRandom;
+            info.EnchantmentName = "Random";
+        }
+        else if (behavior is TPedestalBehaviorEnchant enchantBehavior)
+        {
+            info.Type = PedestalType.Enchant;
+            info.EnchantmentName = enchantBehavior.Enchantment.ToString();
+        }
     }
 
     /// <summary>
@@ -1067,8 +1184,56 @@ public static class ActionHelper
                 return EnchantItem(card, pedestalInfo);
 
             default:
-                // Fallback to upgrade behavior
-                return UpgradeItem(card);
+                // Detection failed - use CommitToPedestal directly and let the game decide
+                Plugin.Logger.LogWarning("UseCurrentPedestal: pedestal type unknown, committing directly");
+                return CommitToPedestalDirect(card);
+        }
+    }
+
+    /// <summary>
+    /// Commits an item to the pedestal without knowing the type.
+    /// Used as fallback when pedestal detection fails - lets the game handle the logic.
+    /// </summary>
+    private static bool CommitToPedestalDirect(Card card)
+    {
+        var state = AppState.CurrentState;
+        if (state == null)
+        {
+            TolkWrapper.Speak("Cannot use pedestal now");
+            return false;
+        }
+
+        if (!state.CanHandleOperation(StateOps.CommitToPedestal))
+        {
+            TolkWrapper.Speak("Cannot use this item at pedestal");
+            return false;
+        }
+
+        try
+        {
+            string name = ItemReader.GetCardName(card);
+
+            var controller = Data.CardAndSkillLookup?.GetCardController(card) as ItemController;
+            if (controller != null)
+            {
+                TriggerItemDroppedOnPedestalEvent(controller);
+            }
+
+            if (Singleton<BoardManager>.Instance != null)
+            {
+                Singleton<BoardManager>.Instance.MarkUpgradeOrFuseOrEnchantProcessing();
+            }
+
+            state.CommitToPedestalCommand(card.InstanceId);
+            TolkWrapper.Speak($"Using {name} at pedestal");
+            Plugin.Logger.LogInfo($"CommitToPedestalDirect: {name}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogError($"CommitToPedestalDirect failed: {ex.Message}");
+            TolkWrapper.Speak("Pedestal action failed");
+            return false;
         }
     }
 

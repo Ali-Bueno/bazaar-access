@@ -707,18 +707,38 @@ public class GameplayScreen : IAccessibleScreen
         // At pedestal, show Upgrade/Enchant first (primary action)
         if (currentState == ERunState.Pedestal)
         {
-            if (ActionHelper.IsEnchantPedestal())
+            var pedestalInfo = ActionHelper.GetCurrentPedestalInfo();
+            if (pedestalInfo.Type == ActionHelper.PedestalType.Enchant ||
+                pedestalInfo.Type == ActionHelper.PedestalType.EnchantRandom)
             {
-                // For enchant pedestals, check if item is already enchanted
+                // Enchant pedestal - no tier restriction, only check if already enchanted
                 var itemCardCheck = card as ItemCard;
                 if (itemCardCheck == null || !itemCardCheck.Enchantment.HasValue)
                 {
                     _actionOptions.Add(ActionOption.Enchant);
                 }
             }
-            else if (ActionHelper.CanUpgrade() && card.Tier != ETier.Legendary)
+            else if (pedestalInfo.Type == ActionHelper.PedestalType.Upgrade)
             {
-                _actionOptions.Add(ActionOption.Upgrade);
+                // Upgrade pedestal - block only Legendary tier
+                if (card.Tier != ETier.Legendary)
+                {
+                    _actionOptions.Add(ActionOption.Upgrade);
+                }
+            }
+            else
+            {
+                // Detection failed - offer generic pedestal action based on card state
+                // Try enchant if item isn't enchanted, otherwise try upgrade
+                var itemCardCheck = card as ItemCard;
+                if (itemCardCheck != null && !itemCardCheck.Enchantment.HasValue)
+                {
+                    _actionOptions.Add(ActionOption.Enchant);
+                }
+                else if (card.Tier != ETier.Legendary)
+                {
+                    _actionOptions.Add(ActionOption.Upgrade);
+                }
             }
         }
 
@@ -1210,12 +1230,27 @@ public class GameplayScreen : IAccessibleScreen
             return;
         }
 
-        // Route through confirmation dialog with explicit enchant detection
+        // Route through confirmation dialog with explicit pedestal type detection
         var currentState = StateChangePatch.GetCurrentRunState();
         if (currentState == ERunState.Pedestal)
         {
-            bool isEnchant = ActionHelper.IsEnchantPedestal();
-            HandleUpgradeConfirm(card, isEnchant: isEnchant);
+            var pedestalInfo = ActionHelper.GetCurrentPedestalInfo();
+            if (pedestalInfo.Type == ActionHelper.PedestalType.Enchant ||
+                pedestalInfo.Type == ActionHelper.PedestalType.EnchantRandom)
+            {
+                HandleUpgradeConfirm(card, isEnchant: true);
+            }
+            else if (pedestalInfo.Type == ActionHelper.PedestalType.Upgrade)
+            {
+                HandleUpgradeConfirm(card, isEnchant: false);
+            }
+            else
+            {
+                // Detection failed - guess based on card state
+                var itemCard = card as ItemCard;
+                bool guessEnchant = itemCard != null && !itemCard.Enchantment.HasValue;
+                HandleUpgradeConfirm(card, isEnchant: guessEnchant);
+            }
         }
         else
         {
@@ -1565,11 +1600,12 @@ public class GameplayScreen : IAccessibleScreen
         var itemCard = card as ItemCard;
         if (itemCard == null) { TolkWrapper.Speak("Cannot sell this"); return; }
 
-        // Check if we're in Pedestal state - offer upgrade instead of sell
+        // Check if we're in Pedestal state - offer pedestal action instead of sell
         var currentState = StateChangePatch.GetCurrentRunState();
         if (currentState == ERunState.Pedestal && ActionHelper.CanUpgrade())
         {
-            HandleUpgradeConfirm(card);
+            bool isEnchant = ActionHelper.IsEnchantPedestal();
+            HandleUpgradeConfirm(card, isEnchant: isEnchant);
             return;
         }
 

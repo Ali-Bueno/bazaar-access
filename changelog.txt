@@ -2,6 +2,22 @@
 
 ---
 
+## February 26, 2026 (v1.7.4)
+
+### Bug Fixes
+- Fixed Legendary items being unable to receive enchantments at enchant pedestals
+  - The game has no tier restriction on enchanting - any tier (including Legendary) can be enchanted
+  - Our code incorrectly blocked Legendary items when pedestal detection failed, falling through to upgrade logic
+- Fixed enchant previews showing upgrade tier info instead of enchantment effects
+  - All code paths (action menu, U shortcut, sell redirect) now correctly identify enchant vs upgrade
+- Overhauled pedestal detection with cache + dual-strategy system
+  - Pedestal type is now detected ONCE when entering pedestal state and cached for the entire visit
+  - Primary detection: game's public Data API
+  - Fallback detection: reflection on PedestalState object
+  - When both fail: safe fallback that lets the game handle the action directly
+
+---
+
 ## February 21, 2026 (v1.7.3)
 
 ### Bug Fixes

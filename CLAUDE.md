@@ -634,6 +634,8 @@ Added 7 new action types to `IsRelevantAction()` and both announcement modes:
   - `Data.GetStatic()` is synchronous (`Task.FromResult`), safe to call `.Result`
   - Direct `as TCardEncounterPedestal` cast and `is TPedestalBehaviorEnchant` pattern matching
   - No private field access, no string matching on type names
+- **v1.7.4 overhaul**: Added caching + dual-strategy detection to eliminate remaining failures
+  - See "Pedestal Detection Cache System" section below for details
 
 ### Upgrade Preview Overhaul (`Gameplay/ActionHelper.cs`)
 - `GetUpgradePreview()` now shows **full post-upgrade stats** instead of diffs
@@ -701,3 +703,44 @@ Data.CardAndSkillLookup.GetCardController(Card cardInstance)
 - `opponentItemSockets` is a UI-only cache for visual rendering
 - Use `Data.GetCards<Card>(ECombatantId.Opponent, EInventorySection.Hand)` for data access
 - Player board (`playerItemSockets`) still works because player items persist across states
+
+---
+
+## Pedestal Detection Cache System (Feb 26, 2026)
+
+### Root Cause of Persistent Bugs
+- v1.7.3's public API detection (`Data.GetStatic().GetCardById()`) still failed intermittently
+- When `GetCurrentPedestalInfo()` returned `PedestalType.None`, ALL code paths defaulted to upgrade behavior
+- **Bug 1**: Legendary items at enchant pedestals got "No actions available" (upgrade path blocks Legendary)
+- **Bug 2**: Enchant preview showed "upgrade from X to Y" instead of enchant info
+- Multiple independent call sites each called `GetCurrentPedestalInfo()` separately - any failure broke that path
+
+### Architecture: Cache + Dual Strategy (`ActionHelper.cs`)
+- **`_cachedPedestalInfo`**: Static field, set ONCE per pedestal visit
+- **`CachePedestalInfo()`**: Called from `StateChangePatch` when entering Pedestal state (0.3s delay for `PedestalState.OnEnter()`)
+- **`ClearPedestalCache()`**: Called when leaving Pedestal state
+- **`GetCurrentPedestalInfo()`**: Returns cache if available, re-detects on cache miss
+- **`DetectPedestalInfo()`**: Two-strategy detection:
+  1. `DetectViaDataApi()` - Public API: `Data.GetStatic().Result.GetCardById(Data.CurrentEncounterId)`
+  2. `DetectViaPedestalStateReflection()` - Fallback: reflection on `AppState.CurrentState._pedestalTemplate`
+- **`ExtractBehaviorInfo()`**: Shared helper for pattern matching on behavior types
+
+### Fallback When Both Strategies Fail
+- `UseCurrentPedestal()` → `CommitToPedestalDirect()`: Sends `CommitToPedestalCommand` without predicting type
+- `EnterActionMode()`: Offers enchant if item isn't enchanted, otherwise upgrade
+- `HandleUpgrade()` (U shortcut): Guesses enchant if item isn't enchanted
+
+### Tier Restrictions (from game code analysis)
+- **Enchant**: NO tier restriction. Any tier (including Legendary) can be enchanted
+- **Upgrade**: Blocks Diamond and Legendary tiers
+- Game's `TCardConditionalEnchantmentEligible` only checks if item template supports the enchantment type
+- Game's `CanUpgrade` conditional excludes `{Diamond}` via `TCardConditionalTier.IsNot`
+
+### All Pedestal Code Paths (must ALL use cached info)
+1. `EnterActionMode()` - Action menu option building
+2. `GetActionOptionText()` - Display text for options
+3. `HandleUpgrade()` - U shortcut (direct, outside action menu)
+4. `HandleUpgradeConfirm()` - Confirmation dialog (always receives explicit `isEnchant`)
+5. `HandleSellConfirm()` - Sell redirect at pedestals (passes explicit `isEnchant`)
+6. `ActionHelper.UpgradeItem()` - Upgrade execution
+7. `ActionHelper.UseCurrentPedestal()` - Routes to UpgradeItem/EnchantItem/CommitToPedestalDirect

@@ -362,6 +362,17 @@ public static class StateChangePatch
                 _lastHour = 0;
             }
 
+            // Cache/clear pedestal info on state transitions
+            if (newState == ERunState.Pedestal && stateActuallyChanged)
+            {
+                // Delay slightly to ensure PedestalState.OnEnter() has run and set up the template
+                Plugin.Instance.StartCoroutine(DelayedCachePedestalInfo());
+            }
+            else if (newState != ERunState.Pedestal)
+            {
+                ActionHelper.ClearPedestalCache();
+            }
+
             // Check for day/hour changes after a delay (game data updates after state change)
             Plugin.Instance.StartCoroutine(DelayedCheckDayHourChanges());
 
@@ -479,6 +490,16 @@ public static class StateChangePatch
 
         var screen = AccessibilityMgr.GetCurrentScreen() as GameplayScreen;
         screen?.OnCombatStateChanged(true);
+    }
+
+    private static System.Collections.IEnumerator DelayedCachePedestalInfo()
+    {
+        // Wait for PedestalState.OnEnter() to finish setting up the template
+        yield return new WaitForSeconds(0.3f);
+        if (GetCurrentRunState() == ERunState.Pedestal)
+        {
+            ActionHelper.CachePedestalInfo();
+        }
     }
 
     private static System.Collections.IEnumerator DelayedSetCombatBoardReady()
