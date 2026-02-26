@@ -704,12 +704,24 @@ public static class StateChangePatch
             ERunState.PVPCombat => "PvP Combat",
             ERunState.Loot => "Loot",
             ERunState.LevelUp => "Level up",
-            ERunState.Pedestal => "Upgrade",
+            ERunState.Pedestal => GetPedestalDescription(),
             ERunState.EndRunVictory => "Victory",
             ERunState.EndRunDefeat => "Defeat",
             ERunState.NewRun => "Starting run",
             ERunState.Shutdown => "Game ending",
             _ => state.ToString()
+        };
+    }
+
+    private static string GetPedestalDescription()
+    {
+        var info = Gameplay.PedestalManager.GetCurrentPedestalInfo();
+        return info.Type switch
+        {
+            Gameplay.PedestalManager.PedestalType.Enchant => "Enchant altar",
+            Gameplay.PedestalManager.PedestalType.EnchantRandom => "Enchant altar",
+            Gameplay.PedestalManager.PedestalType.Upgrade => "Upgrade altar",
+            _ => "Altar"
         };
     }
 

@@ -745,8 +745,18 @@ Data.CardAndSkillLookup.GetCardController(Card cardInstance)
 
 ### Fallback When Both Strategies Fail
 - `UseCurrentPedestal()` → `CommitToPedestalDirect()`: Sends `CommitToPedestalCommand` without predicting type
-- `EnterActionMode()`: Offers enchant if item isn't enchanted, otherwise upgrade
-- `HandleUpgrade()` (U shortcut): Guesses enchant if item isn't enchanted
+- `EnterActionMode()`: Shows generic "Use pedestal" option (`ActionOption.UsePedestal`) instead of guessing
+- `HandleUpgrade()` (U shortcut): Calls `UseCurrentPedestal()` directly instead of guessing
+
+### Enchant-First Detection Order (v1.8.1)
+- `ExtractBehaviorInfo()` checks `TPedestalBehaviorEnchant` BEFORE `TPedestalBehaviorUpgrade`
+- This prevents false upgrade detection when `Behavior` defaults to `TPedestalBehaviorUpgrade` (the default initializer in `TCardEncounterPedestal`)
+- Added type-name fallback: if all `is` checks fail, checks `GetType().Name.Contains("Enchant"/"Upgrade")`
+
+### Pedestal Type Announcement (v1.8.1)
+- `GameplayNavigator.AnnounceState()`: Says "Enchant altar, [name]" / "Upgrade altar" / "Altar" (was always "Upgrade")
+- `StateChangePatch.GetStateDescription()`: Also returns dynamic pedestal description
+- User immediately knows what kind of pedestal they're at upon entering
 
 ### Tier Restrictions (from game code analysis)
 - **Enchant**: NO tier restriction. Any tier (including Legendary) can be enchanted

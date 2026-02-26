@@ -321,6 +321,7 @@ public class GameplayScreen : IAccessibleScreen
         if (currentState == ERunState.Pedestal)
         {
             var pedestalInfo = PedestalManager.GetCurrentPedestalInfo();
+            Plugin.Logger.LogInfo($"HandleUpgrade: detected pedestal type={pedestalInfo.Type}");
             if (pedestalInfo.Type == PedestalManager.PedestalType.Enchant ||
                 pedestalInfo.Type == PedestalManager.PedestalType.EnchantRandom)
             {
@@ -332,10 +333,12 @@ public class GameplayScreen : IAccessibleScreen
             }
             else
             {
-                // Detection failed - guess based on card state
-                var itemCard = card as ItemCard;
-                bool guessEnchant = itemCard != null && !itemCard.Enchantment.HasValue;
-                HandleUpgradeConfirm(card, isEnchant: guessEnchant);
+                // Detection failed - use the pedestal directly (game handles the logic)
+                Plugin.Logger.LogWarning("HandleUpgrade: detection failed, using pedestal directly");
+                if (PedestalManager.UseCurrentPedestal(card))
+                {
+                    Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
+                }
             }
         }
         else

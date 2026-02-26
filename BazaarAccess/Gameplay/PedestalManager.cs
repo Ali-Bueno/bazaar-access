@@ -289,13 +289,16 @@ public static class PedestalManager
         try
         {
             var encounterId = Data.CurrentEncounterId;
+            Plugin.Logger.LogInfo($"DetectViaDataApi: CurrentEncounterId={encounterId?.ToString() ?? "null"}");
             if (encounterId == null || encounterId.Value == Guid.Empty)
             {
                 Plugin.Logger.LogWarning("DetectViaDataApi: CurrentEncounterId is null/empty");
                 return info;
             }
 
-            var staticData = Data.GetStatic().Result;
+            var staticTask = Data.GetStatic();
+            Plugin.Logger.LogInfo($"DetectViaDataApi: GetStatic task status={staticTask.Status}");
+            var staticData = staticTask.Result;
             if (staticData == null)
             {
                 Plugin.Logger.LogWarning("DetectViaDataApi: static data manager is null");
@@ -305,9 +308,11 @@ public static class PedestalManager
             var encounterCard = staticData.GetCardById(encounterId.Value);
             if (encounterCard == null)
             {
-                Plugin.Logger.LogWarning("DetectViaDataApi: encounter card not found");
+                Plugin.Logger.LogWarning($"DetectViaDataApi: encounter card not found for id {encounterId.Value}");
                 return info;
             }
+
+            Plugin.Logger.LogInfo($"DetectViaDataApi: encounter card type={encounterCard.GetType().FullName}");
 
             var pedestal = encounterCard as TCardEncounterPedestal;
             if (pedestal == null)
@@ -316,11 +321,14 @@ public static class PedestalManager
                 return info;
             }
 
-            ExtractBehaviorInfo(pedestal.Behavior, info);
+            var behavior = pedestal.Behavior;
+            Plugin.Logger.LogInfo($"DetectViaDataApi: Behavior type={behavior?.GetType().FullName ?? "null"}");
+            ExtractBehaviorInfo(behavior, info);
+            Plugin.Logger.LogInfo($"DetectViaDataApi: result Type={info.Type}, Enchant={info.EnchantmentName}");
         }
         catch (Exception ex)
         {
-            Plugin.Logger.LogError($"DetectViaDataApi error: {ex.Message}");
+            Plugin.Logger.LogError($"DetectViaDataApi error: {ex.Message}\n{ex.StackTrace}");
         }
 
         return info;
@@ -387,20 +395,40 @@ public static class PedestalManager
             return;
         }
 
-        if (behavior is TPedestalBehaviorUpgrade upgradeBehavior)
+        Plugin.Logger.LogInfo($"ExtractBehaviorInfo: runtime type={behavior.GetType().FullName}, " +
+            $"is Upgrade={behavior is TPedestalBehaviorUpgrade}, " +
+            $"is Enchant={behavior is TPedestalBehaviorEnchant}, " +
+            $"is EnchantRandom={behavior is TPedestalBehaviorEnchantRandom}");
+
+        if (behavior is TPedestalBehaviorEnchant enchantBehavior)
         {
-            info.Type = PedestalType.Upgrade;
-            info.TargetTier = upgradeBehavior.TargetTier;
+            info.Type = PedestalType.Enchant;
+            info.EnchantmentName = enchantBehavior.Enchantment.ToString();
         }
         else if (behavior is TPedestalBehaviorEnchantRandom)
         {
             info.Type = PedestalType.EnchantRandom;
             info.EnchantmentName = "Random";
         }
-        else if (behavior is TPedestalBehaviorEnchant enchantBehavior)
+        else if (behavior is TPedestalBehaviorUpgrade upgradeBehavior)
         {
-            info.Type = PedestalType.Enchant;
-            info.EnchantmentName = enchantBehavior.Enchantment.ToString();
+            info.Type = PedestalType.Upgrade;
+            info.TargetTier = upgradeBehavior.TargetTier;
+        }
+        else
+        {
+            // Unknown behavior type - try to detect via type name as last resort
+            string typeName = behavior.GetType().Name;
+            Plugin.Logger.LogWarning($"ExtractBehaviorInfo: Unknown behavior type: {typeName}");
+            if (typeName.Contains("Enchant"))
+            {
+                info.Type = PedestalType.EnchantRandom;
+                info.EnchantmentName = "unknown";
+            }
+            else if (typeName.Contains("Upgrade"))
+            {
+                info.Type = PedestalType.Upgrade;
+            }
         }
     }
 

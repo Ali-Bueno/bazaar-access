@@ -2,6 +2,19 @@
 
 ---
 
+## February 26, 2026 (v1.8.1)
+
+### Bug Fixes
+- Fixed enchant pedestals incorrectly showing upgrade confirmation instead of enchant
+  - Entering a pedestal now announces the correct type: "Enchant altar, [name]" or "Upgrade altar"
+  - Detection now checks for enchant behavior BEFORE upgrade (prevents false matches from default initializer)
+  - When detection fails: U key sends command directly to game instead of guessing wrong
+  - When detection fails: Action menu shows "Use pedestal" instead of incorrectly guessing upgrade/enchant
+  - Added type-name fallback detection for unrecognized behavior types
+  - Added detailed logging at every detection step for future debugging
+
+---
+
 ## February 26, 2026 (v1.8.0)
 
 ### Code Refactoring

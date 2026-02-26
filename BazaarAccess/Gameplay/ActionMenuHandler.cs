@@ -20,6 +20,7 @@ public enum ActionOption
     Sell,
     Upgrade,
     Enchant,
+    UsePedestal,
     MoveToStash,
     MoveToBoard
 }
@@ -102,17 +103,9 @@ public class ActionMenuHandler
             }
             else
             {
-                // Detection failed - offer generic pedestal action based on card state
-                // Try enchant if item isn't enchanted, otherwise try upgrade
-                var itemCardCheck = card as ItemCard;
-                if (itemCardCheck != null && !itemCardCheck.Enchantment.HasValue)
-                {
-                    _actionOptions.Add(ActionOption.Enchant);
-                }
-                else if (card.Tier != ETier.Legendary)
-                {
-                    _actionOptions.Add(ActionOption.Upgrade);
-                }
+                // Detection failed - offer generic "use pedestal" option (game handles logic)
+                Plugin.Logger.LogWarning("ActionMenuHandler: pedestal detection failed, offering generic option");
+                _actionOptions.Add(ActionOption.UsePedestal);
             }
         }
 
@@ -210,7 +203,7 @@ public class ActionMenuHandler
                 }
                 break;
 
-            // Shortcut: U = Upgrade/Enchant
+            // Shortcut: U = Upgrade/Enchant/UsePedestal
             case AccessibleKey.Upgrade:
                 if (_actionOptions.Contains(ActionOption.Upgrade))
                 {
@@ -219,6 +212,10 @@ public class ActionMenuHandler
                 else if (_actionOptions.Contains(ActionOption.Enchant))
                 {
                     ExecuteActionOption(ActionOption.Enchant);
+                }
+                else if (_actionOptions.Contains(ActionOption.UsePedestal))
+                {
+                    ExecuteActionOption(ActionOption.UsePedestal);
                 }
                 else
                 {
@@ -363,6 +360,9 @@ public class ActionMenuHandler
                 string enchantName = pedestalInfo.EnchantmentName ?? "random";
                 return $"Enchant with {enchantName} (U)";
 
+            case ActionOption.UsePedestal:
+                return "Use pedestal (U)";
+
             case ActionOption.MoveToStash:
                 return "Move to stash (M)";
 
@@ -421,6 +421,16 @@ public class ActionMenuHandler
                 if (itemCard != null)
                 {
                     _onUpgradeConfirm(itemCard, true);
+                }
+                break;
+
+            case ActionOption.UsePedestal:
+                if (itemCard != null)
+                {
+                    if (PedestalManager.UseCurrentPedestal(itemCard))
+                    {
+                        _onRefreshAndAnnounce();
+                    }
                 }
                 break;
 

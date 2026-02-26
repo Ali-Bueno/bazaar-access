@@ -834,7 +834,21 @@ public class GameplayNavigator
                     : $"Level up to {level}!";
                 break;
             case ERunState.Pedestal:
-                announcement = "Upgrade";
+                var pedInfo = PedestalManager.GetCurrentPedestalInfo();
+                if (pedInfo.Type == PedestalManager.PedestalType.Enchant ||
+                    pedInfo.Type == PedestalManager.PedestalType.EnchantRandom)
+                {
+                    string enchName = pedInfo.EnchantmentName ?? "random";
+                    announcement = $"Enchant altar, {enchName}";
+                }
+                else if (pedInfo.Type == PedestalManager.PedestalType.Upgrade)
+                {
+                    announcement = "Upgrade altar";
+                }
+                else
+                {
+                    announcement = "Altar";
+                }
                 break;
             case ERunState.Combat:
                 announcement = "Combat";
