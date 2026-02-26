@@ -2,6 +2,36 @@
 
 ---
 
+## February 26, 2026 (v1.8.0)
+
+### Code Refactoring
+Major codebase refactoring for maintainability and modularity. No behavior changes.
+
+- **GameplayNavigator** (3,357 → 1,775 lines): Extracted 5 sub-navigators
+  - `Navigation/HeroNavigator.cs` - Hero stats/skills navigation
+  - `Navigation/EnemyNavigator.cs` - Enemy board/stats/skills navigation
+  - `Navigation/RecapNavigator.cs` - Post-combat recap mode navigation
+  - `Navigation/DetailReader.cs` - Line-by-line detail reading
+  - `Navigation/VisualSelector.cs` - Visual selection feedback
+- **GameplayScreen** (2,257 → 1,342 lines): Extracted 3 input handlers
+  - `ActionMenuHandler.cs` - Action mode overlay (sell/upgrade/move/reorder)
+  - `CombatInputHandler.cs` - Combat-mode input routing
+  - `ReplayInputHandler.cs` - Replay/recap input routing
+- **CombatDescriber** (1,442 → 728 lines): Extracted 3 sub-components
+  - `Combat/HealthTracker.cs` - Health monitoring and threshold alerts
+  - `Combat/CardStatsTracker.cs` - Per-card combat statistics
+  - `Combat/EffectFormatter.cs` - Combat effect text formatting
+- **ActionHelper** (1,305 → 421 lines): Extracted pedestal code
+  - `PedestalManager.cs` - Pedestal detection, caching, upgrade/enchant actions
+- **StateChangePatch** (997 → 717 lines): Extracted event handler groups
+  - `CombatEventHandler.cs` - Combat lifecycle events
+  - `CardEventHandler.cs` - Card transaction/modification events
+  - `ErrorEventHandler.cs` - Error/rejection events
+- **Shared utilities**: `TierHelper.cs` (single source of truth for tier progression), `CoroutineHelper.cs` (safe coroutine management)
+- **ItemReader**: Eliminated duplicated cooldown (4→1), size (2→1), and stat block (3→1) code
+
+---
+
 ## February 26, 2026 (v1.7.4)
 
 ### Bug Fixes

@@ -644,16 +644,10 @@ public static class ItemReader
         }
 
         // Cooldown (convertir de ms a segundos)
-        // Try Cooldown first, fallback to CooldownMax (base cooldown shown in UI)
-        var cooldown = card.GetAttributeValue(ECardAttributeType.Cooldown);
-        if (!cooldown.HasValue || cooldown.Value <= 0)
+        float? cdSeconds = GetCooldownSeconds(card);
+        if (cdSeconds.HasValue)
         {
-            cooldown = card.GetAttributeValue(ECardAttributeType.CooldownMax);
-        }
-        if (cooldown.HasValue && cooldown.Value > 0)
-        {
-            float seconds = cooldown.Value / 1000f;
-            sb.Append($", Cooldown {seconds:F1}s");
+            sb.Append($", Cooldown {cdSeconds.Value:F1}s");
         }
 
         // Stats de combate
@@ -989,142 +983,15 @@ public static class ItemReader
     /// </summary>
     public static List<string> GetDetailLines(Card card)
     {
-        var lines = new List<string>();
-        if (card == null) return lines;
+        if (card == null) return new List<string>();
 
-        // Para encuentros PvP, devolver info detallada del oponente
+        // PvP encounters have their own specialized detail format
         if (card.Type == ECardType.PvpEncounter)
         {
             return GetPvpEncounterDetailLines(card);
         }
 
-        // Nombre
-        lines.Add(GetCardName(card));
-
-        // Tier
-        lines.Add(GetTierName(card));
-
-        // Quest conditions and progress
-        if (IsQuestItem(card))
-        {
-            var questLines = GetQuestLines(card);
-            if (questLines.Count > 0)
-            {
-                lines.AddRange(questLines);
-            }
-            else
-            {
-                lines.Add("Quest item");
-            }
-        }
-
-        // Tags/Tipos (Aquatic, Friend, Weapon, etc.)
-        string tags = GetTags(card);
-        if (!string.IsNullOrEmpty(tags))
-        {
-            lines.Add(tags);
-        }
-
-        // Estado de temperatura (Heated/Chilled para Jules)
-        string tempState = GetTemperatureState(card);
-        if (!string.IsNullOrEmpty(tempState))
-        {
-            lines.Add($"State: {tempState}");
-        }
-
-        // Enchantment status
-        if (card is ItemCard enchantedItem && enchantedItem.Enchantment.HasValue)
-        {
-            string enchantName = GetEnchantmentName(enchantedItem.Enchantment.Value);
-            lines.Add($"Enchanted: {enchantName}");
-        }
-
-        // Tamaño con nombre descriptivo
-        var template = card.Template;
-        if (template != null)
-        {
-            int size = (int)template.Size;
-            string sizeName = template.Size switch
-            {
-                ECardSize.Small => "Small",
-                ECardSize.Medium => "Medium",
-                ECardSize.Large => "Large",
-                _ => ""
-            };
-            lines.Add($"Size: {size} slots ({sizeName})");
-        }
-
-        // Precio de compra
-        int buyPrice = GetBuyPrice(card);
-        if (buyPrice > 0)
-        {
-            lines.Add($"Buy {buyPrice} gold");
-        }
-
-        // Precio de venta
-        int sellPrice = GetSellPrice(card);
-        if (sellPrice > 0)
-        {
-            lines.Add($"Sell {sellPrice} gold");
-        }
-
-        // Cooldown
-        // Try Cooldown first, fallback to CooldownMax (base cooldown shown in UI)
-        var cooldown = card.GetAttributeValue(ECardAttributeType.Cooldown);
-        if (!cooldown.HasValue || cooldown.Value <= 0)
-        {
-            cooldown = card.GetAttributeValue(ECardAttributeType.CooldownMax);
-        }
-        if (cooldown.HasValue && cooldown.Value > 0)
-        {
-            float seconds = cooldown.Value / 1000f;
-            lines.Add($"Cooldown {seconds:F1} seconds");
-        }
-
-        // Stats de combate
-        AddStatLine(lines, card, ECardAttributeType.Ammo, "Ammo");
-        AddStatLine(lines, card, ECardAttributeType.AmmoMax, "Max Ammo");
-        AddStatLine(lines, card, ECardAttributeType.DamageAmount, "Damage");
-        AddStatLine(lines, card, ECardAttributeType.HealAmount, "Heal");
-        AddStatLine(lines, card, ECardAttributeType.ShieldApplyAmount, "Shield");
-        AddStatLine(lines, card, ECardAttributeType.PoisonApplyAmount, "Poison");
-        AddStatLine(lines, card, ECardAttributeType.BurnApplyAmount, "Burn");
-        AddStatLine(lines, card, ECardAttributeType.RegenApplyAmount, "Regeneration");
-
-        // Stats de velocidad
-        AddStatLine(lines, card, ECardAttributeType.HasteAmount, "Haste");
-        AddStatLine(lines, card, ECardAttributeType.SlowAmount, "Slow");
-        AddStatLine(lines, card, ECardAttributeType.FreezeAmount, "Freeze");
-        AddStatLine(lines, card, ECardAttributeType.ChargeAmount, "Charge");
-
-        // Otros stats
-        AddStatLine(lines, card, ECardAttributeType.CritChance, "Crit Chance");
-        AddStatLine(lines, card, ECardAttributeType.Lifesteal, "Lifesteal");
-        AddStatLine(lines, card, ECardAttributeType.Multicast, "Multicast");
-        AddStatLine(lines, card, ECardAttributeType.RepairTargets, "Repair Targets");
-
-        // Descripción básica (sin prefijo)
-        string desc = GetDescription(card);
-        if (!string.IsNullOrEmpty(desc))
-        {
-            lines.Add(desc);
-        }
-
-        // Tooltips de habilidades (sin prefijo)
-        string abilities = GetAbilityTooltips(card);
-        if (!string.IsNullOrEmpty(abilities))
-        {
-            lines.Add(abilities);
-        }
-
-        // Flavor text (sin prefijo)
-        string flavor = GetFlavorText(card);
-        if (!string.IsNullOrEmpty(flavor))
-        {
-            lines.Add(flavor);
-        }
-
-        return lines;
+        return BuildDetailLines(card, enemyOrder: false);
     }
 
     /// <summary>
@@ -1134,83 +1001,8 @@ public static class ItemReader
     /// </summary>
     public static List<string> GetEnemyDetailLines(Card card)
     {
-        var lines = new List<string>();
-        if (card == null) return lines;
-
-        // Name first
-        lines.Add(GetCardName(card));
-
-        // Description and abilities first - what the item does
-        string desc = GetDescription(card);
-        if (!string.IsNullOrEmpty(desc))
-        {
-            lines.Add(desc);
-        }
-
-        string abilities = GetAbilityTooltips(card);
-        if (!string.IsNullOrEmpty(abilities))
-        {
-            lines.Add(abilities);
-        }
-
-        // Cooldown
-        var cooldown = card.GetAttributeValue(ECardAttributeType.Cooldown);
-        if (!cooldown.HasValue || cooldown.Value <= 0)
-        {
-            cooldown = card.GetAttributeValue(ECardAttributeType.CooldownMax);
-        }
-        if (cooldown.HasValue && cooldown.Value > 0)
-        {
-            float seconds = cooldown.Value / 1000f;
-            lines.Add($"Cooldown {seconds:F1} seconds");
-        }
-
-        // Combat stats
-        AddStatLine(lines, card, ECardAttributeType.DamageAmount, "Damage");
-        AddStatLine(lines, card, ECardAttributeType.HealAmount, "Heal");
-        AddStatLine(lines, card, ECardAttributeType.ShieldApplyAmount, "Shield");
-        AddStatLine(lines, card, ECardAttributeType.PoisonApplyAmount, "Poison");
-        AddStatLine(lines, card, ECardAttributeType.BurnApplyAmount, "Burn");
-        AddStatLine(lines, card, ECardAttributeType.RegenApplyAmount, "Regeneration");
-
-        // Speed stats
-        AddStatLine(lines, card, ECardAttributeType.HasteAmount, "Haste");
-        AddStatLine(lines, card, ECardAttributeType.SlowAmount, "Slow");
-        AddStatLine(lines, card, ECardAttributeType.FreezeAmount, "Freeze");
-        AddStatLine(lines, card, ECardAttributeType.ChargeAmount, "Charge");
-
-        // Other combat stats
-        AddStatLine(lines, card, ECardAttributeType.Ammo, "Ammo");
-        AddStatLine(lines, card, ECardAttributeType.AmmoMax, "Max Ammo");
-        AddStatLine(lines, card, ECardAttributeType.CritChance, "Crit Chance");
-        AddStatLine(lines, card, ECardAttributeType.Lifesteal, "Lifesteal");
-        AddStatLine(lines, card, ECardAttributeType.Multicast, "Multicast");
-        AddStatLine(lines, card, ECardAttributeType.RepairTargets, "Repair Targets");
-
-        // Metadata at the end (less important for enemy analysis)
-        lines.Add(GetTierName(card));
-
-        string tags = GetTags(card);
-        if (!string.IsNullOrEmpty(tags))
-        {
-            lines.Add(tags);
-        }
-
-        var template = card.Template;
-        if (template != null)
-        {
-            int size = (int)template.Size;
-            string sizeName = template.Size switch
-            {
-                ECardSize.Small => "Small",
-                ECardSize.Medium => "Medium",
-                ECardSize.Large => "Large",
-                _ => ""
-            };
-            lines.Add($"Size: {size} slots ({sizeName})");
-        }
-
-        return lines;
+        if (card == null) return new List<string>();
+        return BuildDetailLines(card, enemyOrder: true);
     }
 
     /// <summary>
@@ -1225,15 +1017,10 @@ public static class ItemReader
         parts.Add(GetCardName(card));
 
         // Cooldown
-        var cooldown = card.GetAttributeValue(ECardAttributeType.Cooldown);
-        if (!cooldown.HasValue || cooldown.Value <= 0)
+        float? cdSeconds = GetCooldownSeconds(card);
+        if (cdSeconds.HasValue)
         {
-            cooldown = card.GetAttributeValue(ECardAttributeType.CooldownMax);
-        }
-        if (cooldown.HasValue && cooldown.Value > 0)
-        {
-            float seconds = cooldown.Value / 1000f;
-            parts.Add($"{seconds:F1}s");
+            parts.Add($"{cdSeconds.Value:F1}s");
         }
 
         // Key combat stat (just one primary stat for quick reading)
@@ -1272,6 +1059,239 @@ public static class ItemReader
         {
             lines.Add($"{label}: {value.Value}");
         }
+    }
+
+    /// <summary>
+    /// Pairs a card attribute type with its display label for stat reading.
+    /// </summary>
+    private struct StatEntry
+    {
+        public readonly ECardAttributeType Type;
+        public readonly string Label;
+        public StatEntry(ECardAttributeType type, string label) { Type = type; Label = label; }
+    }
+
+    /// <summary>
+    /// Static list of combat stats in display order for player detail lines.
+    /// </summary>
+    private static readonly StatEntry[] PlayerCombatStats =
+    {
+        new StatEntry(ECardAttributeType.Ammo, "Ammo"),
+        new StatEntry(ECardAttributeType.AmmoMax, "Max Ammo"),
+        new StatEntry(ECardAttributeType.DamageAmount, "Damage"),
+        new StatEntry(ECardAttributeType.HealAmount, "Heal"),
+        new StatEntry(ECardAttributeType.ShieldApplyAmount, "Shield"),
+        new StatEntry(ECardAttributeType.PoisonApplyAmount, "Poison"),
+        new StatEntry(ECardAttributeType.BurnApplyAmount, "Burn"),
+        new StatEntry(ECardAttributeType.RegenApplyAmount, "Regeneration"),
+        new StatEntry(ECardAttributeType.HasteAmount, "Haste"),
+        new StatEntry(ECardAttributeType.SlowAmount, "Slow"),
+        new StatEntry(ECardAttributeType.FreezeAmount, "Freeze"),
+        new StatEntry(ECardAttributeType.ChargeAmount, "Charge"),
+        new StatEntry(ECardAttributeType.CritChance, "Crit Chance"),
+        new StatEntry(ECardAttributeType.Lifesteal, "Lifesteal"),
+        new StatEntry(ECardAttributeType.Multicast, "Multicast"),
+        new StatEntry(ECardAttributeType.RepairTargets, "Repair Targets"),
+    };
+
+    /// <summary>
+    /// Static list of combat stats in display order for enemy detail lines.
+    /// Prioritizes damage/heal/shield, then speed, then ammo/other.
+    /// </summary>
+    private static readonly StatEntry[] EnemyCombatStats =
+    {
+        new StatEntry(ECardAttributeType.DamageAmount, "Damage"),
+        new StatEntry(ECardAttributeType.HealAmount, "Heal"),
+        new StatEntry(ECardAttributeType.ShieldApplyAmount, "Shield"),
+        new StatEntry(ECardAttributeType.PoisonApplyAmount, "Poison"),
+        new StatEntry(ECardAttributeType.BurnApplyAmount, "Burn"),
+        new StatEntry(ECardAttributeType.RegenApplyAmount, "Regeneration"),
+        new StatEntry(ECardAttributeType.HasteAmount, "Haste"),
+        new StatEntry(ECardAttributeType.SlowAmount, "Slow"),
+        new StatEntry(ECardAttributeType.FreezeAmount, "Freeze"),
+        new StatEntry(ECardAttributeType.ChargeAmount, "Charge"),
+        new StatEntry(ECardAttributeType.Ammo, "Ammo"),
+        new StatEntry(ECardAttributeType.AmmoMax, "Max Ammo"),
+        new StatEntry(ECardAttributeType.CritChance, "Crit Chance"),
+        new StatEntry(ECardAttributeType.Lifesteal, "Lifesteal"),
+        new StatEntry(ECardAttributeType.Multicast, "Multicast"),
+        new StatEntry(ECardAttributeType.RepairTargets, "Repair Targets"),
+    };
+
+    /// <summary>
+    /// Adds all combat stat lines from the given stat list to the lines list.
+    /// </summary>
+    private static void AddAllCombatStats(List<string> lines, Card card, StatEntry[] stats)
+    {
+        foreach (var entry in stats)
+            AddStatLine(lines, card, entry.Type, entry.Label);
+    }
+
+    /// <summary>
+    /// Gets the cooldown of a card in seconds.
+    /// Tries Cooldown first, falls back to CooldownMax.
+    /// Returns null if the card has no cooldown.
+    /// </summary>
+    private static float? GetCooldownSeconds(Card card)
+    {
+        var cooldown = card.GetAttributeValue(ECardAttributeType.Cooldown);
+        if (!cooldown.HasValue || cooldown.Value <= 0)
+        {
+            cooldown = card.GetAttributeValue(ECardAttributeType.CooldownMax);
+        }
+        if (cooldown.HasValue && cooldown.Value > 0)
+        {
+            return cooldown.Value / 1000f;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Gets cooldown text for a card as a formatted line (e.g., "Cooldown 3.5 seconds").
+    /// Returns null if the card has no cooldown.
+    /// </summary>
+    private static string GetCooldownLineText(Card card)
+    {
+        float? seconds = GetCooldownSeconds(card);
+        if (seconds.HasValue)
+        {
+            return $"Cooldown {seconds.Value:F1} seconds";
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Gets the size text for a card (e.g., "Size: 2 slots (Medium)").
+    /// Returns null if the template is unavailable.
+    /// </summary>
+    private static string GetSizeText(Card card)
+    {
+        var template = card?.Template;
+        if (template == null) return null;
+
+        int size = (int)template.Size;
+        string sizeName = template.Size switch
+        {
+            ECardSize.Small => "Small",
+            ECardSize.Medium => "Medium",
+            ECardSize.Large => "Large",
+            _ => ""
+        };
+        return $"Size: {size} slots ({sizeName})";
+    }
+
+    /// <summary>
+    /// Builds detail lines for a card, shared between player and enemy views.
+    /// The enemyOrder parameter controls the arrangement of sections:
+    /// - Player order: name, tier, quest, tags, temp, enchant, size, price, cooldown, stats, desc, abilities, flavor
+    /// - Enemy order: name, desc, abilities, cooldown, stats, tier, tags, size
+    /// </summary>
+    private static List<string> BuildDetailLines(Card card, bool enemyOrder)
+    {
+        var lines = new List<string>();
+        if (card == null) return lines;
+
+        // Name is always first
+        lines.Add(GetCardName(card));
+
+        if (enemyOrder)
+        {
+            // Enemy: description and abilities first (what the item does)
+            AddDescriptionLines(lines, card);
+            AddAbilityLines(lines, card);
+
+            // Cooldown
+            string cd = GetCooldownLineText(card);
+            if (cd != null) lines.Add(cd);
+
+            // Combat stats (enemy order)
+            AddAllCombatStats(lines, card, EnemyCombatStats);
+
+            // Metadata at the end (less important for enemy analysis)
+            lines.Add(GetTierName(card));
+
+            string tags = GetTags(card);
+            if (!string.IsNullOrEmpty(tags)) lines.Add(tags);
+
+            string sizeText = GetSizeText(card);
+            if (sizeText != null) lines.Add(sizeText);
+        }
+        else
+        {
+            // Player: tier and metadata first, then stats, then description
+            lines.Add(GetTierName(card));
+
+            // Quest conditions and progress
+            if (IsQuestItem(card))
+            {
+                var questLines = GetQuestLines(card);
+                if (questLines.Count > 0)
+                    lines.AddRange(questLines);
+                else
+                    lines.Add("Quest item");
+            }
+
+            // Tags
+            string tags = GetTags(card);
+            if (!string.IsNullOrEmpty(tags)) lines.Add(tags);
+
+            // Temperature state
+            string tempState = GetTemperatureState(card);
+            if (!string.IsNullOrEmpty(tempState)) lines.Add($"State: {tempState}");
+
+            // Enchantment status
+            if (card is ItemCard enchantedItem && enchantedItem.Enchantment.HasValue)
+            {
+                string enchantName = GetEnchantmentName(enchantedItem.Enchantment.Value);
+                lines.Add($"Enchanted: {enchantName}");
+            }
+
+            // Size
+            string sizeText = GetSizeText(card);
+            if (sizeText != null) lines.Add(sizeText);
+
+            // Prices
+            int buyPrice = GetBuyPrice(card);
+            if (buyPrice > 0) lines.Add($"Buy {buyPrice} gold");
+
+            int sellPrice = GetSellPrice(card);
+            if (sellPrice > 0) lines.Add($"Sell {sellPrice} gold");
+
+            // Cooldown
+            string cd = GetCooldownLineText(card);
+            if (cd != null) lines.Add(cd);
+
+            // Combat stats (player order)
+            AddAllCombatStats(lines, card, PlayerCombatStats);
+
+            // Description and abilities at the end
+            AddDescriptionLines(lines, card);
+            AddAbilityLines(lines, card);
+
+            // Flavor text
+            string flavor = GetFlavorText(card);
+            if (!string.IsNullOrEmpty(flavor)) lines.Add(flavor);
+        }
+
+        return lines;
+    }
+
+    /// <summary>
+    /// Adds description line if present.
+    /// </summary>
+    private static void AddDescriptionLines(List<string> lines, Card card)
+    {
+        string desc = GetDescription(card);
+        if (!string.IsNullOrEmpty(desc)) lines.Add(desc);
+    }
+
+    /// <summary>
+    /// Adds ability tooltip line if present.
+    /// </summary>
+    private static void AddAbilityLines(List<string> lines, Card card)
+    {
+        string abilities = GetAbilityTooltips(card);
+        if (!string.IsNullOrEmpty(abilities)) lines.Add(abilities);
     }
 
     /// <summary>

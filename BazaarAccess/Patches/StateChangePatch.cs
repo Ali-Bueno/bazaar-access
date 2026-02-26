@@ -4,12 +4,10 @@ using System.Reflection;
 using BazaarAccess.Accessibility;
 using BazaarAccess.Core;
 using BazaarAccess.Gameplay;
-using BazaarBattleService.Models;
 using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameShared.Domain.Runs;
 using BazaarGameShared.Domain.Core.Types;
 using BazaarGameShared.Infra.Messages.GameSimEvents;
-using BazaarGameShared.Domain.Cards.Enchantments;
 using TheBazaar;
 using UnityEngine;
 
@@ -27,14 +25,11 @@ public static class StateChangePatch
 {
     private static ERunState _lastState = ERunState.Choice;
     private static bool _initialized = false;
-    private static bool _inCombat = false;
+    internal static bool _inCombat = false;
     private static bool _inReplayState = false;
-    private static bool _combatBoardReady = false;
+    internal static bool _combatBoardReady = false;
     private static Type _eventsType;
     private static Type _replayStateType;
-
-    // Track if we already announced the combat result to avoid duplicates
-    private static bool _combatResultAnnounced = false;
 
     // Last valid state (not fallback) - used when Data.CurrentState is temporarily unavailable
     private static ERunState _lastValidState = ERunState.Choice;
@@ -86,8 +81,8 @@ public static class StateChangePatch
             SubscribeToEventNoParam("NewDayTransitionAnimationFinished", OnNewDayTransitionFinished);
 
             // === Combat events ===
-            SubscribeToEventNoParam("CombatStarted", OnCombatStarted);
-            SubscribeToEventNoParam("CombatEnded", OnCombatEnded);
+            SubscribeToEventNoParam("CombatStarted", CombatEventHandler.OnCombatStarted);
+            SubscribeToEventNoParam("CombatEnded", CombatEventHandler.OnCombatEnded);
 
             // === Victory/defeat events ===
             // OnCombatPvEFinish fires for ALL combats (PvE and PvP) with the result
@@ -95,10 +90,10 @@ public static class StateChangePatch
 
             // VictoryCountChanged only fires for PvP wins (victory counter)
             SubscribeToEvent("VictoryCountChanged", typeof(Action<uint>),
-                (Action<uint>)OnVictoryCountChanged);
+                (Action<uint>)CombatEventHandler.OnVictoryCountChanged);
             // PrestigeChanged fires when we lose prestige (defeat)
             SubscribeToEvent("PlayerPrestigeChangedSimEvent", typeof(Action<GameSimEventPlayerPrestigeChanged>),
-                (Action<GameSimEventPlayerPrestigeChanged>)OnPrestigeChanged);
+                (Action<GameSimEventPlayerPrestigeChanged>)CombatEventHandler.OnPrestigeChanged);
 
             // === Combat narration events ===
             SubscribeToEvent("EffectTriggered", typeof(Action<EffectTriggeredEvent>),
@@ -108,26 +103,26 @@ public static class StateChangePatch
 
             // === Buy/sell events ===
             SubscribeToEvent("CardPurchasedSimEvent", typeof(Action<GameSimEventCardPurchased>),
-                (Action<GameSimEventCardPurchased>)OnCardPurchased);
+                (Action<GameSimEventCardPurchased>)CardEventHandler.OnCardPurchased);
             SubscribeToEvent("CardSoldSimEvent", typeof(Action<GameSimEventCardSold>),
-                (Action<GameSimEventCardSold>)OnCardSold);
+                (Action<GameSimEventCardSold>)CardEventHandler.OnCardSold);
 
             // === Skill equipped event (fires when a skill is added to the player) ===
             SubscribeToEvent("PlayerSkillEquippedSimEvent", typeof(Action<GameSimEventPlayerSkillEquipped>),
-                (Action<GameSimEventPlayerSkillEquipped>)OnSkillEquipped);
+                (Action<GameSimEventPlayerSkillEquipped>)CardEventHandler.OnSkillEquipped);
 
             // === Card events (disposed = removed from selection after buy) ===
             SubscribeToEvent("CardDisposedSimEvent", typeof(Action<List<Card>>),
-                (Action<List<Card>>)OnCardDisposed);
+                (Action<List<Card>>)CardEventHandler.OnCardDisposed);
 
             // === Card selection event (fires immediately when card is clicked) ===
-            SubscribeToEventNoParam("CardSelected", OnCardSelected);
+            SubscribeToEventNoParam("CardSelected", CardEventHandler.OnCardSelected);
 
             // === Item purchase/selection event (AppState event, fires for all items including loot) ===
-            AppState.ItemPurchased += OnItemPurchased;
+            AppState.ItemPurchased += CardEventHandler.OnItemPurchased;
 
             // === Board events ===
-            SubscribeToEventNoParam("OnBoardChanged", OnBoardChanged);
+            SubscribeToEventNoParam("OnBoardChanged", CardEventHandler.OnBoardChanged);
 
             // === Stash events ===
             SubscribeToEvent("StorageToggled", typeof(Action<bool>),
@@ -138,11 +133,11 @@ public static class StateChangePatch
 
             // === Error events ===
             SubscribeToEvent("NotEnoughSpace", typeof(Action<Card>),
-                (Action<Card>)OnNotEnoughSpace);
+                (Action<Card>)ErrorEventHandler.OnNotEnoughSpace);
             SubscribeToEvent("CantAffordCard", typeof(Action<Card>),
-                (Action<Card>)OnCantAffordCard);
+                (Action<Card>)ErrorEventHandler.OnCantAffordCard);
             SubscribeToEvent("UnsellableItemSaleAttempt", typeof(Action<Card>),
-                (Action<Card>)OnUnsellableItemAttempt);
+                (Action<Card>)ErrorEventHandler.OnUnsellableItemAttempt);
 
             // === BoardManager events (cards revealed) ===
             SubscribeToBoardManagerEvent("ItemCardsRevealed", OnItemCardsRevealed);
@@ -154,9 +149,9 @@ public static class StateChangePatch
 
             // === Card modification events (enchant/upgrade) ===
             SubscribeToEvent("CardEnchantedSimEvent", typeof(Action<GameSimEventCardEnchanted>),
-                (Action<GameSimEventCardEnchanted>)OnCardEnchanted);
+                (Action<GameSimEventCardEnchanted>)CardEventHandler.OnCardEnchanted);
             SubscribeToEvent("CardUpgradedSimEvent", typeof(Action<GameSimEventCardUpgraded>),
-                (Action<GameSimEventCardUpgraded>)OnCardUpgraded);
+                (Action<GameSimEventCardUpgraded>)CardEventHandler.OnCardUpgraded);
 
             Plugin.Logger.LogInfo("StateChangePatch: Subscribed to game events");
         }
@@ -301,7 +296,7 @@ public static class StateChangePatch
             var gsm = Singleton<GameServiceManager>.Instance;
             if (gsm != null)
             {
-                gsm.OnCombatPvEFinish += OnCombatResult;
+                gsm.OnCombatPvEFinish += CombatEventHandler.OnCombatResult;
                 Plugin.Logger.LogInfo("StateChangePatch: Subscribed to GameServiceManager.OnCombatPvEFinish");
             }
             else
@@ -324,7 +319,7 @@ public static class StateChangePatch
             var gsm = Singleton<GameServiceManager>.Instance;
             if (gsm != null)
             {
-                gsm.OnCombatPvEFinish += OnCombatResult;
+                gsm.OnCombatPvEFinish += CombatEventHandler.OnCombatResult;
                 Plugin.Logger.LogInfo("StateChangePatch: Subscribed to GameServiceManager.OnCombatPvEFinish (delayed)");
             }
             else
@@ -370,7 +365,7 @@ public static class StateChangePatch
             }
             else if (newState != ERunState.Pedestal)
             {
-                ActionHelper.ClearPedestalCache();
+                PedestalManager.ClearPedestalCache();
             }
 
             // Check for day/hour changes after a delay (game data updates after state change)
@@ -472,226 +467,14 @@ public static class StateChangePatch
         TriggerRefresh();
     }
 
-    /// <summary>
-    /// When combat starts.
-    /// </summary>
-    private static void OnCombatStarted()
-    {
-        Plugin.Logger.LogInfo("CombatStarted");
-        _inCombat = true;
-        _combatBoardReady = false;
-        _combatResultAnnounced = false; // Reset for the new combat
-
-        // Start combat narration
-        CombatDescriber.StartDescribing();
-
-        // Set board ready after a short delay for items to appear
-        Plugin.Instance.StartCoroutine(DelayedSetCombatBoardReady());
-
-        var screen = AccessibilityMgr.GetCurrentScreen() as GameplayScreen;
-        screen?.OnCombatStateChanged(true);
-    }
-
     private static System.Collections.IEnumerator DelayedCachePedestalInfo()
     {
         // Wait for PedestalState.OnEnter() to finish setting up the template
         yield return new WaitForSeconds(0.3f);
         if (GetCurrentRunState() == ERunState.Pedestal)
         {
-            ActionHelper.CachePedestalInfo();
+            PedestalManager.CachePedestalInfo();
         }
-    }
-
-    private static System.Collections.IEnumerator DelayedSetCombatBoardReady()
-    {
-        yield return new WaitForSeconds(1.5f);
-        if (_inCombat)
-        {
-            _combatBoardReady = true;
-            Plugin.Logger.LogInfo("Combat board ready (after delay)");
-        }
-    }
-
-    /// <summary>
-    /// When combat ends.
-    /// </summary>
-    private static void OnCombatEnded()
-    {
-        Plugin.Logger.LogInfo("CombatEnded");
-        _inCombat = false;
-        _combatBoardReady = false;
-
-        // Stop combat narration
-        CombatDescriber.StopDescribing();
-
-        // Reset the combat result flag for the next combat
-        _combatResultAnnounced = false;
-
-        var screen = AccessibilityMgr.GetCurrentScreen() as GameplayScreen;
-        screen?.OnCombatStateChanged(false);
-    }
-
-    // Cached combat result data for building consolidated messages
-    private static BazaarMatchHistory.EVictoryCondition _pendingCombatResult;
-    private static Coroutine _combatResultCoroutine;
-
-    /// <summary>
-    /// When combat finishes with a result (fires for BOTH PvE and PvP).
-    /// Uses a short delay to consolidate with victory/prestige updates into one message.
-    /// </summary>
-    private static void OnCombatResult(BazaarMatchHistory.EVictoryCondition result)
-    {
-        Plugin.Logger.LogInfo($"OnCombatResult: {result}");
-
-        // Avoid duplicate announcements
-        if (_combatResultAnnounced)
-        {
-            Plugin.Logger.LogInfo("OnCombatResult: Already announced, skipping");
-            return;
-        }
-        _combatResultAnnounced = true;
-
-        // Store result and start delayed announcement
-        _pendingCombatResult = result;
-
-        // Cancel any existing coroutine
-        if (_combatResultCoroutine != null)
-        {
-            Plugin.Instance.StopCoroutine(_combatResultCoroutine);
-        }
-
-        // Wait briefly for victory/prestige events to fire, then announce consolidated message
-        _combatResultCoroutine = Plugin.Instance.StartCoroutine(DelayedCombatResultAnnounce());
-    }
-
-    /// <summary>
-    /// Announces combat result after a short delay to include updated stats.
-    /// </summary>
-    private static System.Collections.IEnumerator DelayedCombatResultAnnounce()
-    {
-        yield return new UnityEngine.WaitForSeconds(0.15f);
-
-        try
-        {
-            string message;
-            if (_pendingCombatResult == BazaarMatchHistory.EVictoryCondition.Win)
-            {
-                // Get current victory count from Data.Run.Victories
-                uint victories = Data.Run?.Victories ?? 0;
-                if (victories > 0)
-                {
-                    message = $"Victory! {victories} wins";
-                }
-                else
-                {
-                    message = "Victory!";
-                }
-            }
-            else
-            {
-                // Get current prestige
-                int prestige = Data.Run?.Player?.GetAttributeValue(EPlayerAttributeType.Prestige) ?? 0;
-                message = $"Defeat! {prestige} prestige remaining";
-            }
-
-            TolkWrapper.Speak(message);
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger.LogError($"DelayedCombatResultAnnounce error: {ex.Message}");
-            // Fallback to simple announcement
-            TolkWrapper.Speak(_pendingCombatResult == BazaarMatchHistory.EVictoryCondition.Win ? "Victory!" : "Defeat!");
-        }
-
-        _combatResultCoroutine = null;
-    }
-
-    /// <summary>
-    /// When victory count increases (we won PvP combat).
-    /// Does NOT speak - consolidated with OnCombatResult.
-    /// </summary>
-    private static void OnVictoryCountChanged(uint newVictoryCount)
-    {
-        Plugin.Logger.LogInfo($"VictoryCountChanged: {newVictoryCount}");
-        // Do not speak here - OnCombatResult handles the consolidated message
-    }
-
-    /// <summary>
-    /// When prestige changes (if it decreases, we lost).
-    /// Does NOT speak - consolidated with OnCombatResult.
-    /// </summary>
-    private static void OnPrestigeChanged(GameSimEventPlayerPrestigeChanged evt)
-    {
-        Plugin.Logger.LogInfo($"PrestigeChanged: Delta={evt.Delta}");
-        // Do not speak here - OnCombatResult handles the consolidated message
-    }
-
-    private static void OnCardPurchased(GameSimEventCardPurchased evt)
-    {
-        Plugin.Logger.LogInfo($"Card purchased: {evt.InstanceId}");
-        // Only refresh - ActionHelper already announced "Bought X"
-        TriggerRefresh();
-    }
-
-    private static void OnCardSold(GameSimEventCardSold evt)
-    {
-        Plugin.Logger.LogInfo($"Card sold: {evt.InstanceId}");
-        // Only refresh - ActionHelper already announced "Sold X"
-        TriggerRefresh();
-    }
-
-    private static void OnSkillEquipped(GameSimEventPlayerSkillEquipped evt)
-    {
-        // Only refresh if skill is for the player, not the opponent
-        if (evt.Owner == ECombatantId.Player)
-        {
-            Plugin.Logger.LogInfo($"Skill equipped: {evt.InstanceId}");
-            // Small delay to ensure Player.Skills has been updated
-            Plugin.Instance.StartCoroutine(DelayedRefreshAfterSkillEquipped());
-        }
-    }
-
-    private static System.Collections.IEnumerator DelayedRefreshAfterSkillEquipped()
-    {
-        // Short delay - Player.Skills should already be updated
-        yield return new UnityEngine.WaitForSeconds(0.1f);
-        TriggerRefresh();
-    }
-
-    private static void OnCardDisposed(List<Card> cards)
-    {
-        Plugin.Logger.LogInfo($"Cards disposed: {cards?.Count ?? 0}");
-        // Only refresh - selection/transition already announced
-        TriggerRefresh();
-    }
-
-    private static void OnCardSelected()
-    {
-        Plugin.Logger.LogInfo("Card selected - triggering delayed refresh");
-        // Use coroutine to wait for the game to process the selection
-        Plugin.Instance.StartCoroutine(DelayedRefreshAfterSelection());
-    }
-
-    private static void OnItemPurchased(Card card)
-    {
-        string cardName = card?.ToString() ?? "unknown";
-        Plugin.Logger.LogInfo($"Item purchased/selected: {cardName} - triggering delayed refresh");
-        // Use coroutine to wait for the game to process the selection
-        Plugin.Instance.StartCoroutine(DelayedRefreshAfterSelection());
-    }
-
-    private static System.Collections.IEnumerator DelayedRefreshAfterSelection()
-    {
-        // Wait a bit for the game to process the selection
-        yield return new UnityEngine.WaitForSeconds(0.3f);
-        // Only refresh, game events will handle announcement with debounce
-        TriggerRefresh();
-    }
-
-    private static void OnBoardChanged()
-    {
-        Plugin.Logger.LogInfo("Board changed");
-        TriggerRefresh();
     }
 
     private static void OnStorageToggled(bool isOpen)
@@ -729,69 +512,6 @@ public static class StateChangePatch
         TriggerRefresh();
 
         yield return new UnityEngine.WaitForSeconds(0.5f);
-        TriggerRefresh();
-    }
-
-    /// <summary>
-    /// When there's no space for an item.
-    /// </summary>
-    private static void OnNotEnoughSpace(Card card)
-    {
-        string name = card != null ? Gameplay.ItemReader.GetCardName(card) : "item";
-        Plugin.Logger.LogInfo($"NotEnoughSpace: {name}");
-        TolkWrapper.Speak($"No space for {name}");
-    }
-
-    /// <summary>
-    /// When there's not enough gold to buy.
-    /// </summary>
-    private static void OnCantAffordCard(Card card)
-    {
-        string name = card != null ? Gameplay.ItemReader.GetCardName(card) : "item";
-        int price = card != null ? Gameplay.ItemReader.GetBuyPrice(card) : 0;
-        Plugin.Logger.LogInfo($"CantAffordCard: {name} costs {price}");
-        TolkWrapper.Speak($"Cannot afford {name}");
-    }
-
-    /// <summary>
-    /// When the game rejects a sale because the item is unsellable.
-    /// </summary>
-    private static void OnUnsellableItemAttempt(Card card)
-    {
-        string name = card != null ? Gameplay.ItemReader.GetCardName(card) : "item";
-        Plugin.Logger.LogInfo($"UnsellableItemAttempt: {name}");
-        TolkWrapper.Speak($"{name} cannot be sold");
-    }
-
-    /// <summary>
-    /// When a card is enchanted.
-    /// Clears the detail cache so updated stats are read correctly.
-    /// </summary>
-    private static void OnCardEnchanted(GameSimEventCardEnchanted evt)
-    {
-        Plugin.Logger.LogInfo($"Card enchanted: {evt.InstanceId}, type={evt.EnchantmentType}");
-
-        // Clear the detail cache in GameplayNavigator
-        var screen = AccessibilityMgr.GetCurrentScreen() as GameplayScreen;
-        screen?.ClearDetailCache();
-
-        // Refresh to pick up new attributes
-        TriggerRefresh();
-    }
-
-    /// <summary>
-    /// When a card is upgraded (tier increased).
-    /// Clears the detail cache so updated stats are read correctly.
-    /// </summary>
-    private static void OnCardUpgraded(GameSimEventCardUpgraded evt)
-    {
-        Plugin.Logger.LogInfo($"Card upgraded: {evt.InstanceId}, newTier={evt.NewTier}");
-
-        // Clear the detail cache in GameplayNavigator
-        var screen = AccessibilityMgr.GetCurrentScreen() as GameplayScreen;
-        screen?.ClearDetailCache();
-
-        // Refresh to pick up new attributes
         TriggerRefresh();
     }
 

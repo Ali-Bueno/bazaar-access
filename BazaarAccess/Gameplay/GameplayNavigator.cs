@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using BazaarAccess.Core;
+using BazaarAccess.Gameplay.Navigation;
 using BazaarAccess.Patches;
 using BazaarGameClient.Domain.Models;
 using BazaarGameClient.Domain.Models.Cards;
@@ -10,67 +10,66 @@ using BazaarGameShared.Domain.Runs;
 using TheBazaar;
 using TheBazaar.AppFramework;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 namespace BazaarAccess.Gameplay;
 
 /// <summary>
-/// Sección actual de navegación.
+/// Current navigation section.
 /// </summary>
 public enum NavigationSection
 {
-    Selection,  // Lo que el juego te ofrece (encuentros, tienda, recompensas) + acciones
-    Board,      // Tus items equipados
-    Stash,      // Tu almacén
-    Skills,     // Tus habilidades
-    Hero        // Stats del héroe
+    Selection,  // What the game offers (encounters, shop, rewards) + actions
+    Board,      // Your equipped items
+    Stash,      // Your storage
+    Skills,     // Your skills
+    Hero        // Hero stats
 }
 
 /// <summary>
-/// Subsecciones dentro de Hero.
+/// Subsections within Hero.
 /// </summary>
 public enum HeroSubsection
 {
-    Stats,      // Estadísticas del héroe (vida, oro, nivel, etc.)
-    Skills      // Habilidades equipadas del héroe
+    Stats,      // Hero stats (health, gold, level, etc.)
+    Skills      // Equipped hero skills
 }
 
 /// <summary>
-/// Subsecciones dentro del modo enemigo.
+/// Subsections within enemy mode.
 /// </summary>
 public enum EnemySubsection
 {
-    Items,      // Items del enemigo
-    Skills      // Skills del enemigo
+    Items,      // Enemy items
+    Skills      // Enemy skills
 }
 
 /// <summary>
-/// Secciones en modo recap (post-combate con E).
+/// Sections in recap mode (post-combat with E key).
 /// </summary>
 public enum RecapSection
 {
-    None,           // No estamos en ninguna sección de recap
-    HeroStats,      // Stats del héroe propio (V)
-    HeroSkills,     // Skills del héroe propio (V + Right)
-    EnemyStats,     // Stats del héroe enemigo (F)
-    EnemySkills,    // Skills del héroe enemigo (F + Right)
-    EnemyBoard,     // Tablero del enemigo (G)
-    PlayerBoard,    // Tablero propio (B)
+    None,           // Not in any recap section
+    HeroStats,      // Own hero stats (V)
+    HeroSkills,     // Own hero skills (V + Right)
+    EnemyStats,     // Enemy hero stats (F)
+    EnemySkills,    // Enemy hero skills (F + Right)
+    EnemyBoard,     // Enemy board (G)
+    PlayerBoard,    // Own board (B)
     CombatStats     // Per-card combat stats (H)
 }
 
 /// <summary>
-/// Tipos de items navegables (cartas o acciones).
+/// Types of navigable items (cards or actions).
 /// </summary>
 public enum NavItemType
 {
-    Card,       // Una carta normal
-    Exit,       // Acción de salir
-    Reroll      // Acción de refrescar
+    Card,       // A normal card
+    Exit,       // Exit action
+    Reroll      // Refresh action
 }
 
 /// <summary>
-/// Item navegable (puede ser carta o acción).
+/// Navigable item (can be card or action).
 /// </summary>
 public class NavItem
 {
@@ -84,89 +83,174 @@ public class NavItem
 }
 
 /// <summary>
-/// Navegador de gameplay fiel al flujo original del juego.
-/// - Selección: lo que puedes elegir (encuentros, items de tienda)
-/// - Tablero: tus items (puedes vender, mover)
+/// Gameplay navigator faithful to the original game flow.
+/// - Selection: what you can choose (encounters, shop items)
+/// - Board: your items (can sell, move)
+/// Delegates hero, enemy, recap, and detail navigation to sub-navigators.
 /// </summary>
 public class GameplayNavigator
 {
     private NavigationSection _currentSection = NavigationSection.Selection;
     private int _currentIndex = 0;
 
-    // Cache de items navegables (cartas + acciones)
+    // Cache of navigable items (cards + actions)
     private List<NavItem> _selectionItems = new List<NavItem>();  // SelectionSet + Exit/Reroll
-    private List<int> _boardIndices = new List<int>();        // Slots ocupados del tablero
-    private List<int> _stashIndices = new List<int>();        // Slots ocupados del stash
-    private List<SkillCard> _playerSkills = new List<SkillCard>();  // Skills equipadas del jugador
+    private List<int> _boardIndices = new List<int>();        // Occupied board slots
+    private List<int> _stashIndices = new List<int>();        // Occupied stash slots
 
-    // Stats del héroe para navegación
-    private int _heroStatIndex = 0;
-    private HeroSubsection _heroSubsection = HeroSubsection.Stats;
-    private int _heroSkillIndex = 0;
-
-    // Modo combate
+    // Combat mode
     private bool _inCombat = false;
 
-    // Estado del stash (abierto/cerrado)
+    // Stash state (open/closed)
     private bool _stashOpen = false;
 
-    // Sección anterior antes de abrir el stash (para restaurar al cerrar)
+    // Previous section before opening stash (to restore on close)
     private NavigationSection _sectionBeforeStash = NavigationSection.Selection;
 
-    // Modo replay (post-combate)
+    // Replay mode (post-combat)
     private bool _inReplayMode = false;
     private bool _inRecapMode = false;
 
-    // Navegación detallada línea por línea
-    private List<string> _detailLines = new List<string>();
-    private int _detailIndex = -1;
-    private Card _detailCard = null;
+    // Sub-navigators
+    public readonly HeroNavigator Hero;
+    public readonly EnemyNavigator Enemy;
+    public readonly RecapNavigator Recap;
+    public readonly DetailReader Detail;
 
-    // Modo enemigo (para navegar items del oponente)
-    private bool _enemyMode = false;
-    private List<Card> _enemyCards = new List<Card>();  // Enemy items from Data.GetCards API
-    private List<int> _enemySkillIndices = new List<int>();
-    private List<SkillCard> _enemySkills = new List<SkillCard>(); // Alternative source when sockets unavailable
-    private int _enemyItemIndex = 0;
-    private int _enemySkillIndex = 0;
-    private EnemySubsection _enemySubsection = EnemySubsection.Items;
-
-    // Detail reading for enemy items
-    private List<string> _enemyDetailLines = new List<string>();
-    private int _enemyDetailIndex = -1;
-    private Card _enemyDetailCard = null;
-
-    // Recap mode navigation
-    private RecapSection _currentRecapSection = RecapSection.None;
-    private int _enemyStatIndex = 0;  // For navigating enemy hero stats
-    private int _enemyHeroSkillIndex = 0;  // For navigating enemy hero skills (separate from enemy board skills)
-
-    // Combat stats recap navigation
-    private List<string> _combatStatsLines = new List<string>();
-    private int _combatStatsIndex = 0;
-
-    private static readonly EPlayerAttributeType[] HeroStats = new[]
+    public GameplayNavigator()
     {
-        EPlayerAttributeType.Health,
-        EPlayerAttributeType.HealthMax,
-        EPlayerAttributeType.Gold,
-        EPlayerAttributeType.Level,
-        EPlayerAttributeType.Experience,
-        EPlayerAttributeType.Prestige,
-        EPlayerAttributeType.Shield,
-        EPlayerAttributeType.Poison,
-        EPlayerAttributeType.Burn,
-        EPlayerAttributeType.HealthRegen,
-        EPlayerAttributeType.CritChance,
-        EPlayerAttributeType.Income
-    };
+        Hero = new HeroNavigator();
+        Enemy = new EnemyNavigator();
+        Detail = new DetailReader();
+        Recap = new RecapNavigator(Hero, Enemy, EnterRecapPlayerBoardInternal);
+
+        // Wire up hero skill visual selection callback
+        Hero.OnSkillVisualSelect = (skillIndex) =>
+        {
+            VisualSelector.SelectHeroSkill(skillIndex);
+        };
+    }
+
+    private void EnterRecapPlayerBoardInternal()
+    {
+        _currentSection = NavigationSection.Board;
+        _currentIndex = 0;
+        Detail.Clear();
+        RefreshBoard();
+
+        if (_boardIndices.Count == 0)
+        {
+            TolkWrapper.Speak("Your board is empty");
+            return;
+        }
+
+        TolkWrapper.Speak($"Your board, {_boardIndices.Count} items");
+    }
+
+    // ===============================================
+    // PROPERTIES
+    // ===============================================
 
     public NavigationSection CurrentSection => _currentSection;
     public bool IsInHeroSection => _currentSection == NavigationSection.Hero;
-    public HeroSubsection CurrentHeroSubsection => _heroSubsection;
-    public bool IsInEnemyMode => _enemyMode;
-    public EnemySubsection CurrentEnemySubsection => _enemySubsection;
-    public RecapSection CurrentRecapSection => _currentRecapSection;
+    public bool IsInCombat => _inCombat;
+    public bool IsInReplayMode => _inReplayMode;
+    public bool IsInRecapMode => _inRecapMode;
+
+    // --- Hero delegates ---
+    public HeroSubsection CurrentHeroSubsection => Hero.CurrentSubsection;
+    public void HeroNext() => Hero.Next();
+    public void HeroPrevious() => Hero.Previous();
+    public void HeroNextSubsection() => Hero.NextSubsection();
+    public void HeroPreviousSubsection() => Hero.PreviousSubsection();
+    public Card GetCurrentHeroSkill() => Hero.GetCurrentSkill();
+    public void ReadHeroSkillDetails() => Hero.ReadSkillDetails();
+    public void ReadAllHeroStats() => Hero.ReadAllStats();
+
+    // --- Enemy delegates ---
+    public bool IsInEnemyMode => Enemy.IsActive;
+    public EnemySubsection CurrentEnemySubsection => Enemy.CurrentSubsection;
+    public bool IsInEnemySkillsSubsection => Enemy.IsInSkillsSubsection;
+
+    public void ReadEnemyInfo() => Enemy.ReadInfo(_inCombat);
+    public void ExitEnemyMode() => Enemy.Exit();
+    public void ReadCurrentEnemyItemDetails() => Enemy.ReadCurrentItemDetails();
+    public void EnemyNavigateRight() => Enemy.NavigateRight();
+    public void EnemyNavigateLeft() => Enemy.NavigateLeft();
+    public void EnemyNextSubsection() => Enemy.NextSubsection();
+    public void EnemyPreviousSubsection() => Enemy.PreviousSubsection();
+    public void EnemySkillNext() => Enemy.SkillNext();
+    public void EnemySkillPrevious() => Enemy.SkillPrevious();
+    public void EnemyDetailNext() => Enemy.DetailNext();
+    public void EnemyDetailPrevious() => Enemy.DetailPrevious();
+    public void EnemyNext() => Enemy.Next();
+    public void EnemyPrevious() => Enemy.Previous();
+
+    public void EnterOpponentBoardMode()
+    {
+        bool shouldSetRecap = Enemy.EnterBoardMode(_inRecapMode);
+        if (shouldSetRecap)
+            Recap.SetSection(RecapSection.EnemyBoard);
+    }
+
+    // --- Recap delegates ---
+    public RecapSection CurrentRecapSection => Recap.CurrentSection;
+    public void EnterRecapHeroMode() => Recap.EnterHeroMode();
+    public void RecapHeroPrevious() => Recap.HeroPrevious();
+    public void RecapHeroNext() => Recap.HeroNext();
+    public void RecapHeroToStats() => Recap.HeroToStats();
+    public void RecapHeroToSkills() => Recap.HeroToSkills();
+    public void EnterRecapEnemyStatsMode() => Recap.EnterEnemyStatsMode();
+    public void EnterCombatEnemyStatsMode() => Recap.EnterCombatEnemyStatsMode();
+    public void RecapEnemyStatsPrevious() => Recap.EnemyStatsPrevious();
+    public void RecapEnemyStatsNext() => Recap.EnemyStatsNext();
+    public void RecapEnemyToStats() => Recap.EnemyToStats();
+    public void RecapEnemyToSkills() => Recap.EnemyToSkills();
+    public void EnterRecapPlayerBoardMode() => Recap.EnterPlayerBoardMode();
+    public void EnterRecapCombatStatsMode() => Recap.EnterCombatStatsMode();
+    public void RecapCombatStatsPrevious() => Recap.CombatStatsPrevious();
+    public void RecapCombatStatsNext() => Recap.CombatStatsNext();
+
+    // --- Detail delegates ---
+    public void ClearDetailCache() => Detail.Clear();
+
+    public void ReadDetailLineDown()
+    {
+        InitDetailLines();
+
+        if (!Detail.HasLines)
+        {
+            TolkWrapper.Speak("No details");
+            return;
+        }
+
+        string text = Detail.LineDown();
+        if (text != null)
+            TolkWrapper.Speak(text);
+        else
+            TolkWrapper.Speak("No details");
+    }
+
+    public void ReadDetailLineUp()
+    {
+        InitDetailLines();
+
+        if (!Detail.HasLines)
+        {
+            TolkWrapper.Speak("No details");
+            return;
+        }
+
+        string text = Detail.LineUp();
+        if (text != null)
+            TolkWrapper.Speak(text);
+        else
+            TolkWrapper.Speak("No details");
+    }
+
+    // ===============================================
+    // STATE QUERIES
+    // ===============================================
 
     public ERunState GetCurrentState()
     {
@@ -178,23 +262,23 @@ public class GameplayNavigator
         return StateChangePatch.GetStateDescription(GetCurrentState());
     }
 
+    // ===============================================
+    // REFRESH
+    // ===============================================
+
     /// <summary>
-    /// Actualiza todas las listas de cartas.
+    /// Updates all card lists.
     /// </summary>
     public void Refresh()
     {
         RefreshSelection();
         RefreshBoard();
         RefreshStash();
-        RefreshSkills();
+        Hero.Refresh();
 
         // Clear detail cache to prevent stale card references
         // This is important after items are moved, sold, or upgraded
-        ClearDetailCache();
-
-        // Don't auto-switch sections when current section is empty
-        // This prevents unwanted navigation changes when user sells/moves items
-        // Section changes should be explicit (via AutoFocusForState, GoToSection, etc.)
+        Detail.Clear();
 
         // Just adjust index if out of range
         int count = GetCurrentSectionCount();
@@ -213,7 +297,7 @@ public class GameplayNavigator
         _selectionItems.Clear();
         try
         {
-            // Agregar cartas del SelectionSet
+            // Add cards from SelectionSet
             var selectionSet = Data.CurrentState?.SelectionSet;
             if (selectionSet != null)
             {
@@ -224,7 +308,7 @@ public class GameplayNavigator
                 }
             }
 
-            // Agregar acciones disponibles al final
+            // Add available actions at the end
             if (CanReroll())
             {
                 _selectionItems.Add(NavItem.CreateReroll(GetRerollCost()));
@@ -301,29 +385,12 @@ public class GameplayNavigator
         return null;
     }
 
-    private void RefreshSkills()
-    {
-        _playerSkills.Clear();
-        try
-        {
-            // Usar Data.Run.Player.Skills que se actualiza inmediatamente al equipar
-            var skills = Data.Run?.Player?.Skills;
-            if (skills != null)
-            {
-                _playerSkills.AddRange(skills);
-                Plugin.Logger.LogInfo($"RefreshSkills: Found {_playerSkills.Count} skills from Player.Skills");
-            }
-        }
-        catch (System.Exception ex)
-        {
-            Plugin.Logger.LogError($"RefreshSkills error: {ex.Message}");
-        }
-    }
-
-    // --- Navegación ---
+    // ===============================================
+    // NAVIGATION
+    // ===============================================
 
     /// <summary>
-    /// Cambia a la siguiente sección con contenido.
+    /// Switches to the next section with content.
     /// </summary>
     public void NextSection()
     {
@@ -334,39 +401,35 @@ public class GameplayNavigator
         int nextIdx = (idx + 1) % sections.Count;
         _currentSection = sections[nextIdx];
         _currentIndex = 0;
-        _heroStatIndex = 0;
-        ClearDetailCache();
+        Hero.Reset();
+        Detail.Clear();
         AnnounceSection();
     }
 
     /// <summary>
-    /// Va directamente a una sección específica.
+    /// Goes directly to a specific section.
     /// </summary>
     public void GoToSection(NavigationSection section)
     {
         _currentSection = section;
         _currentIndex = 0;
-        _heroStatIndex = 0;
-        _heroSubsection = HeroSubsection.Stats;
-        _heroSkillIndex = 0;
-        ClearDetailCache();
+        Hero.Reset();
+        Detail.Clear();
         AnnounceSection();
     }
 
     /// <summary>
-    /// Cambia a una sección sin anunciar (para uso interno).
+    /// Switches to a section without announcing (for internal use).
     /// </summary>
     public void SetSectionSilent(NavigationSection section)
     {
         _currentSection = section;
         _currentIndex = 0;
-        _heroStatIndex = 0;
-        _heroSubsection = HeroSubsection.Stats;
-        _heroSkillIndex = 0;
+        Hero.Reset();
     }
 
     /// <summary>
-    /// Va a la sección de choices/selection.
+    /// Goes to the choices/selection section.
     /// </summary>
     public void GoToChoices()
     {
@@ -381,7 +444,7 @@ public class GameplayNavigator
     }
 
     /// <summary>
-    /// Va a la sección del board.
+    /// Goes to the board section.
     /// </summary>
     public void GoToBoard()
     {
@@ -401,7 +464,7 @@ public class GameplayNavigator
     }
 
     /// <summary>
-    /// Va a la sección del héroe.
+    /// Goes to the hero section.
     /// </summary>
     public void GoToHero()
     {
@@ -409,318 +472,51 @@ public class GameplayNavigator
     }
 
     /// <summary>
-    /// Cambia a la siguiente subsección de Hero (Stats -> Skills -> Stats).
-    /// </summary>
-    public void HeroNextSubsection()
-    {
-        if (_currentSection != NavigationSection.Hero) return;
-
-        if (_heroSubsection == HeroSubsection.Stats)
-        {
-            if (_playerSkills.Count > 0)
-            {
-                _heroSubsection = HeroSubsection.Skills;
-                _heroSkillIndex = 0;
-                AnnounceHeroSubsection();
-            }
-            else
-            {
-                TolkWrapper.Speak("No skills equipped");
-            }
-        }
-        else
-        {
-            _heroSubsection = HeroSubsection.Stats;
-            _heroStatIndex = 0;
-            AnnounceHeroSubsection();
-        }
-    }
-
-    /// <summary>
-    /// Cambia a la subsección anterior de Hero.
-    /// </summary>
-    public void HeroPreviousSubsection()
-    {
-        if (_currentSection != NavigationSection.Hero) return;
-
-        if (_heroSubsection == HeroSubsection.Skills)
-        {
-            _heroSubsection = HeroSubsection.Stats;
-            _heroStatIndex = 0;
-            AnnounceHeroSubsection();
-        }
-        else
-        {
-            if (_playerSkills.Count > 0)
-            {
-                _heroSubsection = HeroSubsection.Skills;
-                _heroSkillIndex = 0;
-                AnnounceHeroSubsection();
-            }
-            else
-            {
-                TolkWrapper.Speak("No skills equipped");
-            }
-        }
-    }
-
-    /// <summary>
-    /// Anuncia la subsección actual de Hero.
-    /// </summary>
-    private void AnnounceHeroSubsection()
-    {
-        // Only announce subsection name + count, not the first item
-        // User will hear the item when they press Ctrl+arrows
-        if (_heroSubsection == HeroSubsection.Stats)
-        {
-            int count = GetHeroStatCount();
-            string msg = $"Hero stats, {count} stats";
-            // Include rank in announcement when in ranked mode
-            string rank = ItemReader.GetPlayerRank();
-            if (!string.IsNullOrEmpty(rank) && ItemReader.IsRankedMode())
-                msg += $". Rank: {rank}";
-            TolkWrapper.Speak(msg);
-        }
-        else
-        {
-            TolkWrapper.Speak($"Hero skills, {_playerSkills.Count} skills");
-        }
-    }
-
-    /// <summary>
-    /// Returns the total number of hero stats including rank if in ranked mode.
-    /// </summary>
-    private int GetHeroStatCount()
-    {
-        int count = HeroStats.Length;
-        if (ItemReader.IsRankedMode()) count++; // Extra slot for rank
-        return count;
-    }
-
-    /// <summary>
-    /// Anuncia la skill actual del héroe con su descripción.
-    /// </summary>
-    private void AnnounceHeroSkill()
-    {
-        if (_heroSkillIndex < 0 || _heroSkillIndex >= _playerSkills.Count)
-        {
-            TolkWrapper.Speak("No skill");
-            return;
-        }
-
-        var skill = _playerSkills[_heroSkillIndex];
-        if (skill == null)
-        {
-            TolkWrapper.Speak("Empty slot");
-            return;
-        }
-
-        string name = ItemReader.GetCardName(skill);
-        string desc = ItemReader.GetFullDescription(skill);
-
-        if (!string.IsNullOrEmpty(desc))
-        {
-            TolkWrapper.Speak($"{name}: {desc}");
-        }
-        else
-        {
-            TolkWrapper.Speak(name);
-        }
-
-        // Activar selección visual de la skill
-        TriggerVisualSelectionForHeroSkill();
-    }
-
-    /// <summary>
-    /// Activa la selección visual para la skill actual del héroe.
-    /// </summary>
-    private void TriggerVisualSelectionForHeroSkill()
-    {
-        try
-        {
-            if (_heroSubsection != HeroSubsection.Skills) return;
-
-            var bm = GetBoardManager();
-            if (bm?.playerSkillSockets == null) return;
-
-            // Resetear todas las selecciones
-            ResetAllCardSelections(bm);
-
-            // Encontrar el socket de skill que corresponde al índice actual
-            if (_heroSkillIndex >= 0 && _heroSkillIndex < bm.playerSkillSockets.Length)
-            {
-                var controller = bm.playerSkillSockets[_heroSkillIndex]?.CardController;
-                if (controller != null)
-                {
-                    // Simular evento de puntero para sonidos y tooltips
-                    var eventSystem = EventSystem.current;
-                    var pointerData = new PointerEventData(eventSystem)
-                    {
-                        position = Vector2.zero
-                    };
-                    controller.OnPointerEnter(pointerData);
-                    controller.HoverMove();
-                    TriggerHoverSound(controller);
-                }
-            }
-        }
-        catch (System.Exception ex)
-        {
-            Plugin.Logger.LogWarning($"TriggerVisualSelectionForHeroSkill error: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Lee información detallada de la skill actual del héroe.
-    /// </summary>
-    public void ReadHeroSkillDetails()
-    {
-        if (_heroSubsection != HeroSubsection.Skills) return;
-        if (_heroSkillIndex < 0 || _heroSkillIndex >= _playerSkills.Count) return;
-
-        var skill = _playerSkills[_heroSkillIndex];
-        if (skill == null) return;
-
-        TolkWrapper.Speak(ItemReader.GetDetailedDescription(skill));
-    }
-
-    /// <summary>
-    /// Navega al siguiente stat/skill en Hero (Ctrl+Up).
-    /// </summary>
-    public void HeroNext()
-    {
-        if (_currentSection != NavigationSection.Hero) return;
-
-        if (_heroSubsection == HeroSubsection.Stats)
-        {
-            int maxIndex = GetHeroStatCount() - 1;
-            // No wrap - stay at end
-            if (_heroStatIndex >= maxIndex)
-            {
-                TolkWrapper.Speak("End of list");
-                return;
-            }
-            _heroStatIndex++;
-            AnnounceHeroStat();
-        }
-        else
-        {
-            if (_playerSkills.Count == 0) return;
-            // No wrap - stay at end
-            if (_heroSkillIndex >= _playerSkills.Count - 1)
-            {
-                TolkWrapper.Speak("End of list");
-                return;
-            }
-            _heroSkillIndex++;
-            AnnounceHeroSkill();
-        }
-    }
-
-    /// <summary>
-    /// Navega al stat/skill anterior en Hero (Ctrl+Down).
-    /// </summary>
-    public void HeroPrevious()
-    {
-        if (_currentSection != NavigationSection.Hero) return;
-
-        if (_heroSubsection == HeroSubsection.Stats)
-        {
-            // No wrap - stay at start
-            if (_heroStatIndex <= 0)
-            {
-                TolkWrapper.Speak("Start of list");
-                return;
-            }
-            _heroStatIndex--;
-            AnnounceHeroStat();
-        }
-        else
-        {
-            if (_playerSkills.Count == 0) return;
-            // No wrap - stay at start
-            if (_heroSkillIndex <= 0)
-            {
-                TolkWrapper.Speak("Start of list");
-                return;
-            }
-            _heroSkillIndex--;
-            AnnounceHeroSkill();
-        }
-    }
-
-    /// <summary>
-    /// Obtiene la skill actual del héroe para leer detalles.
-    /// </summary>
-    public Card GetCurrentHeroSkill()
-    {
-        if (_heroSubsection != HeroSubsection.Skills) return null;
-        if (_heroSkillIndex < 0 || _heroSkillIndex >= _playerSkills.Count) return null;
-
-        return _playerSkills[_heroSkillIndex];
-    }
-
-    /// <summary>
-    /// Activa o desactiva el modo combate.
-    /// En combate solo se permite navegar al Hero.
+    /// Activates or deactivates combat mode.
+    /// In combat only Hero navigation is allowed.
     /// </summary>
     public void SetCombatMode(bool inCombat)
     {
         _inCombat = inCombat;
         if (inCombat)
         {
-            // En combate, forzar ir a Hero
+            // In combat, force go to Hero
             GoToSection(NavigationSection.Hero);
         }
     }
 
     /// <summary>
-    /// Indica si estamos en modo combate.
-    /// </summary>
-    public bool IsInCombat => _inCombat;
-
-    /// <summary>
-    /// Indica si estamos en modo replay (post-combate).
-    /// </summary>
-    public bool IsInReplayMode => _inReplayMode;
-
-    /// <summary>
-    /// Indica si estamos en modo recap (después de pulsar E en ReplayState).
-    /// </summary>
-    public bool IsInRecapMode => _inRecapMode;
-
-    /// <summary>
-    /// Activa o desactiva el modo replay (post-combate).
+    /// Activates or deactivates replay mode (post-combat).
     /// </summary>
     public void SetReplayMode(bool inReplayMode)
     {
         _inReplayMode = inReplayMode;
         if (inReplayMode)
         {
-            // Salir del modo combate si entramos en replay
+            // Exit combat mode when entering replay
             _inCombat = false;
         }
         else
         {
-            // Al salir de replay, también salir de recap
+            // When leaving replay, also leave recap
             _inRecapMode = false;
         }
     }
 
     /// <summary>
-    /// Activa el modo recap (después de pulsar E en ReplayState).
+    /// Activates recap mode (after pressing E in ReplayState).
     /// </summary>
     public void SetRecapMode(bool inRecapMode)
     {
         _inRecapMode = inRecapMode;
         if (!inRecapMode)
         {
-            _currentRecapSection = RecapSection.None;
+            Recap.Reset();
         }
     }
 
     /// <summary>
-    /// Actualiza el estado del stash (abierto/cerrado).
+    /// Updates the stash state (open/closed).
     /// </summary>
     public void SetStashState(bool isOpen)
     {
@@ -734,7 +530,7 @@ public class GameplayNavigator
 
         if (isOpen)
         {
-            // Refrescar el stash cuando se abre
+            // Refresh the stash when opened
             RefreshStash();
         }
         else
@@ -751,694 +547,7 @@ public class GameplayNavigator
     public NavigationSection GetSectionBeforeStash() => _sectionBeforeStash;
 
     /// <summary>
-    /// Lee la información del enemigo/NPC actual.
-    /// Si no estamos en combate, entra en modo enemigo para navegar items.
-    /// Durante combate, solo lee stats.
-    /// </summary>
-    public void ReadEnemyInfo()
-    {
-        try
-        {
-            var opponent = Data.Run?.Opponent;
-            if (opponent == null)
-            {
-                TolkWrapper.Speak("No enemy");
-                _enemyMode = false;
-                return;
-            }
-
-            var parts = new List<string>();
-
-            // Nombre del oponente: solo usar SimPvpOpponent si estamos realmente en PvP combat
-            var currentState = Data.CurrentState?.StateName;
-            bool isPvpCombat = currentState == ERunState.PVPCombat;
-
-            if (isPvpCombat)
-            {
-                var pvpOpponent = Data.SimPvpOpponent;
-                if (pvpOpponent != null && !string.IsNullOrEmpty(pvpOpponent.Name))
-                {
-                    parts.Add($"Opponent: {pvpOpponent.Name}");
-                }
-                else
-                {
-                    parts.Add("Enemy");
-                }
-            }
-            else
-            {
-                parts.Add("Enemy");
-            }
-
-            // Vida
-            if (opponent.Attributes.TryGetValue(EPlayerAttributeType.Health, out int health))
-            {
-                parts.Add($"Health: {health}");
-            }
-            if (opponent.Attributes.TryGetValue(EPlayerAttributeType.HealthMax, out int maxHealth))
-            {
-                parts.Add($"of {maxHealth}");
-            }
-
-            // Escudo
-            if (opponent.Attributes.TryGetValue(EPlayerAttributeType.Shield, out int shield) && shield > 0)
-            {
-                parts.Add($"Shield: {shield}");
-            }
-
-            // Solo permitir navegación de items fuera de combate
-            if (!_inCombat)
-            {
-                _enemyMode = true;
-                RefreshEnemyItems();
-
-                // Items del enemigo
-                int enemyItemCount = _enemyCards.Count;
-                if (enemyItemCount > 0)
-                {
-                    parts.Add($"{enemyItemCount} items");
-                }
-                if (_enemySkillIndices.Count > 0)
-                {
-                    parts.Add($"{_enemySkillIndices.Count} skills");
-                }
-            }
-
-            TolkWrapper.Speak(string.Join(", ", parts));
-        }
-        catch (System.Exception ex)
-        {
-            Plugin.Logger.LogError($"ReadEnemyInfo error: {ex.Message}");
-            TolkWrapper.Speak("Cannot read enemy info");
-            _enemyMode = false;
-        }
-    }
-
-    /// <summary>
-    /// Refresca la lista de items del enemigo.
-    /// </summary>
-    private void RefreshEnemyItems()
-    {
-        _enemyCards.Clear();
-        _enemySkillIndices.Clear();
-        _enemySkills.Clear();
-        _enemyItemIndex = 0;
-        _enemySkillIndex = 0;
-
-        // Use Data.GetCards API (source of truth) instead of socket array
-        // Sockets are UI-only and retain stale references after combat
-        try
-        {
-            var cards = Data.GetCards<Card>(ECombatantId.Opponent, EInventorySection.Hand);
-            foreach (var card in cards)
-            {
-                if (card is ItemCard)
-                    _enemyCards.Add(card);
-            }
-        }
-        catch (System.Exception ex)
-        {
-            Plugin.Logger.LogWarning($"RefreshEnemyItems: Data.GetCards failed: {ex.Message}");
-        }
-
-        // Skills del enemigo - from sockets for visual feedback
-        var bm = GetBoardManager();
-        if (bm?.opponentSkillSockets != null)
-        {
-            for (int i = 0; i < bm.opponentSkillSockets.Length; i++)
-            {
-                if (bm.opponentSkillSockets[i]?.CardController?.CardData != null)
-                    _enemySkillIndices.Add(i);
-            }
-        }
-
-        // Always try to load skills from Data.Run.Opponent.Skills as fallback
-        try
-        {
-            var opponent = Data.Run?.Opponent;
-            if (opponent?.Skills != null)
-            {
-                _enemySkills.AddRange(opponent.Skills);
-            }
-        }
-        catch (System.Exception ex)
-        {
-            Plugin.Logger.LogWarning($"RefreshEnemyItems: Failed to get Opponent.Skills: {ex.Message}");
-        }
-
-        Plugin.Logger.LogInfo($"RefreshEnemyItems: {_enemyCards.Count} items (Data.GetCards), {_enemySkillIndices.Count} socket skills, {_enemySkills.Count} data skills");
-    }
-
-    /// <summary>
-    /// Sale del modo enemigo.
-    /// </summary>
-    public void ExitEnemyMode()
-    {
-        _enemyMode = false;
-        _enemyItemIndex = 0;
-        _enemySkillIndex = 0;
-        _enemySubsection = EnemySubsection.Items;
-        ClearEnemyDetailReading();
-    }
-
-    /// <summary>
-    /// Clears the detail reading state for enemy items.
-    /// </summary>
-    private void ClearEnemyDetailReading()
-    {
-        _enemyDetailLines.Clear();
-        _enemyDetailIndex = -1;
-        _enemyDetailCard = null;
-    }
-
-    /// <summary>
-    /// Entra directamente al modo de navegación del tablero del oponente.
-    /// Usado durante ReplayMode con la tecla G.
-    /// Best used during Recap (E) for static view without Combat Describer.
-    /// </summary>
-    public void EnterOpponentBoardMode()
-    {
-        try
-        {
-            // Check if Replay is actively running (combat animation playing)
-            var bm = GetBoardManager();
-            bool isReplayRunning = IsReplayAnimationActive();
-
-            if (isReplayRunning)
-            {
-                TolkWrapper.Speak("Replay in progress. Press E for Recap to view opponent board without interruptions.");
-                return;
-            }
-
-            RefreshEnemyItems();
-
-            int itemCount = _enemyCards.Count;
-            int skillCount = GetEnemySkillCount();
-            if (itemCount == 0 && skillCount == 0)
-            {
-                TolkWrapper.Speak("No opponent items");
-                return;
-            }
-
-            _enemyMode = true;
-            _enemyItemIndex = 0;
-            _enemySkillIndex = 0;
-            _enemySubsection = EnemySubsection.Items;
-            ClearEnemyDetailReading();
-
-            // Set recap section if in recap mode
-            if (_inRecapMode)
-            {
-                _currentRecapSection = RecapSection.EnemyBoard;
-            }
-
-            // Get opponent name if available
-            string opponentName = "Opponent";
-            var pvpOpponent = Data.SimPvpOpponent;
-            if (pvpOpponent != null && !string.IsNullOrEmpty(pvpOpponent.Name))
-            {
-                opponentName = pvpOpponent.Name;
-            }
-
-            // Announce board
-            TolkWrapper.Speak($"{opponentName}'s board, {itemCount} items");
-        }
-        catch (System.Exception ex)
-        {
-            Plugin.Logger.LogError($"EnterOpponentBoardMode error: {ex.Message}");
-            TolkWrapper.Speak("Cannot access opponent board");
-        }
-    }
-
-    /// <summary>
-    /// Checks if the replay animation is currently playing.
-    /// </summary>
-    private bool IsReplayAnimationActive()
-    {
-        try
-        {
-            var currentState = AppState.CurrentState;
-            if (currentState == null) return false;
-
-            var replayStateType = typeof(AppState).Assembly.GetType("TheBazaar.ReplayState");
-            if (replayStateType == null || !replayStateType.IsInstanceOfType(currentState))
-                return false;
-
-            // Check IsReplaying property
-            var isReplayingProp = replayStateType.GetProperty("IsReplaying");
-            if (isReplayingProp != null)
-            {
-                return (bool)isReplayingProp.GetValue(currentState);
-            }
-        }
-        catch (System.Exception ex)
-        {
-            Plugin.Logger.LogError($"IsReplayAnimationActive error: {ex.Message}");
-        }
-        return false;
-    }
-
-    /// <summary>
-    /// Navigate to next item in current enemy subsection (Right arrow).
-    /// </summary>
-    public void EnemyNavigateRight()
-    {
-        if (!_enemyMode) return;
-        ClearEnemyDetailReading();
-
-        if (_enemySubsection == EnemySubsection.Items)
-        {
-            int itemCount = _enemyCards.Count;
-            if (itemCount == 0)
-            {
-                TolkWrapper.Speak("No items");
-                return;
-            }
-            if (_enemyItemIndex >= itemCount - 1)
-            {
-                AnnounceCurrentEnemyItem(); // Read current at limit
-                return;
-            }
-            _enemyItemIndex++;
-        }
-        else // Skills
-        {
-            int skillCount = GetEnemySkillCount();
-            if (skillCount == 0)
-            {
-                TolkWrapper.Speak("No skills");
-                return;
-            }
-            if (_enemySkillIndex >= skillCount - 1)
-            {
-                AnnounceCurrentEnemyItem();
-                return;
-            }
-            _enemySkillIndex++;
-        }
-        AnnounceCurrentEnemyItem();
-    }
-
-    /// <summary>
-    /// Navigate to previous item in current enemy subsection (Left arrow).
-    /// </summary>
-    public void EnemyNavigateLeft()
-    {
-        if (!_enemyMode) return;
-        ClearEnemyDetailReading();
-
-        if (_enemySubsection == EnemySubsection.Items)
-        {
-            if (_enemyCards.Count == 0)
-            {
-                TolkWrapper.Speak("No items");
-                return;
-            }
-            if (_enemyItemIndex <= 0)
-            {
-                AnnounceCurrentEnemyItem();
-                return;
-            }
-            _enemyItemIndex--;
-        }
-        else // Skills
-        {
-            int skillCount = GetEnemySkillCount();
-            if (skillCount == 0)
-            {
-                TolkWrapper.Speak("No skills");
-                return;
-            }
-            if (_enemySkillIndex <= 0)
-            {
-                AnnounceCurrentEnemyItem();
-                return;
-            }
-            _enemySkillIndex--;
-        }
-        AnnounceCurrentEnemyItem();
-    }
-
-    /// <summary>
-    /// Switch to next enemy subsection (Ctrl+Right: Items -> Skills).
-    /// </summary>
-    public void EnemyNextSubsection()
-    {
-        if (!_enemyMode) return;
-        ClearEnemyDetailReading();
-
-        int skillCount = GetEnemySkillCount();
-        if (_enemySubsection == EnemySubsection.Items && skillCount > 0)
-        {
-            _enemySubsection = EnemySubsection.Skills;
-            _enemySkillIndex = 0;
-            // Announce first skill with description (like hero skills)
-            AnnounceEnemySkill();
-        }
-        else if (_enemySubsection == EnemySubsection.Items)
-        {
-            TolkWrapper.Speak("No skills");
-        }
-        else
-        {
-            // Already in Skills, re-announce current skill
-            AnnounceEnemySkill();
-        }
-    }
-
-    /// <summary>
-    /// Switch to previous enemy subsection (Ctrl+Left: Skills -> Items).
-    /// </summary>
-    public void EnemyPreviousSubsection()
-    {
-        if (!_enemyMode) return;
-        ClearEnemyDetailReading();
-
-        int itemCount = _enemyCards.Count;
-        if (_enemySubsection == EnemySubsection.Skills && itemCount > 0)
-        {
-            _enemySubsection = EnemySubsection.Items;
-            _enemyItemIndex = 0;
-            TolkWrapper.Speak($"Items, {itemCount}");
-        }
-        else
-        {
-            TolkWrapper.Speak(_enemySubsection == EnemySubsection.Items ? "Items" : "Skills");
-        }
-    }
-
-    /// <summary>
-    /// Navigate to next enemy skill (Ctrl+Up in Skills subsection).
-    /// Similar to HeroNext() for hero skills.
-    /// </summary>
-    public void EnemySkillNext()
-    {
-        if (!_enemyMode || _enemySubsection != EnemySubsection.Skills) return;
-
-        int skillCount = GetEnemySkillCount();
-        if (skillCount == 0) return;
-
-        if (_enemySkillIndex >= skillCount - 1)
-        {
-            // Already at end, just re-announce current skill
-            AnnounceEnemySkill();
-            return;
-        }
-
-        _enemySkillIndex++;
-        AnnounceEnemySkill();
-    }
-
-    /// <summary>
-    /// Navigate to previous enemy skill (Ctrl+Down in Skills subsection).
-    /// Similar to HeroPrevious() for hero skills.
-    /// </summary>
-    public void EnemySkillPrevious()
-    {
-        if (!_enemyMode || _enemySubsection != EnemySubsection.Skills) return;
-
-        int skillCount = GetEnemySkillCount();
-        if (skillCount == 0) return;
-
-        if (_enemySkillIndex <= 0)
-        {
-            // Already at start, just re-announce current skill
-            AnnounceEnemySkill();
-            return;
-        }
-
-        _enemySkillIndex--;
-        AnnounceEnemySkill();
-    }
-
-    /// <summary>
-    /// Announces the current enemy skill with name and description.
-    /// Similar to AnnounceHeroSkill().
-    /// </summary>
-    private void AnnounceEnemySkill()
-    {
-        int skillCount = GetEnemySkillCount();
-        if (_enemySkillIndex < 0 || _enemySkillIndex >= skillCount)
-        {
-            TolkWrapper.Speak("No skill");
-            return;
-        }
-
-        var card = GetCurrentEnemyCard();
-        if (card == null)
-        {
-            TolkWrapper.Speak("Empty slot");
-            return;
-        }
-
-        string name = ItemReader.GetCardName(card);
-        string desc = ItemReader.GetFullDescription(card);
-
-        if (!string.IsNullOrEmpty(desc))
-        {
-            TolkWrapper.Speak($"{name}: {desc}");
-        }
-        else
-        {
-            TolkWrapper.Speak(name);
-        }
-    }
-
-    /// <summary>
-    /// Returns true if currently in enemy Skills subsection.
-    /// </summary>
-    public bool IsInEnemySkillsSubsection => _enemyMode && _enemySubsection == EnemySubsection.Skills;
-
-    /// <summary>
-    /// Read next detail line of current enemy item (Ctrl+Up).
-    /// </summary>
-    public void EnemyDetailNext()
-    {
-        if (!_enemyMode) return;
-
-        var card = GetCurrentEnemyCard();
-        if (card == null)
-        {
-            TolkWrapper.Speak("No item selected");
-            return;
-        }
-
-        // Refresh detail lines if card changed - use enemy-focused order
-        if (_enemyDetailCard != card)
-        {
-            _enemyDetailLines = ItemReader.GetEnemyDetailLines(card);
-            _enemyDetailIndex = -1;
-            _enemyDetailCard = card;
-        }
-
-        if (_enemyDetailLines.Count == 0)
-        {
-            TolkWrapper.Speak("No details");
-            return;
-        }
-
-        // Advance to next line (no wrap)
-        if (_enemyDetailIndex >= _enemyDetailLines.Count - 1)
-        {
-            _enemyDetailIndex = _enemyDetailLines.Count - 1;
-            TolkWrapper.Speak(_enemyDetailLines[_enemyDetailIndex]);
-            return;
-        }
-
-        _enemyDetailIndex++;
-        TolkWrapper.Speak(_enemyDetailLines[_enemyDetailIndex]);
-    }
-
-    /// <summary>
-    /// Read previous detail line of current enemy item (Ctrl+Down).
-    /// </summary>
-    public void EnemyDetailPrevious()
-    {
-        if (!_enemyMode) return;
-
-        var card = GetCurrentEnemyCard();
-        if (card == null)
-        {
-            TolkWrapper.Speak("No item selected");
-            return;
-        }
-
-        // Refresh detail lines if card changed - use enemy-focused order
-        if (_enemyDetailCard != card)
-        {
-            _enemyDetailLines = ItemReader.GetEnemyDetailLines(card);
-            _enemyDetailIndex = -1;
-            _enemyDetailCard = card;
-        }
-
-        if (_enemyDetailLines.Count == 0)
-        {
-            TolkWrapper.Speak("No details");
-            return;
-        }
-
-        // On first press or at start, read first line
-        if (_enemyDetailIndex <= 0)
-        {
-            _enemyDetailIndex = 0;
-            TolkWrapper.Speak(_enemyDetailLines[0]);
-            return;
-        }
-
-        _enemyDetailIndex--;
-        TolkWrapper.Speak(_enemyDetailLines[_enemyDetailIndex]);
-    }
-
-    /// <summary>
-    /// Gets the total count of enemy skills from either sockets or data.
-    /// </summary>
-    private int GetEnemySkillCount()
-    {
-        // Return the max of both sources since we fall back between them
-        return System.Math.Max(_enemySkillIndices.Count, _enemySkills.Count);
-    }
-
-    /// <summary>
-    /// Gets the current enemy card based on subsection and index.
-    /// </summary>
-    private Card GetCurrentEnemyCard()
-    {
-        if (_enemySubsection == EnemySubsection.Items)
-        {
-            if (_enemyItemIndex < _enemyCards.Count)
-                return _enemyCards[_enemyItemIndex];
-        }
-        else // Skills
-        {
-            // Try from sockets first
-            var bm = GetBoardManager();
-            if (_enemySkillIndices.Count > 0 && bm != null)
-            {
-                if (_enemySkillIndex < _enemySkillIndices.Count)
-                {
-                    int idx = _enemySkillIndices[_enemySkillIndex];
-                    var card = bm.opponentSkillSockets[idx]?.CardController?.CardData;
-                    if (card != null) return card;
-                }
-            }
-            // Fallback to data
-            if (_enemySkillIndex < _enemySkills.Count)
-            {
-                return _enemySkills[_enemySkillIndex];
-            }
-        }
-        return null;
-    }
-
-    /// <summary>
-    /// Gets the current enemy card controller based on subsection and index.
-    /// Uses Data.CardAndSkillLookup for items (reliable), sockets for skills.
-    /// </summary>
-    private CardController GetCurrentEnemyCardController()
-    {
-        if (_enemySubsection == EnemySubsection.Items)
-        {
-            // Use CardAndSkillLookup to find controller from Card object
-            var card = GetCurrentEnemyCard();
-            if (card != null)
-                return Data.CardAndSkillLookup.GetCardController(card);
-        }
-        else // Skills
-        {
-            var bm = GetBoardManager();
-            if (bm != null && _enemySkillIndex < _enemySkillIndices.Count)
-            {
-                int idx = _enemySkillIndices[_enemySkillIndex];
-                return bm.opponentSkillSockets[idx]?.CardController;
-            }
-        }
-        return null;
-    }
-
-    /// <summary>
-    /// Announces the current enemy item with position.
-    /// For skills, includes description like player's own skills.
-    /// </summary>
-    private void AnnounceCurrentEnemyItem()
-    {
-        var bm = GetBoardManager();
-        CardController controller = GetCurrentEnemyCardController();
-        Card card = controller?.CardData ?? GetCurrentEnemyCard(); // Fallback to data if no controller
-
-        int total, pos;
-        if (_enemySubsection == EnemySubsection.Items)
-        {
-            total = _enemyCards.Count;
-            pos = _enemyItemIndex + 1;
-        }
-        else
-        {
-            total = GetEnemySkillCount();
-            pos = _enemySkillIndex + 1;
-        }
-
-        if (card == null)
-        {
-            TolkWrapper.Speak("Empty");
-            return;
-        }
-
-        string name = ItemReader.GetCardName(card);
-
-        // For skills, include description like player's own skills
-        if (_enemySubsection == EnemySubsection.Skills)
-        {
-            string desc = ItemReader.GetFullDescription(card);
-            if (!string.IsNullOrEmpty(desc))
-            {
-                TolkWrapper.Speak($"{name}: {desc}");
-            }
-            else
-            {
-                TolkWrapper.Speak(name);
-            }
-        }
-        else
-        {
-            // Use compact combat-focused description for enemy items
-            TolkWrapper.Speak(ItemReader.GetEnemyCompactDescription(card));
-        }
-
-        // Visual feedback (only if controller is available)
-        if (controller != null && bm != null)
-        {
-            ResetAllCardSelections(bm);
-            var eventSystem = EventSystem.current;
-            var pointerData = new PointerEventData(eventSystem) { position = Vector2.zero };
-            controller.OnPointerEnter(pointerData);
-            controller.HoverMove();
-            TriggerHoverSound(controller);
-        }
-    }
-
-    /// <summary>
-    /// Reads detailed description of current enemy item (Enter key).
-    /// </summary>
-    public void ReadCurrentEnemyItemDetails()
-    {
-        if (!_enemyMode) return;
-
-        var card = GetCurrentEnemyCard();
-        if (card == null)
-        {
-            TolkWrapper.Speak("No item selected");
-            return;
-        }
-
-        TolkWrapper.Speak(ItemReader.GetDetailedDescription(card));
-    }
-
-    // Keep old methods for backward compatibility during combat (F key)
-    public void EnemyNext() => EnemyNavigateRight();
-    public void EnemyPrevious() => EnemyNavigateLeft();
-
-    /// <summary>
-    /// Abre/cierra el stash y navega a él si está abierto.
+    /// Opens/closes the stash and navigates to it if open.
     /// </summary>
     public void ToggleStash()
     {
@@ -1451,16 +560,16 @@ public class GameplayNavigator
                 return;
             }
 
-            // Verificar si podemos interactuar
+            // Check if we can interact
             if (!bm.AllowInteraction)
             {
                 TolkWrapper.Speak("Cannot open stash now");
                 return;
             }
 
-            // Llamar al método del juego para abrir/cerrar el stash
+            // Call the game method to open/close the stash
             bm.TryToggleStorage();
-            // El evento StorageToggled se disparará y OnStorageToggled se encargará del resto
+            // The StorageToggled event will fire and OnStorageToggled will handle the rest
         }
         catch (System.Exception ex)
         {
@@ -1470,7 +579,7 @@ public class GameplayNavigator
     }
 
     /// <summary>
-    /// Va a la sección del stash (sin abrir/cerrar).
+    /// Goes to the stash section (without opening/closing).
     /// </summary>
     public void GoToStash()
     {
@@ -1494,7 +603,7 @@ public class GameplayNavigator
     {
         var list = new List<NavigationSection>();
 
-        // En combate solo permitir Hero
+        // In combat only allow Hero
         if (_inCombat)
         {
             list.Add(NavigationSection.Hero);
@@ -1503,16 +612,16 @@ public class GameplayNavigator
 
         if (_selectionItems.Count > 0) list.Add(NavigationSection.Selection);
         if (_boardIndices.Count > 0) list.Add(NavigationSection.Board);
-        // Solo incluir Stash si está abierto
+        // Only include Stash if open
         if (_stashOpen && _stashIndices.Count > 0) list.Add(NavigationSection.Stash);
-        if (_playerSkills.Count > 0) list.Add(NavigationSection.Skills);
-        list.Add(NavigationSection.Hero); // Hero siempre disponible
+        if (Hero.Skills.Count > 0) list.Add(NavigationSection.Skills);
+        list.Add(NavigationSection.Hero); // Hero always available
         return list;
     }
 
     public void Next()
     {
-        // En Hero, no usar flechas normales - usar Ctrl+Up/Down
+        // In Hero, don't use normal arrows - use Ctrl+Up/Down
         if (_currentSection == NavigationSection.Hero) return;
 
         int count = GetCurrentSectionCount();
@@ -1534,14 +643,14 @@ public class GameplayNavigator
         }
 
         _currentIndex++;
-        ClearDetailCache();
+        Detail.Clear();
         AnnounceCurrentItem();
         TriggerVisualSelection();
     }
 
     public void Previous()
     {
-        // En Hero, no usar flechas normales - usar Ctrl+Up/Down
+        // In Hero, don't use normal arrows - use Ctrl+Up/Down
         if (_currentSection == NavigationSection.Hero) return;
 
         int count = GetCurrentSectionCount();
@@ -1563,7 +672,7 @@ public class GameplayNavigator
         }
 
         _currentIndex--;
-        ClearDetailCache();
+        Detail.Clear();
         AnnounceCurrentItem();
         TriggerVisualSelection();
     }
@@ -1579,7 +688,7 @@ public class GameplayNavigator
         if (count == 0) return;
 
         _currentIndex = 0;
-        ClearDetailCache();
+        Detail.Clear();
         AnnounceCurrentItem();
         TriggerVisualSelection();
     }
@@ -1595,7 +704,7 @@ public class GameplayNavigator
         if (count == 0) return;
 
         _currentIndex = count - 1;
-        ClearDetailCache();
+        Detail.Clear();
         AnnounceCurrentItem();
         TriggerVisualSelection();
     }
@@ -1643,12 +752,14 @@ public class GameplayNavigator
         }
 
         _currentIndex = newIndex;
-        ClearDetailCache();
+        Detail.Clear();
         AnnounceCurrentItem();
         TriggerVisualSelection();
     }
 
-    // --- Anuncios ---
+    // ===============================================
+    // ANNOUNCEMENTS
+    // ===============================================
 
     /// <summary>
     /// Verifies that the reported state matches the actual content.
@@ -1689,8 +800,8 @@ public class GameplayNavigator
     }
 
     /// <summary>
-    /// Anuncia el estado actual de forma muy simple.
-    /// Solo dice el nombre del estado, sin detalles extras.
+    /// Announces the current state simply.
+    /// Only says the state name, no extra details.
     /// </summary>
     public void AnnounceState()
     {
@@ -1701,7 +812,7 @@ public class GameplayNavigator
         // Verify state matches actual content - fix for incorrect "Shop" announcements
         runState = VerifyStateMatchesContent(runState);
 
-        // Anuncio simplificado con información relevante
+        // Simplified announcement with relevant info
         string announcement;
         switch (runState)
         {
@@ -1715,7 +826,7 @@ public class GameplayNavigator
                 announcement = "Loot";
                 break;
             case ERunState.LevelUp:
-                // Para level up, incluir el nivel actual y número de skills disponibles
+                // For level up, include current level and number of available skills
                 int level = Data.Run?.Player?.GetAttributeValue(EPlayerAttributeType.Level) ?? 0;
                 int skillCount = GetSelectionCardCount();
                 announcement = skillCount > 0
@@ -1744,7 +855,7 @@ public class GameplayNavigator
 
         TolkWrapper.Speak(announcement);
 
-        // Activar selección visual del primer item (si no estamos en combate)
+        // Trigger visual selection of the first item (if not in combat)
         if (runState != ERunState.Combat && runState != ERunState.PVPCombat)
         {
             TriggerVisualSelection();
@@ -1753,11 +864,11 @@ public class GameplayNavigator
 
     private string GetSelectionTypeName()
     {
-        // Contar solo las cartas (no Exit/Reroll)
+        // Count only cards (not Exit/Reroll)
         var cards = _selectionItems.Where(i => i.Type == NavItemType.Card).ToList();
         if (cards.Count == 0) return "options";
 
-        // En estado de Loot, son recompensas
+        // In Loot state, they are rewards
         var state = GetCurrentState();
         if (state == ERunState.Loot) return "rewards";
 
@@ -1768,13 +879,13 @@ public class GameplayNavigator
     }
 
     /// <summary>
-    /// Verifica si el estado actual sale automáticamente después de seleccionar.
+    /// Checks if the current state auto-exits after selecting.
     /// </summary>
     public bool WillAutoExit()
     {
         try
         {
-            // Si no se puede salir manualmente, es porque auto-sale
+            // If you can't exit manually, it's because it auto-exits
             bool canExit = Data.CurrentState?.SelectionContextRules?.CanExit ?? true;
             return !canExit;
         }
@@ -1788,13 +899,13 @@ public class GameplayNavigator
     {
         if (_currentSection == NavigationSection.Hero)
         {
-            AnnounceHeroSubsection();
+            Hero.AnnounceSubsection();
             return;
         }
 
         int count = GetCurrentSectionCount();
 
-        // No anunciar secciones vacías
+        // Don't announce empty sections
         if (count == 0) return;
 
         string name = _currentSection switch
@@ -1817,14 +928,14 @@ public class GameplayNavigator
         int pos = _currentIndex + 1;
         int total = GetCurrentSectionCount();
 
-        // Si estamos en Hero, anunciar stat
+        // If in Hero, announce stat
         if (_currentSection == NavigationSection.Hero)
         {
-            AnnounceHeroStat();
+            Hero.AnnounceStat();
             return;
         }
 
-        // Si estamos en Selection, puede ser carta o acción
+        // If in Selection, can be card or action
         if (_currentSection == NavigationSection.Selection)
         {
             var navItem = GetCurrentNavItem();
@@ -1855,7 +966,7 @@ public class GameplayNavigator
             return;
         }
 
-        // Para otras secciones (Board, Stash, Skills)
+        // For other sections (Board, Stash, Skills)
         var card = GetCurrentCard();
         if (card == null)
         {
@@ -1871,11 +982,11 @@ public class GameplayNavigator
     {
         if (_currentSection == NavigationSection.Hero)
         {
-            ReadAllHeroStats();
+            Hero.ReadAllStats();
             return;
         }
 
-        // Si estamos en Selection, puede ser NavItem
+        // If in Selection, can be NavItem
         if (_currentSection == NavigationSection.Selection)
         {
             var navItem = GetCurrentNavItem();
@@ -1904,7 +1015,7 @@ public class GameplayNavigator
             }
         }
 
-        // Para otras secciones
+        // For other sections
         var currentCard = GetCurrentCard();
         if (currentCard == null)
         {
@@ -1917,225 +1028,6 @@ public class GameplayNavigator
         else
             TolkWrapper.Speak(ItemReader.GetDetailedDescription(currentCard));
     }
-
-    // --- Acciones del juego ---
-
-    /// <summary>
-    /// Verifica si se puede salir del estado actual.
-    /// </summary>
-    public bool CanExit()
-    {
-        try
-        {
-            var state = AppState.CurrentState;
-            if (state == null)
-            {
-                Plugin.Logger.LogInfo("CanExit: AppState.CurrentState is null");
-                return false;
-            }
-
-            bool canHandle = state.CanHandleOperation(StateOps.ExitState);
-            bool rulesAllow = Data.CurrentState?.SelectionContextRules?.CanExit ?? true;
-
-            Plugin.Logger.LogInfo($"CanExit: canHandle={canHandle}, rulesAllow={rulesAllow}");
-
-            if (!canHandle) return false;
-            return rulesAllow;
-        }
-        catch (System.Exception ex)
-        {
-            Plugin.Logger.LogError($"CanExit error: {ex.Message}");
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Ejecuta el comando de salir del estado actual.
-    /// </summary>
-    public bool TryExit()
-    {
-        if (!CanExit())
-        {
-            TolkWrapper.Speak("Cannot exit now");
-            return false;
-        }
-
-        try
-        {
-            AppState.CurrentState.ExitStateCommand();
-            TolkWrapper.Speak("Exiting");
-            return true;
-        }
-        catch (System.Exception ex)
-        {
-            Plugin.Logger.LogError($"TryExit error: {ex.Message}");
-            TolkWrapper.Speak("Exit failed");
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Verifica si se puede hacer reroll.
-    /// </summary>
-    public bool CanReroll()
-    {
-        try
-        {
-            var state = AppState.CurrentState;
-            if (state == null) return false;
-            if (!state.CanHandleOperation(StateOps.Reroll)) return false;
-
-            var rerollCost = Data.CurrentState?.RerollCost;
-            var rerollsRemaining = Data.CurrentState?.RerollsRemaining;
-
-            if (!rerollCost.HasValue || rerollCost.Value < 0) return false;
-            if (rerollsRemaining.HasValue && rerollsRemaining.Value == 0) return false;
-
-            return true;
-        }
-        catch { return false; }
-    }
-
-    /// <summary>
-    /// Obtiene el costo de reroll.
-    /// </summary>
-    public int GetRerollCost()
-    {
-        return (int)(Data.CurrentState?.RerollCost ?? 0);
-    }
-
-    /// <summary>
-    /// Ejecuta el comando de reroll.
-    /// </summary>
-    public bool TryReroll()
-    {
-        if (!CanReroll())
-        {
-            TolkWrapper.Speak("Cannot refresh now");
-            return false;
-        }
-
-        int cost = GetRerollCost();
-        int gold = Data.Run?.Player?.GetAttributeValue(EPlayerAttributeType.Gold) ?? 0;
-
-        if (gold < cost)
-        {
-            TolkWrapper.Speak($"Not enough gold. Need {cost}, have {gold}");
-            return false;
-        }
-
-        try
-        {
-            if (AppState.CurrentState.RerollCommand())
-            {
-                TolkWrapper.Speak($"Refreshed for {cost} gold");
-                // Refrescar después del reroll
-                Plugin.Instance.StartCoroutine(DelayedRefresh());
-                return true;
-            }
-            else
-            {
-                TolkWrapper.Speak("Refresh failed");
-                return false;
-            }
-        }
-        catch (System.Exception ex)
-        {
-            Plugin.Logger.LogError($"TryReroll error: {ex.Message}");
-            TolkWrapper.Speak("Refresh failed");
-            return false;
-        }
-    }
-
-    private System.Collections.IEnumerator DelayedRefresh()
-    {
-        yield return new UnityEngine.WaitForSeconds(0.5f);
-        Refresh();
-        AnnounceState();
-    }
-
-    /// <summary>
-    /// Anuncia las acciones disponibles (Exit, Reroll).
-    /// </summary>
-    public void AnnounceAvailableActions()
-    {
-        var actions = new List<string>();
-
-        if (CanExit())
-            actions.Add("E to exit");
-
-        if (CanReroll())
-        {
-            int cost = GetRerollCost();
-            actions.Add($"R to refresh ({cost} gold)");
-        }
-
-        if (actions.Count > 0)
-            TolkWrapper.Speak(string.Join(", ", actions));
-        else
-            TolkWrapper.Speak("No actions available");
-    }
-
-    private void AnnounceHeroStat()
-    {
-        // Check if this is the rank slot (last slot in ranked mode)
-        if (ItemReader.IsRankedMode() && _heroStatIndex >= HeroStats.Length)
-        {
-            string rank = ItemReader.GetPlayerRank();
-            TolkWrapper.Speak(!string.IsNullOrEmpty(rank) ? $"Rank: {rank}" : "Rank: unranked");
-            return;
-        }
-
-        var player = Data.Run?.Player;
-        if (player == null) { TolkWrapper.Speak("No hero data"); return; }
-
-        var type = HeroStats[_heroStatIndex];
-        var value = player.GetAttributeValue(type);
-        string name = GetStatName(type);
-
-        TolkWrapper.Speak(value.HasValue ? $"{name}: {value.Value}" : $"{name}: none");
-    }
-
-    public void ReadAllHeroStats()
-    {
-        var player = Data.Run?.Player;
-        if (player == null) { TolkWrapper.Speak("No hero data"); return; }
-
-        var parts = new List<string>();
-
-        var health = player.GetAttributeValue(EPlayerAttributeType.Health);
-        var maxHealth = player.GetAttributeValue(EPlayerAttributeType.HealthMax);
-        if (health.HasValue && maxHealth.HasValue)
-            parts.Add($"Health {health.Value} of {maxHealth.Value}");
-
-        var gold = player.GetAttributeValue(EPlayerAttributeType.Gold);
-        if (gold.HasValue) parts.Add($"Gold {gold.Value}");
-
-        var level = player.GetAttributeValue(EPlayerAttributeType.Level);
-        if (level.HasValue) parts.Add($"Level {level.Value}");
-
-        var shield = player.GetAttributeValue(EPlayerAttributeType.Shield);
-        if (shield.HasValue && shield.Value > 0) parts.Add($"Shield {shield.Value}");
-
-        TolkWrapper.Speak(string.Join(", ", parts));
-    }
-
-    private string GetStatName(EPlayerAttributeType type) => type switch
-    {
-        EPlayerAttributeType.Health => "Health",
-        EPlayerAttributeType.HealthMax => "Max Health",
-        EPlayerAttributeType.Gold => "Gold",
-        EPlayerAttributeType.Level => "Level",
-        EPlayerAttributeType.Experience => "Experience",
-        EPlayerAttributeType.Prestige => "Prestige",
-        EPlayerAttributeType.Shield => "Shield",
-        EPlayerAttributeType.Poison => "Poison",
-        EPlayerAttributeType.Burn => "Burn",
-        EPlayerAttributeType.HealthRegen => "Regeneration",
-        EPlayerAttributeType.CritChance => "Crit Chance",
-        EPlayerAttributeType.Income => "Income",
-        _ => type.ToString()
-    };
 
     /// <summary>
     /// Announces wins for the current run.
@@ -2272,10 +1164,172 @@ public class GameplayNavigator
         return $"{ItemReader.GetCardName(card)}: Size {size} ({sizeName})";
     }
 
-    // --- Acceso a datos ---
+    // ===============================================
+    // GAME ACTIONS
+    // ===============================================
 
     /// <summary>
-    /// Obtiene el NavItem actual en la sección Selection.
+    /// Checks if we can exit the current state.
+    /// </summary>
+    public bool CanExit()
+    {
+        try
+        {
+            var state = AppState.CurrentState;
+            if (state == null)
+            {
+                Plugin.Logger.LogInfo("CanExit: AppState.CurrentState is null");
+                return false;
+            }
+
+            bool canHandle = state.CanHandleOperation(StateOps.ExitState);
+            bool rulesAllow = Data.CurrentState?.SelectionContextRules?.CanExit ?? true;
+
+            Plugin.Logger.LogInfo($"CanExit: canHandle={canHandle}, rulesAllow={rulesAllow}");
+
+            if (!canHandle) return false;
+            return rulesAllow;
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"CanExit error: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Executes the exit command for the current state.
+    /// </summary>
+    public bool TryExit()
+    {
+        if (!CanExit())
+        {
+            TolkWrapper.Speak("Cannot exit now");
+            return false;
+        }
+
+        try
+        {
+            AppState.CurrentState.ExitStateCommand();
+            TolkWrapper.Speak("Exiting");
+            return true;
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"TryExit error: {ex.Message}");
+            TolkWrapper.Speak("Exit failed");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Checks if we can reroll.
+    /// </summary>
+    public bool CanReroll()
+    {
+        try
+        {
+            var state = AppState.CurrentState;
+            if (state == null) return false;
+            if (!state.CanHandleOperation(StateOps.Reroll)) return false;
+
+            var rerollCost = Data.CurrentState?.RerollCost;
+            var rerollsRemaining = Data.CurrentState?.RerollsRemaining;
+
+            if (!rerollCost.HasValue || rerollCost.Value < 0) return false;
+            if (rerollsRemaining.HasValue && rerollsRemaining.Value == 0) return false;
+
+            return true;
+        }
+        catch { return false; }
+    }
+
+    /// <summary>
+    /// Gets the reroll cost.
+    /// </summary>
+    public int GetRerollCost()
+    {
+        return (int)(Data.CurrentState?.RerollCost ?? 0);
+    }
+
+    /// <summary>
+    /// Executes the reroll command.
+    /// </summary>
+    public bool TryReroll()
+    {
+        if (!CanReroll())
+        {
+            TolkWrapper.Speak("Cannot refresh now");
+            return false;
+        }
+
+        int cost = GetRerollCost();
+        int gold = Data.Run?.Player?.GetAttributeValue(EPlayerAttributeType.Gold) ?? 0;
+
+        if (gold < cost)
+        {
+            TolkWrapper.Speak($"Not enough gold. Need {cost}, have {gold}");
+            return false;
+        }
+
+        try
+        {
+            if (AppState.CurrentState.RerollCommand())
+            {
+                TolkWrapper.Speak($"Refreshed for {cost} gold");
+                // Refresh after reroll
+                Plugin.Instance.StartCoroutine(DelayedRefresh());
+                return true;
+            }
+            else
+            {
+                TolkWrapper.Speak("Refresh failed");
+                return false;
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"TryReroll error: {ex.Message}");
+            TolkWrapper.Speak("Refresh failed");
+            return false;
+        }
+    }
+
+    private System.Collections.IEnumerator DelayedRefresh()
+    {
+        yield return new WaitForSeconds(0.5f);
+        Refresh();
+        AnnounceState();
+    }
+
+    /// <summary>
+    /// Announces available actions (Exit, Reroll).
+    /// </summary>
+    public void AnnounceAvailableActions()
+    {
+        var actions = new List<string>();
+
+        if (CanExit())
+            actions.Add("E to exit");
+
+        if (CanReroll())
+        {
+            int cost = GetRerollCost();
+            actions.Add($"R to refresh ({cost} gold)");
+        }
+
+        if (actions.Count > 0)
+            TolkWrapper.Speak(string.Join(", ", actions));
+        else
+            TolkWrapper.Speak("No actions available");
+    }
+
+    // ===============================================
+    // DATA ACCESS
+    // ===============================================
+
+    /// <summary>
+    /// Gets the current NavItem in the Selection section.
     /// </summary>
     public NavItem GetCurrentNavItem()
     {
@@ -2315,9 +1369,9 @@ public class GameplayNavigator
                 break;
 
             case NavigationSection.Skills:
-                if (_currentIndex < _playerSkills.Count)
+                if (_currentIndex < Hero.Skills.Count)
                 {
-                    return _playerSkills[_currentIndex];
+                    return Hero.Skills[_currentIndex];
                 }
                 break;
         }
@@ -2331,7 +1385,7 @@ public class GameplayNavigator
     public bool IsInStashSection() => _currentSection == NavigationSection.Stash;
 
     /// <summary>
-    /// Obtiene el índice del slot actual en el tablero.
+    /// Gets the index of the current slot on the board.
     /// </summary>
     public int GetCurrentBoardSlot()
     {
@@ -2341,11 +1395,11 @@ public class GameplayNavigator
     }
 
     /// <summary>
-    /// Ajusta el índice del navegador para apuntar al slot especificado del board.
-    /// Usado después de reordenar para seguir al item movido.
+    /// Adjusts the navigator index to point to the specified board slot.
+    /// Used after reordering to follow the moved item.
     /// </summary>
-    /// <param name="targetSlot">El slot al que queremos navegar</param>
-    /// <returns>True si se encontró el slot</returns>
+    /// <param name="targetSlot">The slot to navigate to</param>
+    /// <returns>True if the slot was found</returns>
     public bool GoToBoardSlot(int targetSlot)
     {
         if (_currentSection != NavigationSection.Board) return false;
@@ -2495,21 +1549,91 @@ public class GameplayNavigator
         return state?.CanHandleOperation(StateOps.MoveItem) ?? false;
     }
 
-    // --- Helpers ---
+    // ===============================================
+    // CONTENT VERIFICATION
+    // ===============================================
+
+    /// <summary>
+    /// Checks if there are items on the board.
+    /// </summary>
+    public bool HasBoardContent() => _boardIndices.Count > 0;
+
+    /// <summary>
+    /// Checks if there are items in the selection.
+    /// </summary>
+    public bool HasSelectionContent() => _selectionItems.Count > 0;
+
+    /// <summary>
+    /// Gets the number of items in the stash.
+    /// </summary>
+    public int GetStashItemCount() => _stashIndices.Count;
+
+    /// <summary>
+    /// Indicates if the stash is open.
+    /// </summary>
+    public bool IsStashOpen() => _stashOpen;
+
+    /// <summary>
+    /// Gets the number of cards (not actions) in the selection.
+    /// </summary>
+    public int GetSelectionCardCount() =>
+        _selectionItems.Count(i => i.Type == NavItemType.Card);
+
+    // ===============================================
+    // HELPERS
+    // ===============================================
 
     private int GetCurrentSectionCount() => _currentSection switch
     {
         NavigationSection.Selection => _selectionItems.Count,
         NavigationSection.Board => _boardIndices.Count,
         NavigationSection.Stash => _stashIndices.Count,
-        NavigationSection.Skills => _playerSkills.Count,
-        NavigationSection.Hero => GetHeroStatCount(),
+        NavigationSection.Skills => Hero.Skills.Count,
+        NavigationSection.Hero => Hero.GetStatCount(),
         _ => 0
     };
 
+    /// <summary>
+    /// Initializes the detail lines for the current item.
+    /// </summary>
+    private void InitDetailLines()
+    {
+        var card = GetCurrentCard();
+
+        if (card != null)
+        {
+            Detail.Init(card, c => ItemReader.GetDetailLines(c));
+        }
+        else
+        {
+            // Handle Exit/Reroll NavItems
+            if (Detail.CurrentCard == null && !Detail.HasLines)
+            {
+                var navItem = GetCurrentNavItem();
+                if (navItem != null)
+                {
+                    var lines = new List<string>();
+                    switch (navItem.Type)
+                    {
+                        case NavItemType.Exit:
+                            lines.Add("Exit");
+                            lines.Add("Leave the current state and continue");
+                            break;
+                        case NavItemType.Reroll:
+                            int gold = Data.Run?.Player?.GetAttributeValue(EPlayerAttributeType.Gold) ?? 0;
+                            lines.Add($"Refresh: {navItem.RerollCost} gold");
+                            lines.Add($"Your gold: {gold}");
+                            break;
+                    }
+                    Detail.InitCustom(lines);
+                }
+            }
+        }
+    }
+
     private string GetCardDescription(Card card)
     {
-        // En selección (shop/rewards)
+        // In selection (shop/rewards)
         if (_currentSection == NavigationSection.Selection)
         {
             if (IsEncounterCard(card))
@@ -2552,7 +1676,7 @@ public class GameplayNavigator
             return shopName;
         }
 
-        // En tablero/stash/skills
+        // In board/stash/skills
         string name = ItemReader.GetCardName(card);
 
         // Skills show tier only, items show size and tier
@@ -2588,8 +1712,7 @@ public class GameplayNavigator
     }
 
     /// <summary>
-    /// Obtiene el CardController de la carta actual y activa su efecto de hover visual.
-    /// Esto hace que la carta se destaque visualmente como si el ratón estuviera sobre ella.
+    /// Triggers visual selection of the current card using VisualSelector.
     /// </summary>
     public void TriggerVisualSelection()
     {
@@ -2603,12 +1726,11 @@ public class GameplayNavigator
             switch (_currentSection)
             {
                 case NavigationSection.Selection:
-                    // Los items en selección están en los sockets del merchant
-                    // Obtener el CardController del SelectionSet
+                    // Items in selection are in the merchant sockets
                     var navItem = GetCurrentNavItem();
                     if (navItem?.Type == NavItemType.Card && navItem.Card != null)
                     {
-                        controller = FindCardController(navItem.Card, bm);
+                        controller = VisualSelector.FindCardController(navItem.Card, bm);
                     }
                     break;
 
@@ -2629,9 +1751,9 @@ public class GameplayNavigator
                     break;
 
                 case NavigationSection.Skills:
-                    if (_currentIndex < _playerSkills.Count)
+                    if (_currentIndex < Hero.Skills.Count)
                     {
-                        // Skills del jugador están en playerSkillSockets
+                        // Player skills are in playerSkillSockets
                         if (bm.playerSkillSockets != null && _currentIndex < bm.playerSkillSockets.Length)
                         {
                             controller = bm.playerSkillSockets[_currentIndex]?.CardController;
@@ -2642,24 +1764,7 @@ public class GameplayNavigator
 
             if (controller != null)
             {
-                // Primero resetear cualquier carta previamente seleccionada
-                ResetAllCardSelections(bm);
-
-                // Simular un evento de puntero para activar la selección completa
-                var eventSystem = EventSystem.current;
-                var pointerData = new PointerEventData(eventSystem)
-                {
-                    position = Vector2.zero
-                };
-
-                // Llamar a OnPointerEnter que activa Select() internamente
-                controller.OnPointerEnter(pointerData);
-
-                // Asegurarnos de que la animación de hover se ejecute
-                controller.HoverMove();
-
-                // Reproducir sonido de hover según el tipo de controller
-                TriggerHoverSound(controller);
+                VisualSelector.SelectSocket(controller);
             }
         }
         catch (System.Exception ex)
@@ -2667,690 +1772,4 @@ public class GameplayNavigator
             Plugin.Logger.LogWarning($"TriggerVisualSelection error: {ex.Message}");
         }
     }
-
-    /// <summary>
-    /// Reproduce el sonido de hover para tipos de controller que no lo hacen en HoverMove().
-    /// Nota: EncounterController ya reproduce sonido en HoverMove(), solo necesitamos esto para ItemController.
-    /// </summary>
-    private void TriggerHoverSound(CardController controller)
-    {
-        try
-        {
-            // EncounterController ya reproduce sonido en su override de HoverMove()
-            // Solo necesitamos manejar ItemController que no sobreescribe HoverMove()
-            if (controller is ItemController itemController)
-            {
-                Vector3 position = controller.transform.position;
-                var handlerField = typeof(ItemController).GetField("soundCardHandler",
-                    BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
-
-                if (handlerField != null)
-                {
-                    var handler = handlerField.GetValue(itemController);
-                    if (handler != null)
-                    {
-                        var method = handler.GetType().GetMethod("SoundCardRaise",
-                            BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
-                        method?.Invoke(handler, new object[] { position });
-                    }
-                }
-            }
-            // SkillController tampoco sobreescribe HoverMove() con sonido
-            else if (controller is SkillController skillController)
-            {
-                // Skills no tienen sonido de hover específico en el juego vanilla
-            }
-        }
-        catch (System.Exception ex)
-        {
-            Plugin.Logger.LogWarning($"TriggerHoverSound error: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Busca el CardController de una carta usando el lookup del juego.
-    /// Funciona para todos los tipos de cartas: items, skills, encounters.
-    /// </summary>
-    private CardController FindCardController(Card card, BoardManager bm)
-    {
-        if (card == null) return null;
-
-        try
-        {
-            // Usar el lookup nativo del juego que funciona para todos los tipos de cartas
-            var lookup = Data.CardAndSkillLookup;
-            if (lookup != null)
-            {
-                var controller = lookup.GetCardController(card);
-                if (controller != null) return controller;
-            }
-        }
-        catch (System.Exception ex)
-        {
-            Plugin.Logger.LogWarning($"FindCardController lookup failed: {ex.Message}");
-        }
-
-        // Fallback: buscar manualmente en los sockets
-        if (bm == null) return null;
-
-        // Buscar en sockets del oponente (donde están los items a la venta)
-        if (bm.opponentItemSockets != null)
-        {
-            foreach (var socket in bm.opponentItemSockets)
-            {
-                if (socket?.CardController?.CardData == card)
-                    return socket.CardController;
-            }
-        }
-
-        // Buscar en skill sockets del oponente (skills disponibles para elegir)
-        if (bm.opponentSkillSockets != null)
-        {
-            foreach (var socket in bm.opponentSkillSockets)
-            {
-                if (socket?.CardController?.CardData == card)
-                    return socket.CardController;
-            }
-        }
-
-        // También buscar en sockets del jugador por si acaso
-        if (bm.playerItemSockets != null)
-        {
-            foreach (var socket in bm.playerItemSockets)
-            {
-                if (socket?.CardController?.CardData == card)
-                    return socket.CardController;
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Resetea el estado de hover de todas las cartas.
-    /// </summary>
-    private void ResetAllCardSelections(BoardManager bm)
-    {
-        try
-        {
-            // Resetear cartas del jugador
-            if (bm.playerItemSockets != null)
-            {
-                foreach (var socket in bm.playerItemSockets)
-                {
-                    socket?.CardController?.ResetPosition(hideTooltips: true);
-                }
-            }
-
-            // Resetear cartas del oponente
-            if (bm.opponentItemSockets != null)
-            {
-                foreach (var socket in bm.opponentItemSockets)
-                {
-                    socket?.CardController?.ResetPosition(hideTooltips: true);
-                }
-            }
-
-            // Resetear skills
-            if (bm.playerSkillSockets != null)
-            {
-                foreach (var socket in bm.playerSkillSockets)
-                {
-                    socket?.CardController?.ResetPosition(hideTooltips: true);
-                }
-            }
-
-            if (bm.opponentSkillSockets != null)
-            {
-                foreach (var socket in bm.opponentSkillSockets)
-                {
-                    socket?.CardController?.ResetPosition(hideTooltips: true);
-                }
-            }
-
-            // Resetear stash
-            if (bm.playerStorageSockets != null)
-            {
-                foreach (var socket in bm.playerStorageSockets)
-                {
-                    socket?.CardController?.ResetPosition(hideTooltips: true);
-                }
-            }
-        }
-        catch (System.Exception ex)
-        {
-            Plugin.Logger.LogWarning($"ResetAllCardSelections error: {ex.Message}");
-        }
-    }
-
-    // --- Verificación de contenido ---
-
-    /// <summary>
-    /// Verifica si hay items en el tablero.
-    /// </summary>
-    public bool HasBoardContent() => _boardIndices.Count > 0;
-
-    /// <summary>
-    /// Verifica si hay items en la selección.
-    /// </summary>
-    public bool HasSelectionContent() => _selectionItems.Count > 0;
-
-    /// <summary>
-    /// Obtiene el número de items en el stash.
-    /// </summary>
-    public int GetStashItemCount() => _stashIndices.Count;
-
-    /// <summary>
-    /// Indica si el stash está abierto.
-    /// </summary>
-    public bool IsStashOpen() => _stashOpen;
-
-    /// <summary>
-    /// Obtiene el número de cartas (no acciones) en la selección.
-    /// </summary>
-    public int GetSelectionCardCount() =>
-        _selectionItems.Count(i => i.Type == NavItemType.Card);
-
-    // --- Navegación detallada línea por línea ---
-
-    /// <summary>
-    /// Inicializa las líneas de detalle para el item actual.
-    /// </summary>
-    private void InitDetailLines()
-    {
-        var card = GetCurrentCard();
-
-        // Si es el mismo item, no reinicializar
-        if (card == _detailCard && _detailLines.Count > 0) return;
-
-        _detailCard = card;
-        _detailLines.Clear();
-        _detailIndex = -1;
-
-        if (card == null)
-        {
-            // Para Exit/Reroll
-            var navItem = GetCurrentNavItem();
-            if (navItem != null)
-            {
-                switch (navItem.Type)
-                {
-                    case NavItemType.Exit:
-                        _detailLines.Add("Exit");
-                        _detailLines.Add("Leave the current state and continue");
-                        break;
-                    case NavItemType.Reroll:
-                        int gold = Data.Run?.Player?.GetAttributeValue(EPlayerAttributeType.Gold) ?? 0;
-                        _detailLines.Add($"Refresh: {navItem.RerollCost} gold");
-                        _detailLines.Add($"Your gold: {gold}");
-                        break;
-                }
-            }
-            return;
-        }
-
-        // Obtener líneas de detalle del item
-        _detailLines = ItemReader.GetDetailLines(card);
-        _detailLines.Reverse();
-    }
-
-    /// <summary>
-    /// Limpia el cache de detalles (llamar cuando cambia el item seleccionado).
-    /// </summary>
-    public void ClearDetailCache()
-    {
-        _detailCard = null;
-        _detailLines.Clear();
-        _detailIndex = -1;
-    }
-
-    /// <summary>
-    /// Read next detail line (Down key). Starts at first line.
-    /// </summary>
-    public void ReadDetailLineDown()
-    {
-        InitDetailLines();
-
-        if (_detailLines.Count == 0)
-        {
-            TolkWrapper.Speak("No details");
-            return;
-        }
-
-        // First press: start at index 0
-        if (_detailIndex < 0)
-        {
-            _detailIndex = 0;
-            TolkWrapper.Speak(_detailLines[_detailIndex]);
-            return;
-        }
-
-        // Already at last line
-        if (_detailIndex >= _detailLines.Count - 1)
-        {
-            TolkWrapper.Speak($"Last line. {_detailLines[_detailIndex]}");
-            return;
-        }
-
-        // Move to next line
-        _detailIndex++;
-        TolkWrapper.Speak(_detailLines[_detailIndex]);
-    }
-
-    /// <summary>
-    /// Read previous detail line (Up key).
-    /// </summary>
-    public void ReadDetailLineUp()
-    {
-        InitDetailLines();
-
-        if (_detailLines.Count == 0)
-        {
-            TolkWrapper.Speak("No details");
-            return;
-        }
-
-        // If not started, start at first line
-        if (_detailIndex < 0)
-        {
-            _detailIndex = 0;
-            TolkWrapper.Speak(_detailLines[_detailIndex]);
-            return;
-        }
-
-        // Already at first line
-        if (_detailIndex <= 0)
-        {
-            TolkWrapper.Speak($"First line. {_detailLines[_detailIndex]}");
-            return;
-        }
-
-        // Move to previous line
-        _detailIndex--;
-        TolkWrapper.Speak(_detailLines[_detailIndex]);
-    }
-
-    // ===============================================
-    // RECAP MODE NAVIGATION (post-combat with E key)
-    // ===============================================
-
-    /// <summary>
-    /// Enter Hero stats mode in recap (V key).
-    /// </summary>
-    public void EnterRecapHeroMode()
-    {
-        _currentRecapSection = RecapSection.HeroStats;
-        _heroStatIndex = 0;
-        _currentSection = NavigationSection.Hero;
-        _heroSubsection = HeroSubsection.Stats;
-
-        int statCount = GetHeroStatCount();
-        int skillCount = _playerSkills.Count;
-
-        string msg = $"Your hero. Stats: {statCount}";
-        if (skillCount > 0)
-            msg += $", Skills: {skillCount}. Right arrow for skills.";
-
-        // Include rank in recap hero announcement
-        string rank = ItemReader.GetPlayerRank();
-        if (!string.IsNullOrEmpty(rank) && ItemReader.IsRankedMode())
-            msg += $" Rank: {rank}";
-
-        TolkWrapper.Speak(msg);
-    }
-
-    /// <summary>
-    /// Navigate to previous hero stat/skill in recap (Up key).
-    /// </summary>
-    public void RecapHeroPrevious()
-    {
-        if (_currentRecapSection == RecapSection.HeroStats)
-        {
-            if (_heroStatIndex <= 0)
-            {
-                _heroStatIndex = 0;
-                AnnounceHeroStat();
-                return;
-            }
-            _heroStatIndex--;
-            AnnounceHeroStat();
-        }
-        else if (_currentRecapSection == RecapSection.HeroSkills)
-        {
-            if (_heroSkillIndex <= 0)
-            {
-                _heroSkillIndex = 0;
-                AnnounceHeroSkill();
-                return;
-            }
-            _heroSkillIndex--;
-            AnnounceHeroSkill();
-        }
-    }
-
-    /// <summary>
-    /// Navigate to next hero stat/skill in recap (Down key).
-    /// </summary>
-    public void RecapHeroNext()
-    {
-        if (_currentRecapSection == RecapSection.HeroStats)
-        {
-            int maxIndex = GetHeroStatCount() - 1;
-            if (_heroStatIndex >= maxIndex)
-            {
-                AnnounceHeroStat();
-                return;
-            }
-            _heroStatIndex++;
-            AnnounceHeroStat();
-        }
-        else if (_currentRecapSection == RecapSection.HeroSkills)
-        {
-            if (_heroSkillIndex >= _playerSkills.Count - 1)
-            {
-                AnnounceHeroSkill();
-                return;
-            }
-            _heroSkillIndex++;
-            AnnounceHeroSkill();
-        }
-    }
-
-    /// <summary>
-    /// Switch to hero stats in recap (Left key).
-    /// </summary>
-    public void RecapHeroToStats()
-    {
-        if (_currentRecapSection == RecapSection.HeroSkills)
-        {
-            _currentRecapSection = RecapSection.HeroStats;
-            _heroStatIndex = 0;
-            TolkWrapper.Speak($"Stats, {GetHeroStatCount()}");
-        }
-    }
-
-    /// <summary>
-    /// Switch to hero skills in recap (Right key).
-    /// </summary>
-    public void RecapHeroToSkills()
-    {
-        if (_currentRecapSection == RecapSection.HeroStats)
-        {
-            if (_playerSkills.Count == 0)
-            {
-                TolkWrapper.Speak("No skills");
-                return;
-            }
-            _currentRecapSection = RecapSection.HeroSkills;
-            _heroSkillIndex = 0;
-            TolkWrapper.Speak($"Skills, {_playerSkills.Count}");
-        }
-    }
-
-    /// <summary>
-    /// Enter Enemy stats mode in recap (F key).
-    /// </summary>
-    public void EnterRecapEnemyStatsMode()
-    {
-        _currentRecapSection = RecapSection.EnemyStats;
-        _enemyStatIndex = 0;
-        _enemyHeroSkillIndex = 0;
-
-        RefreshEnemyItems(); // Also loads enemy skills
-
-        var opponent = Data.Run?.Opponent;
-        if (opponent == null)
-        {
-            TolkWrapper.Speak("No enemy");
-            _currentRecapSection = RecapSection.None;
-            return;
-        }
-
-        TolkWrapper.Speak("Enemy stats");
-    }
-
-    /// <summary>
-    /// Enter Enemy stats mode during combat (F key).
-    /// Allows navigation of enemy stats and skills with arrow keys.
-    /// </summary>
-    public void EnterCombatEnemyStatsMode()
-    {
-        _currentRecapSection = RecapSection.EnemyStats;
-        _enemyStatIndex = 0;
-        _enemyHeroSkillIndex = 0;
-
-        RefreshEnemyItems(); // Also loads enemy skills
-
-        var opponent = Data.Run?.Opponent;
-        if (opponent == null)
-        {
-            TolkWrapper.Speak("No enemy");
-            _currentRecapSection = RecapSection.None;
-            return;
-        }
-
-        TolkWrapper.Speak("Enemy stats");
-    }
-
-    /// <summary>
-    /// Navigate to previous enemy stat/skill in recap (Up key).
-    /// </summary>
-    public void RecapEnemyStatsPrevious()
-    {
-        if (_currentRecapSection == RecapSection.EnemyStats)
-        {
-            if (_enemyStatIndex <= 0)
-            {
-                _enemyStatIndex = 0;
-                AnnounceEnemyStat();
-                return;
-            }
-            _enemyStatIndex--;
-            AnnounceEnemyStat();
-        }
-        else if (_currentRecapSection == RecapSection.EnemySkills)
-        {
-            if (_enemyHeroSkillIndex <= 0)
-            {
-                _enemyHeroSkillIndex = 0;
-                AnnounceEnemyHeroSkill();
-                return;
-            }
-            _enemyHeroSkillIndex--;
-            AnnounceEnemyHeroSkill();
-        }
-    }
-
-    /// <summary>
-    /// Navigate to next enemy stat/skill in recap (Down key).
-    /// </summary>
-    public void RecapEnemyStatsNext()
-    {
-        if (_currentRecapSection == RecapSection.EnemyStats)
-        {
-            if (_enemyStatIndex >= HeroStats.Length - 1)
-            {
-                AnnounceEnemyStat();
-                return;
-            }
-            _enemyStatIndex++;
-            AnnounceEnemyStat();
-        }
-        else if (_currentRecapSection == RecapSection.EnemySkills)
-        {
-            if (_enemyHeroSkillIndex >= _enemySkills.Count - 1)
-            {
-                AnnounceEnemyHeroSkill();
-                return;
-            }
-            _enemyHeroSkillIndex++;
-            AnnounceEnemyHeroSkill();
-        }
-    }
-
-    /// <summary>
-    /// Switch to enemy stats in recap (Left key).
-    /// </summary>
-    public void RecapEnemyToStats()
-    {
-        if (_currentRecapSection == RecapSection.EnemySkills)
-        {
-            _currentRecapSection = RecapSection.EnemyStats;
-            _enemyStatIndex = 0;
-            TolkWrapper.Speak("Stats");
-        }
-    }
-
-    /// <summary>
-    /// Switch to enemy skills in recap (Right key).
-    /// </summary>
-    public void RecapEnemyToSkills()
-    {
-        if (_currentRecapSection == RecapSection.EnemyStats)
-        {
-            if (_enemySkills.Count == 0)
-            {
-                TolkWrapper.Speak("No skills");
-                return;
-            }
-            _currentRecapSection = RecapSection.EnemySkills;
-            _enemyHeroSkillIndex = 0;
-            TolkWrapper.Speak($"Skills, {_enemySkills.Count}");
-        }
-    }
-
-    /// <summary>
-    /// Announce current enemy hero stat.
-    /// </summary>
-    private void AnnounceEnemyStat()
-    {
-        var opponent = Data.Run?.Opponent;
-        if (opponent == null)
-        {
-            TolkWrapper.Speak("No enemy data");
-            return;
-        }
-
-        var type = HeroStats[_enemyStatIndex];
-        string name = GetStatName(type);
-
-        if (opponent.Attributes.TryGetValue(type, out int value))
-        {
-            TolkWrapper.Speak($"{name}: {value}");
-        }
-        else
-        {
-            TolkWrapper.Speak($"{name}: none");
-        }
-    }
-
-    /// <summary>
-    /// Announce current enemy hero skill.
-    /// </summary>
-    private void AnnounceEnemyHeroSkill()
-    {
-        if (_enemyHeroSkillIndex < 0 || _enemyHeroSkillIndex >= _enemySkills.Count)
-        {
-            TolkWrapper.Speak("No skill");
-            return;
-        }
-
-        var skill = _enemySkills[_enemyHeroSkillIndex];
-        if (skill == null)
-        {
-            TolkWrapper.Speak("Empty slot");
-            return;
-        }
-
-        string name = ItemReader.GetCardName(skill);
-        string desc = ItemReader.GetFullDescription(skill);
-
-        if (!string.IsNullOrEmpty(desc))
-        {
-            TolkWrapper.Speak($"{name}: {desc}");
-        }
-        else
-        {
-            TolkWrapper.Speak(name);
-        }
-    }
-
-    /// <summary>
-    /// Enter player board mode in recap (B key).
-    /// </summary>
-    public void EnterRecapPlayerBoardMode()
-    {
-        _currentRecapSection = RecapSection.PlayerBoard;
-        _currentSection = NavigationSection.Board;
-        _currentIndex = 0;
-        ClearDetailCache();
-
-        RefreshBoard();
-
-        if (_boardIndices.Count == 0)
-        {
-            TolkWrapper.Speak("Your board is empty");
-            return;
-        }
-
-        TolkWrapper.Speak($"Your board, {_boardIndices.Count} items");
-    }
-
-    // COMBAT STATS RECAP NAVIGATION (H key in recap)
-    // ================================================
-
-    /// <summary>
-    /// Enter combat stats mode in recap (H key).
-    /// </summary>
-    public void EnterRecapCombatStatsMode()
-    {
-        _combatStatsLines = CombatDescriber.GetCombatStatsLines();
-        _combatStatsIndex = 0;
-        _currentRecapSection = RecapSection.CombatStats;
-
-        if (_combatStatsLines.Count > 0)
-        {
-            TolkWrapper.Speak(_combatStatsLines[0]);
-        }
-        else
-        {
-            TolkWrapper.Speak("No combat data");
-        }
-    }
-
-    /// <summary>
-    /// Navigate to previous combat stat line (Up key).
-    /// </summary>
-    public void RecapCombatStatsPrevious()
-    {
-        if (_combatStatsLines.Count == 0) return;
-
-        if (_combatStatsIndex <= 0)
-        {
-            _combatStatsIndex = 0;
-            TolkWrapper.Speak(_combatStatsLines[0]);
-            return;
-        }
-
-        _combatStatsIndex--;
-        TolkWrapper.Speak(_combatStatsLines[_combatStatsIndex]);
-    }
-
-    /// <summary>
-    /// Navigate to next combat stat line (Down key).
-    /// </summary>
-    public void RecapCombatStatsNext()
-    {
-        if (_combatStatsLines.Count == 0) return;
-
-        if (_combatStatsIndex >= _combatStatsLines.Count - 1)
-        {
-            TolkWrapper.Speak(_combatStatsLines[_combatStatsIndex]);
-            return;
-        }
-
-        _combatStatsIndex++;
-        TolkWrapper.Speak(_combatStatsLines[_combatStatsIndex]);
-    }
-
 }

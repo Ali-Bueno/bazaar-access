@@ -18,47 +18,31 @@ namespace BazaarAccess.Gameplay;
 /// Navegación dinámica con items y acciones.
 /// Auto-focus a la sección correcta según el estado del juego.
 /// </summary>
-/// <summary>
-/// Action menu option type.
-/// </summary>
-public enum ActionOption
-{
-    Sell,
-    Upgrade,
-    Enchant,
-    MoveToStash,
-    MoveToBoard
-}
-
 public class GameplayScreen : IAccessibleScreen
 {
     public string ScreenName => "Gameplay";
 
     private readonly GameplayNavigator _navigator;
+    private readonly ActionMenuHandler _actionMenu;
+    private readonly CombatInputHandler _combatHandler;
+    private readonly ReplayInputHandler _replayHandler;
     private bool _isValid = true;
     private ERunState _lastState = ERunState.Choice;
-
-    // Action mode state
-    private bool _isInActionMode = false;
-    private List<ActionOption> _actionOptions = new List<ActionOption>();
-    private int _actionIndex = 0;
-    private Card _actionCard = null;
-
-    // Combat navigation mode
-    private enum CombatNavSection { None, PlayerBoard, EnemyBoard, EnemyStats, HeroStats }
-    private CombatNavSection _combatNavSection = CombatNavSection.None;
 
     public GameplayScreen()
     {
         _navigator = new GameplayNavigator();
+        _actionMenu = new ActionMenuHandler(_navigator, HandleUpgradeConfirm, RefreshAndAnnounce);
+        _combatHandler = new CombatInputHandler(_navigator);
+        _replayHandler = new ReplayInputHandler(_navigator, TriggerReplayContinue, TriggerReplayReplay, TriggerReplayRecap);
     }
 
     public void HandleInput(AccessibleKey key)
     {
         // Handle action mode input (when in action mode)
-        if (_isInActionMode)
+        if (_actionMenu.IsActive)
         {
-            HandleActionModeInput(key);
+            _actionMenu.HandleInput(key);
             return;
         }
 
@@ -68,174 +52,11 @@ public class GameplayScreen : IAccessibleScreen
             // En modo recap, navegación completa con V/F/G/B
             if (_navigator.IsInRecapMode)
             {
-                // Teclas de navegación entre secciones (siempre disponibles)
-                switch (key)
-                {
-                    case AccessibleKey.GoToHero: // V = Hero stats
-                        _navigator.ExitEnemyMode();
-                        _navigator.EnterRecapHeroMode();
-                        return;
-
-                    case AccessibleKey.GoToEnemy: // F = Enemy stats
-                        _navigator.ExitEnemyMode();
-                        _navigator.EnterRecapEnemyStatsMode();
-                        return;
-
-                    case AccessibleKey.GoToStash: // G = Enemy board
-                        _navigator.EnterOpponentBoardMode();
-                        return;
-
-                    case AccessibleKey.GoToBoard: // B = Player board
-                        _navigator.ExitEnemyMode();
-                        _navigator.EnterRecapPlayerBoardMode();
-                        return;
-
-                    case AccessibleKey.Confirm: // Enter = Continue
-                        TriggerReplayContinue();
-                        return;
-
-                    case AccessibleKey.WinsInfo: // W = Wins
-                        _navigator.AnnounceWins();
-                        return;
-
-                    case AccessibleKey.CombatSummary: // H = Combat stats per card
-                        _navigator.EnterRecapCombatStatsMode();
-                        return;
-
-                    case AccessibleKey.Back: // Backspace = Exit recap
-                        _navigator.SetRecapMode(false);
-                        TolkWrapper.Speak("Exited recap. Enter to continue, R to replay, E to return to recap.");
-                        return;
-                }
-
-                // Navegación dentro de la sección actual
-                var recapSection = _navigator.CurrentRecapSection;
-
-                if (recapSection == RecapSection.HeroStats || recapSection == RecapSection.HeroSkills)
-                {
-                    switch (key)
-                    {
-                        case AccessibleKey.Up:
-                            _navigator.RecapHeroPrevious();
-                            return;
-                        case AccessibleKey.Down:
-                            _navigator.RecapHeroNext();
-                            return;
-                        case AccessibleKey.Left:
-                            _navigator.RecapHeroToStats();
-                            return;
-                        case AccessibleKey.Right:
-                            _navigator.RecapHeroToSkills();
-                            return;
-                    }
-                }
-                else if (recapSection == RecapSection.EnemyStats || recapSection == RecapSection.EnemySkills)
-                {
-                    switch (key)
-                    {
-                        case AccessibleKey.Up:
-                            _navigator.RecapEnemyStatsPrevious();
-                            return;
-                        case AccessibleKey.Down:
-                            _navigator.RecapEnemyStatsNext();
-                            return;
-                        case AccessibleKey.Left:
-                            _navigator.RecapEnemyToStats();
-                            return;
-                        case AccessibleKey.Right:
-                            _navigator.RecapEnemyToSkills();
-                            return;
-                    }
-                }
-                else if (recapSection == RecapSection.EnemyBoard)
-                {
-                    switch (key)
-                    {
-                        case AccessibleKey.Left:
-                            _navigator.EnemyNavigateLeft();
-                            return;
-                        case AccessibleKey.Right:
-                            _navigator.EnemyNavigateRight();
-                            return;
-                        case AccessibleKey.Up:
-                            _navigator.EnemyDetailPrevious();
-                            return;
-                        case AccessibleKey.Down:
-                            _navigator.EnemyDetailNext();
-                            return;
-                    }
-                }
-                else if (recapSection == RecapSection.PlayerBoard)
-                {
-                    switch (key)
-                    {
-                        case AccessibleKey.Left:
-                            _navigator.Previous();
-                            return;
-                        case AccessibleKey.Right:
-                            _navigator.Next();
-                            return;
-                        case AccessibleKey.Up:
-                            _navigator.ReadDetailLineUp();
-                            return;
-                        case AccessibleKey.Down:
-                            _navigator.ReadDetailLineDown();
-                            return;
-                    }
-                }
-                else if (recapSection == RecapSection.CombatStats)
-                {
-                    switch (key)
-                    {
-                        case AccessibleKey.Up:
-                            _navigator.RecapCombatStatsPrevious();
-                            return;
-                        case AccessibleKey.Down:
-                            _navigator.RecapCombatStatsNext();
-                            return;
-                    }
-                }
-
-                return;
+                _replayHandler.HandleRecapInput(key);
             }
-
-            // Modo replay normal (antes de E para recap)
-            switch (key)
+            else
             {
-                case AccessibleKey.Confirm:
-                    TriggerReplayContinue();
-                    break;
-
-                case AccessibleKey.Reroll:
-                    TriggerReplayReplay();
-                    break;
-
-                case AccessibleKey.Exit:
-                    TriggerReplayRecap();
-                    break;
-
-                case AccessibleKey.GoToHero:
-                    _navigator.ReadAllHeroStats();
-                    break;
-
-                case AccessibleKey.GoToEnemy:
-                    _navigator.ReadEnemyInfo();
-                    break;
-
-                case AccessibleKey.GoToStash:
-                    TolkWrapper.Speak("Press E for Recap first, then G for opponent board.");
-                    break;
-
-                case AccessibleKey.WinsInfo:
-                    _navigator.AnnounceWins();
-                    break;
-
-                case AccessibleKey.Back:
-                    TolkWrapper.Speak("Post-combat. Enter to continue, R to replay, E for recap.");
-                    break;
-
-                default:
-                    break;
+                _replayHandler.HandleReplayInput(key);
             }
             return;
         }
@@ -249,271 +70,64 @@ public class GameplayScreen : IAccessibleScreen
         // En modo combate, permitir navegación de tableros con B/G y flechas
         if (inCombat)
         {
-            // Handle combat navigation sections (player board or enemy board)
-            if (_combatNavSection == CombatNavSection.PlayerBoard)
-            {
-                switch (key)
-                {
-                    case AccessibleKey.Left:
-                        _navigator.Previous();
-                        return;
-                    case AccessibleKey.Right:
-                        _navigator.Next();
-                        return;
-                    case AccessibleKey.Up:
-                        _navigator.ReadDetailLineUp();
-                        return;
-                    case AccessibleKey.Down:
-                        _navigator.ReadDetailLineDown();
-                        return;
-                    case AccessibleKey.GoToBoard: // B again re-announces
-                        _navigator.GoToBoard();
-                        return;
-                    case AccessibleKey.GoToStash: // G switches to enemy board
-                        _combatNavSection = CombatNavSection.EnemyBoard;
-                        _navigator.EnterOpponentBoardMode();
-                        return;
-                    case AccessibleKey.GoToHero: // V switches to hero
-                        _combatNavSection = CombatNavSection.HeroStats;
-                        _navigator.GoToHero();
-                        return;
-                    case AccessibleKey.GoToEnemy: // F switches to enemy stats
-                        _combatNavSection = CombatNavSection.EnemyStats;
-                        _navigator.EnterCombatEnemyStatsMode();
-                        return;
-                    case AccessibleKey.Back:
-                        _combatNavSection = CombatNavSection.None;
-                        TolkWrapper.Speak("Exited board view");
-                        return;
-                }
-            }
-            else if (_combatNavSection == CombatNavSection.EnemyBoard)
-            {
-                switch (key)
-                {
-                    case AccessibleKey.Left:
-                        _navigator.EnemyNavigateLeft();
-                        return;
-                    case AccessibleKey.Right:
-                        _navigator.EnemyNavigateRight();
-                        return;
-                    case AccessibleKey.Up:
-                        _navigator.EnemyDetailPrevious();
-                        return;
-                    case AccessibleKey.Down:
-                        _navigator.EnemyDetailNext();
-                        return;
-                    case AccessibleKey.GoToStash: // G again re-announces
-                        _navigator.EnterOpponentBoardMode();
-                        return;
-                    case AccessibleKey.GoToBoard: // B switches to player board
-                        _combatNavSection = CombatNavSection.PlayerBoard;
-                        _navigator.ExitEnemyMode();
-                        _navigator.GoToBoard();
-                        return;
-                    case AccessibleKey.GoToHero: // V switches to hero
-                        _combatNavSection = CombatNavSection.HeroStats;
-                        _navigator.ExitEnemyMode();
-                        _navigator.GoToHero();
-                        return;
-                    case AccessibleKey.GoToEnemy: // F switches to enemy stats
-                        _combatNavSection = CombatNavSection.EnemyStats;
-                        _navigator.ExitEnemyMode();
-                        _navigator.EnterCombatEnemyStatsMode();
-                        return;
-                    case AccessibleKey.Back:
-                        _combatNavSection = CombatNavSection.None;
-                        _navigator.ExitEnemyMode();
-                        TolkWrapper.Speak("Exited enemy board view");
-                        return;
-                }
-            }
-            else if (_combatNavSection == CombatNavSection.EnemyStats)
-            {
-                switch (key)
-                {
-                    case AccessibleKey.Up:
-                        _navigator.RecapEnemyStatsPrevious();
-                        return;
-                    case AccessibleKey.Down:
-                        _navigator.RecapEnemyStatsNext();
-                        return;
-                    case AccessibleKey.Left:
-                        _navigator.RecapEnemyToStats();
-                        return;
-                    case AccessibleKey.Right:
-                        _navigator.RecapEnemyToSkills();
-                        return;
-                    case AccessibleKey.GoToEnemy: // F again re-announces
-                        _navigator.EnterCombatEnemyStatsMode();
-                        return;
-                    case AccessibleKey.GoToBoard: // B switches to player board
-                        _combatNavSection = CombatNavSection.PlayerBoard;
-                        _navigator.GoToBoard();
-                        return;
-                    case AccessibleKey.GoToStash: // G switches to enemy board
-                        _combatNavSection = CombatNavSection.EnemyBoard;
-                        _navigator.EnterOpponentBoardMode();
-                        return;
-                    case AccessibleKey.GoToHero: // V switches to hero
-                        _combatNavSection = CombatNavSection.HeroStats;
-                        _navigator.GoToHero();
-                        return;
-                    case AccessibleKey.Back:
-                        _combatNavSection = CombatNavSection.None;
-                        TolkWrapper.Speak("Exited enemy stats view");
-                        return;
-                }
-            }
-            else if (_combatNavSection == CombatNavSection.HeroStats)
-            {
-                switch (key)
-                {
-                    case AccessibleKey.Up:
-                        _navigator.HeroPrevious();
-                        return;
-                    case AccessibleKey.Down:
-                        _navigator.HeroNext();
-                        return;
-                    case AccessibleKey.Left:
-                        _navigator.HeroPreviousSubsection();
-                        return;
-                    case AccessibleKey.Right:
-                        _navigator.HeroNextSubsection();
-                        return;
-                    case AccessibleKey.GoToHero: // V again re-announces
-                        _navigator.GoToHero();
-                        return;
-                    case AccessibleKey.GoToBoard: // B switches to player board
-                        _combatNavSection = CombatNavSection.PlayerBoard;
-                        _navigator.GoToBoard();
-                        return;
-                    case AccessibleKey.GoToStash: // G switches to enemy board
-                        _combatNavSection = CombatNavSection.EnemyBoard;
-                        _navigator.EnterOpponentBoardMode();
-                        return;
-                    case AccessibleKey.GoToEnemy: // F switches to enemy stats
-                        _combatNavSection = CombatNavSection.EnemyStats;
-                        _navigator.EnterCombatEnemyStatsMode();
-                        return;
-                    case AccessibleKey.Back:
-                        _combatNavSection = CombatNavSection.None;
-                        TolkWrapper.Speak("Exited hero stats view");
-                        return;
-                }
-            }
-
-            switch (key)
-            {
-                case AccessibleKey.GoToBoard: // B = Player board
-                    if (!StateChangePatch.IsCombatBoardReady)
-                        break;
-                    _combatNavSection = CombatNavSection.PlayerBoard;
-                    _navigator.GoToBoard();
-                    break;
-
-                case AccessibleKey.GoToStash: // G = Enemy board
-                    if (!StateChangePatch.IsCombatBoardReady)
-                        break;
-                    _combatNavSection = CombatNavSection.EnemyBoard;
-                    _navigator.EnterOpponentBoardMode();
-                    break;
-
-                case AccessibleKey.GoToHero:
-                    _combatNavSection = CombatNavSection.HeroStats;
-                    _navigator.GoToHero();
-                    break;
-
-                case AccessibleKey.GoToEnemy: // F = Enemy stats with navigation
-                    if (!StateChangePatch.IsCombatBoardReady)
-                        break;
-                    _combatNavSection = CombatNavSection.EnemyStats;
-                    _navigator.EnterCombatEnemyStatsMode();
-                    break;
-
-                case AccessibleKey.ToggleCombatMode:
-                    CombatDescriber.ToggleMode();
-                    break;
-
-                case AccessibleKey.Confirm:
-                    if (_navigator.IsInHeroSection)
-                        _navigator.ReadAllHeroStats();
-                    break;
-
-                case AccessibleKey.CombatSummary:
-                    // H key - get combat summary
-                    TolkWrapper.Speak(CombatDescriber.GetCombatSummary());
-                    break;
-
-                case AccessibleKey.WinsInfo:
-                    // W key - wins info (also available during combat)
-                    _navigator.AnnounceWins();
-                    break;
-
-                case AccessibleKey.PlayerHealth:
-                    TolkWrapper.Speak(CombatDescriber.GetPlayerHealth());
-                    break;
-
-                case AccessibleKey.EnemyHealth:
-                    TolkWrapper.Speak(CombatDescriber.GetEnemyHealth());
-                    break;
-
-                case AccessibleKey.DamageDealt:
-                    TolkWrapper.Speak(CombatDescriber.GetDamageDealt());
-                    break;
-
-                case AccessibleKey.DamageTaken:
-                    TolkWrapper.Speak(CombatDescriber.GetDamageTaken());
-                    break;
-
-                case AccessibleKey.Back:
-                    // Do nothing - let the game handle it (opens pause menu)
-                    break;
-
-                // Ignorar todas las demás teclas durante combate
-                default:
-                    break;
-            }
+            _combatHandler.HandleInput(key);
             return;
         }
 
         // Reset combat nav section when exiting combat
-        _combatNavSection = CombatNavSection.None;
+        _combatHandler.Reset();
 
         // Si estamos en modo enemigo, manejar navegación de items del enemigo
         if (_navigator.IsInEnemyMode)
         {
-            switch (key)
-            {
-                case AccessibleKey.Up:
-                    _navigator.EnemyPrevious();
-                    return;
-
-                case AccessibleKey.Down:
-                    _navigator.EnemyNext();
-                    return;
-
-                case AccessibleKey.Confirm:
-                    _navigator.ReadCurrentEnemyItemDetails();
-                    return;
-
-                case AccessibleKey.GoToEnemy:
-                    // F de nuevo relee los stats del enemigo
-                    _navigator.ReadEnemyInfo();
-                    return;
-
-                case AccessibleKey.Back:
-                    _navigator.ExitEnemyMode();
-                    TolkWrapper.Speak("Exited enemy view");
-                    return;
-
-                default:
-                    // Cualquier otra tecla sale del modo enemigo
-                    _navigator.ExitEnemyMode();
-                    break;
-            }
+            HandleEnemyModeInput(key);
+            return;
         }
 
+        HandleNormalInput(key);
+    }
+
+    /// <summary>
+    /// Handles input when in enemy mode (viewing enemy items outside of combat).
+    /// </summary>
+    private void HandleEnemyModeInput(AccessibleKey key)
+    {
+        switch (key)
+        {
+            case AccessibleKey.Up:
+                _navigator.EnemyPrevious();
+                return;
+
+            case AccessibleKey.Down:
+                _navigator.EnemyNext();
+                return;
+
+            case AccessibleKey.Confirm:
+                _navigator.ReadCurrentEnemyItemDetails();
+                return;
+
+            case AccessibleKey.GoToEnemy:
+                // F de nuevo relee los stats del enemigo
+                _navigator.ReadEnemyInfo();
+                return;
+
+            case AccessibleKey.Back:
+                _navigator.ExitEnemyMode();
+                TolkWrapper.Speak("Exited enemy view");
+                return;
+
+            default:
+                // Cualquier otra tecla sale del modo enemigo
+                _navigator.ExitEnemyMode();
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Handles normal gameplay input (shop, pedestal, encounters, etc.).
+    /// </summary>
+    private void HandleNormalInput(AccessibleKey key)
+    {
         switch (key)
         {
             // Navegación de secciones
@@ -684,534 +298,6 @@ public class GameplayScreen : IAccessibleScreen
     }
 
     /// <summary>
-    /// Enters action mode for the current item.
-    /// Builds a menu of available actions.
-    /// </summary>
-    private void EnterActionMode(Card card)
-    {
-        if (card == null) return;
-
-        _actionCard = card;
-        _actionOptions.Clear();
-        _actionIndex = 0;
-
-        var currentState = StateChangePatch.GetCurrentRunState();
-        bool canSellState = _navigator.CanSellInCurrentState();
-        bool canSellCard = ActionHelper.CanSell(card);
-        bool canMove = _navigator.CanMoveInCurrentState();
-        bool isInBoard = _navigator.CurrentSection == NavigationSection.Board;
-        bool isInStash = _navigator.CurrentSection == NavigationSection.Stash;
-        bool stashOpen = _navigator.IsStashOpen();
-
-        // Build available options
-        // At pedestal, show Upgrade/Enchant first (primary action)
-        if (currentState == ERunState.Pedestal)
-        {
-            var pedestalInfo = ActionHelper.GetCurrentPedestalInfo();
-            if (pedestalInfo.Type == ActionHelper.PedestalType.Enchant ||
-                pedestalInfo.Type == ActionHelper.PedestalType.EnchantRandom)
-            {
-                // Enchant pedestal - no tier restriction, only check if already enchanted
-                var itemCardCheck = card as ItemCard;
-                if (itemCardCheck == null || !itemCardCheck.Enchantment.HasValue)
-                {
-                    _actionOptions.Add(ActionOption.Enchant);
-                }
-            }
-            else if (pedestalInfo.Type == ActionHelper.PedestalType.Upgrade)
-            {
-                // Upgrade pedestal - block only Legendary tier
-                if (card.Tier != ETier.Legendary)
-                {
-                    _actionOptions.Add(ActionOption.Upgrade);
-                }
-            }
-            else
-            {
-                // Detection failed - offer generic pedestal action based on card state
-                // Try enchant if item isn't enchanted, otherwise try upgrade
-                var itemCardCheck = card as ItemCard;
-                if (itemCardCheck != null && !itemCardCheck.Enchantment.HasValue)
-                {
-                    _actionOptions.Add(ActionOption.Enchant);
-                }
-                else if (card.Tier != ETier.Legendary)
-                {
-                    _actionOptions.Add(ActionOption.Upgrade);
-                }
-            }
-        }
-
-        if (canSellState && canSellCard)
-        {
-            _actionOptions.Add(ActionOption.Sell);
-        }
-
-        if (canMove && isInBoard && stashOpen)
-        {
-            _actionOptions.Add(ActionOption.MoveToStash);
-        }
-
-        if (canMove && isInStash)
-        {
-            _actionOptions.Add(ActionOption.MoveToBoard);
-        }
-
-        if (_actionOptions.Count == 0)
-        {
-            TolkWrapper.Speak("No actions available");
-            return;
-        }
-
-        _isInActionMode = true;
-
-        // Announce action mode with first option
-        string cardName = ItemReader.GetCardName(card);
-        TolkWrapper.Speak($"{cardName}. {GetActionOptionText(_actionOptions[0])}. " +
-                          $"{_actionOptions.Count} actions. Backspace to cancel.");
-    }
-
-    /// <summary>
-    /// Gets the display text for an action option.
-    /// </summary>
-    private string GetActionOptionText(ActionOption option)
-    {
-        switch (option)
-        {
-            case ActionOption.Sell:
-                int sellPrice = ItemReader.GetSellPrice(_actionCard);
-                return $"Sell for {sellPrice} gold (S)";
-
-            case ActionOption.Upgrade:
-                var upgradeInfo = ActionHelper.GetCurrentPedestalInfo();
-                string currentTier = ItemReader.GetTierName(_actionCard);
-                // Use actual target tier from pedestal if available
-                if (upgradeInfo.TargetTier.HasValue)
-                {
-                    if (upgradeInfo.TargetTier.Value == _actionCard.Tier)
-                    {
-                        // Same tier - just improving stats
-                        return $"Upgrade {currentTier} stats (U)";
-                    }
-                    else
-                    {
-                        return $"Upgrade to {ItemReader.GetTierName(upgradeInfo.TargetTier.Value)} (U)";
-                    }
-                }
-                // Fallback to assuming next tier
-                string nextTier = GetNextTierName(_actionCard.Tier);
-                return $"Upgrade to {nextTier} (U)";
-
-            case ActionOption.Enchant:
-                var pedestalInfo = ActionHelper.GetCurrentPedestalInfo();
-                string enchantName = pedestalInfo.EnchantmentName ?? "random";
-                return $"Enchant with {enchantName} (U)";
-
-            case ActionOption.MoveToStash:
-                return "Move to stash (M)";
-
-            case ActionOption.MoveToBoard:
-                return "Move to board (M)";
-
-            default:
-                return option.ToString();
-        }
-    }
-
-    /// <summary>
-    /// Announces the current action option.
-    /// </summary>
-    private void AnnounceCurrentActionOption()
-    {
-        if (_actionOptions.Count == 0) return;
-
-        string optionText = GetActionOptionText(_actionOptions[_actionIndex]);
-        int position = _actionIndex + 1;
-        int total = _actionOptions.Count;
-        TolkWrapper.Speak($"{optionText}, {position} of {total}");
-    }
-
-    /// <summary>
-    /// Executes the specified action option directly (no confirmation).
-    /// </summary>
-    private void ExecuteActionOption(ActionOption option)
-    {
-        var itemCard = _actionCard as ItemCard;
-        _isInActionMode = false;
-        _actionCard = null;
-
-        switch (option)
-        {
-            case ActionOption.Sell:
-                if (itemCard != null)
-                {
-                    string name = ItemReader.GetCardName(itemCard);
-                    int price = ItemReader.GetSellPrice(itemCard);
-                    ActionHelper.SellItem(itemCard);
-                    TolkWrapper.Speak($"Sold {name} for {price} gold");
-                    RefreshAndAnnounce();
-                }
-                break;
-
-            case ActionOption.Upgrade:
-                // Show confirmation dialog with preview instead of executing directly
-                if (itemCard != null)
-                {
-                    HandleUpgradeConfirm(itemCard, isEnchant: false);
-                }
-                break;
-
-            case ActionOption.Enchant:
-                if (itemCard != null)
-                {
-                    HandleUpgradeConfirm(itemCard, isEnchant: true);
-                }
-                break;
-
-            case ActionOption.MoveToStash:
-                if (itemCard != null)
-                {
-                    ActionHelper.MoveItem(itemCard, true);
-                    TolkWrapper.Speak("Moved to stash");
-                    RefreshAndAnnounce();
-                }
-                break;
-
-            case ActionOption.MoveToBoard:
-                if (itemCard != null)
-                {
-                    ActionHelper.MoveItem(itemCard, false);
-                    TolkWrapper.Speak("Moved to board");
-                    RefreshAndAnnounce();
-                }
-                break;
-        }
-    }
-
-    /// <summary>
-    /// Handles input while in action mode.
-    /// </summary>
-    private void HandleActionModeInput(AccessibleKey key)
-    {
-        if (_actionCard == null)
-        {
-            _isInActionMode = false;
-            TolkWrapper.Speak("Action cancelled");
-            return;
-        }
-
-        // Check if we can reorder (only in board section)
-        bool canReorder = _navigator.IsInBoardSection() && _navigator.CanMoveInCurrentState();
-        var itemCard = _actionCard as ItemCard;
-
-        switch (key)
-        {
-            // Navigate menu options
-            case AccessibleKey.Up:
-                if (_actionOptions.Count > 1)
-                {
-                    _actionIndex = (_actionIndex - 1 + _actionOptions.Count) % _actionOptions.Count;
-                    AnnounceCurrentActionOption();
-                }
-                break;
-
-            case AccessibleKey.Down:
-                if (_actionOptions.Count > 1)
-                {
-                    _actionIndex = (_actionIndex + 1) % _actionOptions.Count;
-                    AnnounceCurrentActionOption();
-                }
-                break;
-
-            // Confirm selected option
-            case AccessibleKey.Confirm:
-                if (_actionOptions.Count > 0)
-                {
-                    ExecuteActionOption(_actionOptions[_actionIndex]);
-                }
-                break;
-
-            // Shortcut: S = Sell
-            case AccessibleKey.StashInfo: // S key
-                if (_actionOptions.Contains(ActionOption.Sell))
-                {
-                    ExecuteActionOption(ActionOption.Sell);
-                }
-                else
-                {
-                    TolkWrapper.Speak("Cannot sell");
-                }
-                break;
-
-            // Shortcut: U = Upgrade/Enchant
-            case AccessibleKey.Upgrade:
-                if (_actionOptions.Contains(ActionOption.Upgrade))
-                {
-                    ExecuteActionOption(ActionOption.Upgrade);
-                }
-                else if (_actionOptions.Contains(ActionOption.Enchant))
-                {
-                    ExecuteActionOption(ActionOption.Enchant);
-                }
-                else
-                {
-                    TolkWrapper.Speak("Cannot upgrade or enchant here");
-                }
-                break;
-
-            // Shortcut: M = Move
-            case AccessibleKey.ActionMove:
-                if (_actionOptions.Contains(ActionOption.MoveToStash))
-                {
-                    ExecuteActionOption(ActionOption.MoveToStash);
-                }
-                else if (_actionOptions.Contains(ActionOption.MoveToBoard))
-                {
-                    ExecuteActionOption(ActionOption.MoveToBoard);
-                }
-                else
-                {
-                    TolkWrapper.Speak("Cannot move");
-                }
-                break;
-
-            // Reorder: Left/Right arrows (stay in action mode)
-            case AccessibleKey.Left:
-                if (canReorder && itemCard != null)
-                {
-                    int currentSlot = _navigator.GetCurrentBoardSlot();
-                    var itemId = itemCard.InstanceId;
-                    if (ActionHelper.ReorderItem(itemCard, currentSlot, -1, silent: true))
-                    {
-                        _navigator.Refresh();
-                        // Use ID-based tracking for reliability
-                        if (!_navigator.GoToItemById(itemId))
-                        {
-                            _navigator.GoToBoardSlot(currentSlot - 1);
-                        }
-                        AnnounceReorderPosition(_navigator.GetCurrentBoardSlot(), itemCard);
-                        _navigator.TriggerVisualSelection();
-                    }
-                    // ReorderItem announces "At left edge" if at limit
-                }
-                else
-                {
-                    TolkWrapper.Speak("Cannot reorder");
-                }
-                break;
-
-            case AccessibleKey.Right:
-                if (canReorder && itemCard != null)
-                {
-                    int currentSlot = _navigator.GetCurrentBoardSlot();
-                    var itemId = itemCard.InstanceId;
-                    if (ActionHelper.ReorderItem(itemCard, currentSlot, 1, silent: true))
-                    {
-                        _navigator.Refresh();
-                        // Use ID-based tracking for reliability
-                        if (!_navigator.GoToItemById(itemId))
-                        {
-                            _navigator.GoToBoardSlot(currentSlot + 1);
-                        }
-                        AnnounceReorderPosition(_navigator.GetCurrentBoardSlot(), itemCard);
-                        _navigator.TriggerVisualSelection();
-                    }
-                    // ReorderItem announces "At right edge" if at limit
-                }
-                else
-                {
-                    TolkWrapper.Speak("Cannot reorder");
-                }
-                break;
-
-            // Reorder: Home/End for edges (stay in action mode)
-            case AccessibleKey.Home:
-                if (canReorder && itemCard != null)
-                {
-                    MoveItemToEdge(itemCard, -1);
-                }
-                else
-                {
-                    TolkWrapper.Speak("Cannot reorder");
-                }
-                break;
-
-            case AccessibleKey.End:
-                if (canReorder && itemCard != null)
-                {
-                    MoveItemToEdge(itemCard, 1);
-                }
-                else
-                {
-                    TolkWrapper.Speak("Cannot reorder");
-                }
-                break;
-
-            // Exit with Backspace
-            case AccessibleKey.Back:
-                _isInActionMode = false;
-                _actionCard = null;
-                TolkWrapper.Speak("Exited");
-                break;
-
-            // All other keys are ignored (stay in action mode)
-            default:
-                break;
-        }
-    }
-
-    /// <summary>
-    /// Announces the position after reordering, including adjacent items.
-    /// </summary>
-    private void AnnounceReorderPosition(int slot, ItemCard movedCard)
-    {
-        int cardSize = (int)movedCard.Size;
-        int leftEdge = 0;
-        int rightEdge = 10 - cardSize;
-
-        // Check if at edge
-        if (slot <= leftEdge)
-        {
-            // At left edge - announce item to the right if any
-            var rightItem = _navigator.GetItemAtSlot(slot + cardSize);
-            if (rightItem != null)
-            {
-                string rightName = ItemReader.GetCardName(rightItem);
-                TolkWrapper.Speak($"Left edge, before {rightName}");
-            }
-            else
-            {
-                TolkWrapper.Speak("Left edge");
-            }
-        }
-        else if (slot >= rightEdge)
-        {
-            // At right edge - announce item to the left if any
-            var leftItem = _navigator.GetItemAtSlot(slot - 1);
-            if (leftItem != null)
-            {
-                string leftName = ItemReader.GetCardName(leftItem);
-                TolkWrapper.Speak($"Right edge, after {leftName}");
-            }
-            else
-            {
-                TolkWrapper.Speak("Right edge");
-            }
-        }
-        else
-        {
-            // In the middle - announce items on both sides
-            var leftItem = _navigator.GetItemAtSlot(slot - 1);
-            var rightItem = _navigator.GetItemAtSlot(slot + cardSize);
-
-            if (leftItem != null && rightItem != null)
-            {
-                string leftName = ItemReader.GetCardName(leftItem);
-                string rightName = ItemReader.GetCardName(rightItem);
-                TolkWrapper.Speak($"Between {leftName} and {rightName}");
-            }
-            else if (leftItem != null)
-            {
-                string leftName = ItemReader.GetCardName(leftItem);
-                TolkWrapper.Speak($"After {leftName}");
-            }
-            else if (rightItem != null)
-            {
-                string rightName = ItemReader.GetCardName(rightItem);
-                TolkWrapper.Speak($"Before {rightName}");
-            }
-            else
-            {
-                TolkWrapper.Speak($"Position {slot + 1}");
-            }
-        }
-    }
-
-    /// <summary>
-    /// Moves an item to the left or right edge of the board.
-    /// Uses a coroutine with delays to let the game properly update adjacency effects.
-    /// </summary>
-    private void MoveItemToEdge(ItemCard card, int direction)
-    {
-        if (card == null)
-        {
-            TolkWrapper.Speak("Cannot move this");
-            return;
-        }
-
-        int currentSlot = _navigator.GetCurrentBoardSlot();
-        if (currentSlot < 0)
-        {
-            TolkWrapper.Speak("Cannot determine position");
-            return;
-        }
-
-        int cardSize = (int)card.Size;
-        int targetSlot;
-
-        if (direction < 0)
-        {
-            // Move to left edge (slot 0)
-            targetSlot = 0;
-        }
-        else
-        {
-            // Move to right edge (slot 10 - cardSize)
-            targetSlot = 10 - cardSize;
-        }
-
-        if (targetSlot == currentSlot)
-        {
-            string edge = direction < 0 ? "left" : "right";
-            TolkWrapper.Speak($"Already at {edge} edge");
-            return;
-        }
-
-        // Use coroutine to move with delays between steps
-        Plugin.Instance.StartCoroutine(MoveItemToEdgeCoroutine(card, currentSlot, targetSlot));
-    }
-
-    /// <summary>
-    /// Coroutine that moves an item step by step with delays.
-    /// This allows the game to properly update adjacency effects between moves.
-    /// </summary>
-    private IEnumerator MoveItemToEdgeCoroutine(ItemCard card, int startSlot, int targetSlot)
-    {
-        int currentSlot = startSlot;
-        int stepDirection = (targetSlot > currentSlot) ? 1 : -1;
-        int moveCount = System.Math.Abs(targetSlot - startSlot);
-
-        // Store the item's InstanceId for reliable tracking after moves
-        var itemId = card.InstanceId;
-
-        string edge = stepDirection < 0 ? "left" : "right";
-        TolkWrapper.Speak($"Moving to {edge} edge");
-
-        // Move step by step with small delays
-        while (currentSlot != targetSlot)
-        {
-            if (!ActionHelper.ReorderItem(card, currentSlot, stepDirection, silent: true))
-            {
-                break; // Stop if a move fails
-            }
-            currentSlot += stepDirection;
-
-            // Small delay to let the game process adjacency effects
-            yield return new WaitForSeconds(0.05f);
-        }
-
-        // Final refresh and navigate to the moved item by its ID (more reliable than slot)
-        _navigator.Refresh();
-        if (!_navigator.GoToItemById(itemId))
-        {
-            // Fallback to slot-based navigation
-            _navigator.GoToBoardSlot(currentSlot);
-        }
-        AnnounceReorderPosition(_navigator.GetCurrentBoardSlot(), card);
-        _navigator.TriggerVisualSelection();
-    }
-
-    /// <summary>
     /// Handles the upgrade action (Shift+U).
     /// </summary>
     private void HandleUpgrade()
@@ -1234,13 +320,13 @@ public class GameplayScreen : IAccessibleScreen
         var currentState = StateChangePatch.GetCurrentRunState();
         if (currentState == ERunState.Pedestal)
         {
-            var pedestalInfo = ActionHelper.GetCurrentPedestalInfo();
-            if (pedestalInfo.Type == ActionHelper.PedestalType.Enchant ||
-                pedestalInfo.Type == ActionHelper.PedestalType.EnchantRandom)
+            var pedestalInfo = PedestalManager.GetCurrentPedestalInfo();
+            if (pedestalInfo.Type == PedestalManager.PedestalType.Enchant ||
+                pedestalInfo.Type == PedestalManager.PedestalType.EnchantRandom)
             {
                 HandleUpgradeConfirm(card, isEnchant: true);
             }
-            else if (pedestalInfo.Type == ActionHelper.PedestalType.Upgrade)
+            else if (pedestalInfo.Type == PedestalManager.PedestalType.Upgrade)
             {
                 HandleUpgradeConfirm(card, isEnchant: false);
             }
@@ -1479,7 +565,7 @@ public class GameplayScreen : IAccessibleScreen
             var card = _navigator.GetCurrentCard();
             if (card != null)
             {
-                EnterActionMode(card);
+                _actionMenu.Enter(card);
             }
             else
             {
@@ -1602,9 +688,9 @@ public class GameplayScreen : IAccessibleScreen
 
         // Check if we're in Pedestal state - offer pedestal action instead of sell
         var currentState = StateChangePatch.GetCurrentRunState();
-        if (currentState == ERunState.Pedestal && ActionHelper.CanUpgrade())
+        if (currentState == ERunState.Pedestal && PedestalManager.CanUpgrade())
         {
-            bool isEnchant = ActionHelper.IsEnchantPedestal();
+            bool isEnchant = PedestalManager.IsEnchantPedestal();
             HandleUpgradeConfirm(card, isEnchant: isEnchant);
             return;
         }
@@ -1639,7 +725,7 @@ public class GameplayScreen : IAccessibleScreen
         string name = ItemReader.GetCardName(card);
 
         // Get pedestal info
-        var pedestalInfo = ActionHelper.GetCurrentPedestalInfo();
+        var pedestalInfo = PedestalManager.GetCurrentPedestalInfo();
         Plugin.Logger.LogInfo($"HandleUpgradeConfirm: pedestalInfo.Type={pedestalInfo.Type}, name={name}");
 
         // Determine if this is an enchant action
@@ -1650,8 +736,8 @@ public class GameplayScreen : IAccessibleScreen
         }
         else
         {
-            doEnchant = pedestalInfo.Type == ActionHelper.PedestalType.Enchant ||
-                        pedestalInfo.Type == ActionHelper.PedestalType.EnchantRandom;
+            doEnchant = pedestalInfo.Type == PedestalManager.PedestalType.Enchant ||
+                        pedestalInfo.Type == PedestalManager.PedestalType.EnchantRandom;
         }
 
         if (doEnchant)
@@ -1669,7 +755,7 @@ public class GameplayScreen : IAccessibleScreen
 
             // Build message with preview
             var messageParts = new List<string>();
-            if (pedestalInfo.Type == ActionHelper.PedestalType.EnchantRandom)
+            if (pedestalInfo.Type == PedestalManager.PedestalType.EnchantRandom)
             {
                 messageParts.Add($"Enchant {name} with a random enchantment?");
             }
@@ -1677,7 +763,7 @@ public class GameplayScreen : IAccessibleScreen
             {
                 messageParts.Add($"Enchant {name} with {enchantName}.");
                 // Get enchantment preview
-                var preview = ActionHelper.GetEnchantPreview(card, enchantName);
+                var preview = PedestalManager.GetEnchantPreview(card, enchantName);
                 if (preview.Count > 0)
                 {
                     messageParts.Add("Effects: " + string.Join(", ", preview));
@@ -1689,7 +775,7 @@ public class GameplayScreen : IAccessibleScreen
 
             var ui = new ConfirmActionUI(ConfirmActionType.Upgrade, name, 0, message,
                 onConfirm: () => {
-                    if (ActionHelper.UseCurrentPedestal(card))
+                    if (PedestalManager.UseCurrentPedestal(card))
                     {
                         Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
                     }
@@ -1701,7 +787,7 @@ public class GameplayScreen : IAccessibleScreen
         {
             // Upgrade altar
             string currentTier = ItemReader.GetTierName(card);
-            var upgradeInfo = ActionHelper.GetCurrentPedestalInfo();
+            var upgradeInfo = PedestalManager.GetCurrentPedestalInfo();
 
             // Check if already at max tier
             if (card.Tier == ETier.Legendary)
@@ -1726,14 +812,14 @@ public class GameplayScreen : IAccessibleScreen
             }
             else
             {
-                string nextTier = GetNextTierName(card.Tier);
+                string nextTier = TierHelper.GetNextName(card.Tier);
                 messageParts.Add($"Upgrade {name} from {currentTier} to {nextTier}.");
             }
 
             // Get post-upgrade stats
             try
             {
-                var preview = ActionHelper.GetUpgradePreview(card);
+                var preview = PedestalManager.GetUpgradePreview(card);
                 if (preview.Count > 0)
                 {
                     messageParts.Add("After upgrade: " + string.Join(", ", preview));
@@ -1750,7 +836,7 @@ public class GameplayScreen : IAccessibleScreen
 
             var ui = new ConfirmActionUI(ConfirmActionType.Upgrade, name, 0, message,
                 onConfirm: () => {
-                    if (ActionHelper.UpgradeItem(card))
+                    if (PedestalManager.UpgradeItem(card))
                     {
                         Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
                     }
@@ -1760,20 +846,6 @@ public class GameplayScreen : IAccessibleScreen
         }
     }
 
-    /// <summary>
-    /// Gets the name of the next tier.
-    /// </summary>
-    private string GetNextTierName(ETier currentTier)
-    {
-        return currentTier switch
-        {
-            ETier.Bronze => "Silver",
-            ETier.Silver => "Gold",
-            ETier.Gold => "Diamond",
-            ETier.Diamond => "Legendary",
-            _ => "max"
-        };
-    }
 
     private void HandleMoveAction()
     {
@@ -1905,7 +977,7 @@ public class GameplayScreen : IAccessibleScreen
                 {
                     _navigator.GoToBoardSlot(currentSlot + direction);
                 }
-                AnnounceReorderPosition(_navigator.GetCurrentBoardSlot(), card);
+                _actionMenu.AnnounceReorderPosition(_navigator.GetCurrentBoardSlot(), card);
                 _navigator.TriggerVisualSelection();
             }
         }

@@ -12,9 +12,25 @@ A BepInEx mod making "The Bazaar" accessible to blind players via screen reader 
 ```
 BazaarAccess/
 ├── Accessibility/    # Framework: AccessibilityMgr, BaseScreen, BaseUI, AccessibleMenu
-├── Core/             # TolkWrapper, KeyboardNavigator, MessageBuffer
-├── Gameplay/         # GameplayScreen, GameplayNavigator, ItemReader, CombatDescriber, ActionHelper
-├── Patches/          # Harmony patches hooking into game events
+├── Core/             # TolkWrapper, KeyboardNavigator, MessageBuffer, CoroutineHelper
+├── Gameplay/         # Main gameplay logic (see sub-modules below)
+│   ├── Combat/       # HealthTracker, CardStatsTracker, EffectFormatter
+│   ├── Navigation/   # DetailReader, HeroNavigator, EnemyNavigator, RecapNavigator, VisualSelector
+│   ├── GameplayScreen.cs       # Input router, state callbacks
+│   ├── GameplayNavigator.cs    # Core board/stash/section navigation, coordinates sub-navigators
+│   ├── ActionMenuHandler.cs    # Action mode overlay (sell/upgrade/enchant/move/reorder)
+│   ├── CombatInputHandler.cs   # Combat-mode input routing (B/G/V/F board navigation)
+│   ├── ReplayInputHandler.cs   # Post-combat replay/recap input routing
+│   ├── ItemReader.cs           # Card stat reading and formatting
+│   ├── CombatDescriber.cs      # Combat narration (batched/individual modes)
+│   ├── ActionHelper.cs         # Buy/sell/move/reorder commands
+│   ├── PedestalManager.cs      # Pedestal detection, caching, upgrade/enchant actions
+│   └── TierHelper.cs           # Tier progression utilities
+├── Patches/          # Harmony patches + event handlers
+│   ├── StateChangePatch.cs     # Core state transitions, event subscriptions, debounce
+│   ├── CombatEventHandler.cs   # Combat lifecycle (start/end/result)
+│   ├── CardEventHandler.cs     # Card transactions (buy/sell/equip/enchant/upgrade)
+│   └── ErrorEventHandler.cs    # Error events (no space, can't afford, unsellable)
 ├── Screens/          # Main screens (MainMenu, HeroSelect, Collection, BattlePass, ChestScene)
 ├── UI/               # Dialog/popup UIs including Login/ subdirectory
 └── Plugin.cs         # Entry point
@@ -49,11 +65,13 @@ Composition-based navigation used by all screens/UIs:
 |------|-------|
 | Add new game screen | `Screens/`, implement `IAccessibleScreen`, register in `ViewControllerPatch.cs` |
 | Add new popup/dialog | `UI/`, extend `BaseUI`, register in `PopupPatch.cs` |
-| Hook game events | `Patches/StateChangePatch.cs` - subscribe via reflection |
+| Hook game events | `Patches/StateChangePatch.cs` (subscribe), `CombatEventHandler.cs`, `CardEventHandler.cs`, `ErrorEventHandler.cs` |
 | Modify item reading | `Gameplay/ItemReader.cs` |
-| Combat narration | `Gameplay/CombatDescriber.cs` |
-| Keyboard shortcuts | `Core/KeyboardNavigator.cs` (mapping), `GameplayScreen.cs` (handling) |
-| Item actions | `Gameplay/ActionHelper.cs` (buy/sell/move/reorder) |
+| Combat narration | `Gameplay/CombatDescriber.cs`, `Combat/HealthTracker.cs`, `Combat/CardStatsTracker.cs`, `Combat/EffectFormatter.cs` |
+| Keyboard shortcuts | `Core/KeyboardNavigator.cs` (mapping), `GameplayScreen.cs` (router), `CombatInputHandler.cs`, `ReplayInputHandler.cs` |
+| Item actions | `Gameplay/ActionHelper.cs` (buy/sell/move/reorder), `PedestalManager.cs` (upgrade/enchant) |
+| Hero/enemy navigation | `Navigation/HeroNavigator.cs`, `Navigation/EnemyNavigator.cs`, `Navigation/RecapNavigator.cs` |
+| Action menu | `Gameplay/ActionMenuHandler.cs` (enter/handle/execute action mode) |
 
 ## Keyboard Mapping (AccessibleKey enum)
 - **Arrows**: Navigate items/sections

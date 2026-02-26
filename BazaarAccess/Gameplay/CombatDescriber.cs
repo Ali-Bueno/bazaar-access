@@ -2,9 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using BazaarAccess.Core;
-using BazaarGameClient.Domain.Models.Cards;
+using BazaarAccess.Gameplay.Combat;
 using BazaarGameShared.Domain.Core.Types;
 using BazaarGameShared.Domain.Runs;
 using BazaarGameShared.Infra.Messages.CombatSimEvents;
@@ -32,31 +31,21 @@ namespace BazaarAccess.Gameplay;
 ///
 /// Toggle between modes with M key during combat (or via config).
 /// Both modes share: health threshold warnings (low/critical), combat totals, H key summary.
+///
+/// Sub-components:
+/// - HealthTracker: Health monitoring, periodic announcements, threshold warnings
+/// - CardStatsTracker: Per-card combat statistics for recap
+/// - EffectFormatter: Combat effect text formatting and relevance filtering
 /// </summary>
 public static class CombatDescriber
 {
     // Configuration
     private const float WaveTimeout = 1.5f;         // Seconds of inactivity to close a wave
-    private const float HealthInterval = 5f;        // Seconds between health announcements
-    private const float LowHealthThreshold = 0.25f; // 25% = low health warning
-    private const float CritHealthThreshold = 0.10f; // 10% = critical health warning
 
     // State
     private static bool _active;
-    private static float _lastHealthTime;
-    private static int _lastPlayerHealth;
-    private static int _lastPlayerMaxHealth;
-    private static int _lastEnemyHealth;
-    private static int _lastEnemyMaxHealth;
     private static string _enemyName;
-    private static Coroutine _healthCoroutine;
     private static Coroutine _waveCoroutine;
-
-    // Health threshold tracking (to avoid repeating warnings)
-    private static bool _announcedPlayerLow;
-    private static bool _announcedPlayerCrit;
-    private static bool _announcedEnemyLow;
-    private static bool _announcedEnemyCrit;
 
     // Wave data for accumulating effects
     private static WaveData _playerWave = new WaveData();
@@ -65,10 +54,6 @@ public static class CombatDescriber
     // Combat totals for H key summary
     private static int _totalPlayerDamageDealt;
     private static int _totalPlayerDamageTaken;
-
-    // Persistent per-card combat stats (survive wave announcements, cleared at combat start)
-    private static Dictionary<string, CardCombatStats> _playerCardStats = new Dictionary<string, CardCombatStats>();
-    private static Dictionary<string, CardCombatStats> _enemyCardStats = new Dictionary<string, CardCombatStats>();
 
     /// <summary>
     /// Whether to use batched mode (wave summaries + auto health) or individual mode (per-card announcements).
@@ -92,22 +77,13 @@ public static class CombatDescriber
             if (UseBatchedMode)
             {
                 // Start health announcements
-                if (_healthCoroutine == null && Plugin.Instance != null)
-                    _healthCoroutine = Plugin.Instance.StartCoroutine(HealthAnnouncementLoop());
+                HealthTracker.StartPeriodicAnnouncements();
             }
             else
             {
                 // Stop health announcements and flush pending waves
-                if (_healthCoroutine != null && Plugin.Instance != null)
-                {
-                    Plugin.Instance.StopCoroutine(_healthCoroutine);
-                    _healthCoroutine = null;
-                }
-                if (_waveCoroutine != null && Plugin.Instance != null)
-                {
-                    Plugin.Instance.StopCoroutine(_waveCoroutine);
-                    _waveCoroutine = null;
-                }
+                HealthTracker.StopCoroutine();
+                CoroutineHelper.StopSafe(ref _waveCoroutine);
                 AnnounceWave();  // Flush any pending wave data
             }
         }
@@ -162,31 +138,12 @@ public static class CombatDescriber
         }
     }
 
+    // Backward-compatible inner class alias
     /// <summary>
     /// Per-card stats accumulated over the entire combat. Persists until next combat starts.
+    /// Delegates to CardStatsTracker.CardCombatStats.
     /// </summary>
-    public class CardCombatStats
-    {
-        public int Damage;
-        public int Heal;
-        public int Shield;
-        public int Triggers;
-        public int Crits;
-        public int Repairs;
-
-        public string Format(string name)
-        {
-            var parts = new List<string>();
-            parts.Add(name);
-            if (Damage > 0) parts.Add($"{Damage} damage");
-            if (Heal > 0) parts.Add($"{Heal} heal");
-            if (Shield > 0) parts.Add($"{Shield} shield");
-            if (Repairs > 0) parts.Add($"{Repairs} repairs");
-            if (Crits > 0) parts.Add($"{Crits} crits");
-            parts.Add($"{Triggers} triggers");
-            return string.Join(", ", parts);
-        }
-    }
+    public class CardCombatStats : CardStatsTracker.CardCombatStats { }
 
     /// <summary>
     /// Starts combat narration.
@@ -201,12 +158,7 @@ public static class CombatDescriber
 
         _active = true;
 
-        // Initialize state
-        _lastHealthTime = Time.time;
-        _lastPlayerHealth = 0;
-        _lastPlayerMaxHealth = 0;
-        _lastEnemyHealth = 0;
-        _lastEnemyMaxHealth = 0;
+        // Initialize wave state
         _playerWave.Clear();
         _enemyWave.Clear();
 
@@ -215,25 +167,18 @@ public static class CombatDescriber
         _totalPlayerDamageTaken = 0;
 
         // Reset per-card stats
-        _playerCardStats.Clear();
-        _enemyCardStats.Clear();
-
-        // Reset health threshold warnings
-        _announcedPlayerLow = false;
-        _announcedPlayerCrit = false;
-        _announcedEnemyLow = false;
-        _announcedEnemyCrit = false;
+        CardStatsTracker.Clear();
 
         // Get enemy name
         _enemyName = GetEnemyName();
 
-        // Capture initial health
-        CaptureHealthState();
+        // Initialize health tracking
+        HealthTracker.Start(_enemyName);
 
         // Start periodic health announcements only in batched mode
-        if (UseBatchedMode && Plugin.Instance != null)
+        if (UseBatchedMode)
         {
-            _healthCoroutine = Plugin.Instance.StartCoroutine(HealthAnnouncementLoop());
+            HealthTracker.StartPeriodicAnnouncements();
         }
         // Health threshold warnings (low/critical) are always active
 
@@ -249,16 +194,8 @@ public static class CombatDescriber
         _active = false;
 
         // Stop coroutines
-        if (_healthCoroutine != null && Plugin.Instance != null)
-        {
-            Plugin.Instance.StopCoroutine(_healthCoroutine);
-            _healthCoroutine = null;
-        }
-        if (_waveCoroutine != null && Plugin.Instance != null)
-        {
-            Plugin.Instance.StopCoroutine(_waveCoroutine);
-            _waveCoroutine = null;
-        }
+        HealthTracker.Stop();
+        CoroutineHelper.StopSafe(ref _waveCoroutine);
 
         // Clear state
         _enemyName = null;
@@ -314,39 +251,15 @@ public static class CombatDescriber
 
     /// <summary>
     /// Gets player health as a string (for 1 key).
-    /// Format: "400" or "400 with 50 shield" if shield is present.
+    /// Delegates to HealthTracker.
     /// </summary>
-    public static string GetPlayerHealth()
-    {
-        var player = Data.Run?.Player;
-        int reportedHealth = player?.GetAttributeValue(EPlayerAttributeType.Health) ?? 0;
-        int shield = player?.GetAttributeValue(EPlayerAttributeType.Shield) ?? 0;
-        int health = reportedHealth - shield;
-        if (health < 0) health = reportedHealth;
-
-        if (shield > 0)
-            return $"{health} with {shield} shield";
-        return health.ToString();
-    }
+    public static string GetPlayerHealth() => HealthTracker.GetPlayerHealth();
 
     /// <summary>
     /// Gets enemy health as a string (for 2 key).
-    /// Format: "400" or "400 with 50 shield" if shield is present.
+    /// Delegates to HealthTracker.
     /// </summary>
-    public static string GetEnemyHealth()
-    {
-        var opponent = Data.Run?.Opponent;
-        int reportedHealth = 0;
-        int shield = 0;
-        opponent?.Attributes.TryGetValue(EPlayerAttributeType.Health, out reportedHealth);
-        opponent?.Attributes.TryGetValue(EPlayerAttributeType.Shield, out shield);
-        int health = reportedHealth - shield;
-        if (health < 0) health = reportedHealth;
-
-        if (shield > 0)
-            return $"{health} with {shield} shield";
-        return health.ToString();
-    }
+    public static string GetEnemyHealth() => HealthTracker.GetEnemyHealth();
 
     /// <summary>
     /// Gets total damage dealt as a number string (for 3 key).
@@ -373,34 +286,6 @@ public static class CombatDescriber
     }
 
     /// <summary>
-    /// Captures current health state.
-    /// </summary>
-    private static void CaptureHealthState()
-    {
-        try
-        {
-            var player = Data.Run?.Player;
-            if (player != null)
-            {
-                _lastPlayerHealth = player.GetAttributeValue(EPlayerAttributeType.Health) ?? 0;
-                _lastPlayerMaxHealth = player.GetAttributeValue(EPlayerAttributeType.HealthMax) ?? 100;
-            }
-
-            var opponent = Data.Run?.Opponent;
-            if (opponent != null)
-            {
-                opponent.Attributes.TryGetValue(EPlayerAttributeType.Health, out _lastEnemyHealth);
-                opponent.Attributes.TryGetValue(EPlayerAttributeType.HealthMax, out _lastEnemyMaxHealth);
-                if (_lastEnemyMaxHealth == 0) _lastEnemyMaxHealth = 100;
-            }
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger.LogError($"CaptureHealthState error: {ex.Message}");
-        }
-    }
-
-    /// <summary>
     /// Handler for combat effect events. Dispatches to the appropriate mode handler.
     /// </summary>
     internal static void OnEffectTriggered(EffectTriggeredEvent evt)
@@ -423,20 +308,20 @@ public static class CombatDescriber
             if (sourceCard == null) return;
 
             // Determine owner
-            bool isPlayerItem = IsPlayerCard(sourceCard);
+            bool isPlayerItem = CardStatsTracker.IsPlayerCard(sourceCard);
             string itemName = ItemReader.GetCardName(sourceCard);
 
             // Track trigger count for ALL events (so items like Water Wheel, Keychain appear in stats)
-            TrackTriggerCount(itemName, isPlayerItem);
+            CardStatsTracker.TrackTriggerCount(itemName, isPlayerItem);
 
-            if (!IsRelevantAction(data.ActionType)) return;
+            if (!EffectFormatter.IsRelevantAction(data.ActionType)) return;
 
             // Calculate details for relevant actions
-            int amount = CalculateEffectAmount(data);
+            int amount = EffectFormatter.CalculateEffectAmount(data);
             bool isCrit = data.IsCrit;
 
             // Track detailed per-card stats (damage, heal, etc.)
-            TrackCardStats(itemName, isPlayerItem, data.ActionType, amount, isCrit, data);
+            CardStatsTracker.TrackCardStats(itemName, isPlayerItem, data.ActionType, amount, isCrit, data);
 
             // Dispatch to the appropriate mode handler
             if (UseBatchedMode)
@@ -449,6 +334,29 @@ public static class CombatDescriber
             Plugin.Logger.LogError($"OnEffectTriggered error: {ex.Message}");
         }
     }
+
+    /// <summary>
+    /// Handler for health changes - delegates to HealthTracker.
+    /// </summary>
+    internal static void OnPlayerHealthChanged(PlayerHealthChangedEvent evt)
+    {
+        HealthTracker.OnPlayerHealthChanged(evt);
+    }
+
+    /// <summary>
+    /// Gets formatted per-card combat stats for the recap screen.
+    /// Delegates to CardStatsTracker.
+    /// </summary>
+    public static List<string> GetCombatStatsLines()
+    {
+        return CardStatsTracker.GetCombatStatsLines(_totalPlayerDamageDealt, _totalPlayerDamageTaken);
+    }
+
+    /// <summary>
+    /// Whether there are any per-card stats available (combat has occurred).
+    /// Delegates to CardStatsTracker.
+    /// </summary>
+    public static bool HasCombatStats => CardStatsTracker.HasCombatStats;
 
     #region ===== BATCHED MODE =====
     // All batched mode specific code here.
@@ -647,170 +555,11 @@ public static class CombatDescriber
             else _totalPlayerDamageTaken += amount;
         }
 
-        string announcement = FormatEffectAnnouncement(itemName, isPlayerItem, data.ActionType, amount, isCrit, data);
+        string announcement = EffectFormatter.FormatEffectAnnouncement(itemName, isPlayerItem, data.ActionType, amount, isCrit, data);
         if (!string.IsNullOrEmpty(announcement))
         {
             TolkWrapper.Speak(announcement, interrupt: false);
         }
-    }
-
-    /// <summary>
-    /// Formats an immediate effect announcement for individual mode.
-    /// Player: "Sword: 10 damage" | Enemy: "Enemy Sword: 10 damage"
-    /// Critical hits: "Critical hit! Sword: 180 damage"
-    /// </summary>
-    private static string FormatEffectAnnouncement(string itemName, bool isPlayerItem, ActionType actionType, int amount, bool isCrit, CombatActionData data = null)
-    {
-        // Prefix with "Enemy" for opponent items
-        string prefix = isPlayerItem ? "" : "Enemy ";
-        string name = string.IsNullOrEmpty(itemName) ? "Item" : itemName;
-
-        // Handle critical hits prominently for damage
-        if (isCrit && actionType == ActionType.PlayerDamage && amount > 0)
-        {
-            return $"Critical hit! {prefix}{name}: {amount} damage";
-        }
-
-        string effectText = actionType switch
-        {
-            ActionType.PlayerDamage => amount > 0 ? $"{amount} damage" : "damage",
-            ActionType.PlayerHeal => amount > 0 ? $"{amount} heal" : "heal",
-            ActionType.PlayerShieldApply => amount > 0 ? $"{amount} shield" : "shield",
-            ActionType.PlayerBurnApply => amount > 0 ? $"{amount} burn" : "burn applied",
-            ActionType.PlayerPoisonApply => amount > 0 ? $"{amount} poison" : "poison applied",
-            ActionType.PlayerRegenApply => amount > 0 ? $"{amount} regen" : "regen applied",
-            ActionType.PlayerGoldSteal => amount > 0 ? $"stole {amount} gold" : "gold stolen",
-            ActionType.PlayerMaxHealthIncrease => amount > 0 ? $"max health +{amount}" : "max health increased",
-            ActionType.PlayerMaxHealthDecrease => amount > 0 ? $"max health -{amount}" : "max health decreased",
-            ActionType.CardSlow => "slowed",
-            ActionType.CardFreeze => isPlayerItem ? "freeze applied" : null, // Enemy freeze uses special "Frozen!" alert
-            ActionType.CardHaste => "hasted",
-            ActionType.CardCharge => "charged",
-            ActionType.CardReload => amount > 0 ? $"reloaded {amount} ammo" : "reloaded",
-            ActionType.CardModifyAttribute => FormatModifyAttributeText(data, amount),
-            ActionType.CardRepair => FormatRepairText(data),
-            ActionType.CardDestroy => FormatDestroyText(data),
-            ActionType.CardDisable => FormatDisableText(data),
-            ActionType.CardTransform => "transformed",
-            ActionType.CardUpgrade => "upgraded",
-            ActionType.CardQuestComplete => "quest complete",
-            ActionType.FlyingStart => "started flying",
-            ActionType.FlyingStop => "stopped flying",
-            ActionType.FlyingToggle => "toggled flying",
-            _ => null
-        };
-
-        if (effectText == null)
-        {
-            // Special case: enemy freeze - announce "Frozen!" instead
-            if (actionType == ActionType.CardFreeze && !isPlayerItem)
-            {
-                TolkWrapper.Speak("Frozen!", interrupt: true);
-                return null;
-            }
-            return null;
-        }
-
-        return $"{prefix}{name}: {effectText}";
-    }
-
-    /// <summary>
-    /// Formats destroy text showing which item was destroyed.
-    /// </summary>
-    private static string FormatDestroyText(CombatActionData data)
-    {
-        if (data == null) return "destroyed";
-
-        var targetCard = data.TargetCard;
-        if (targetCard != null)
-        {
-            string targetName = ItemReader.GetCardName(targetCard);
-            if (!string.IsNullOrEmpty(targetName))
-                return $"destroyed {targetName}";
-        }
-
-        return "destroyed";
-    }
-
-    /// <summary>
-    /// Formats disable text showing which item was disabled.
-    /// </summary>
-    private static string FormatDisableText(CombatActionData data)
-    {
-        if (data == null) return "disabled";
-
-        var targetCard = data.TargetCard;
-        if (targetCard != null)
-        {
-            string targetName = ItemReader.GetCardName(targetCard);
-            if (!string.IsNullOrEmpty(targetName))
-                return $"disabled {targetName}";
-        }
-
-        return "disabled";
-    }
-
-    /// <summary>
-    /// Formats repair text showing which item was repaired.
-    /// </summary>
-    private static string FormatRepairText(CombatActionData data)
-    {
-        if (data == null) return "repaired";
-
-        var targetCard = data.TargetCard;
-        if (targetCard != null)
-        {
-            string targetName = ItemReader.GetCardName(targetCard);
-            if (!string.IsNullOrEmpty(targetName))
-                return $"repaired {targetName}";
-        }
-
-        return "repaired";
-    }
-
-    /// <summary>
-    /// Formats the modify attribute text with specific attribute info when available.
-    /// </summary>
-    private static string FormatModifyAttributeText(CombatActionData data, int fallbackAmount)
-    {
-        if (data == null)
-        {
-            return fallbackAmount != 0 ? $"modified by {fallbackAmount}" : "modified";
-        }
-
-        var info = GetModifyAttributeInfo(data);
-
-        // Build a descriptive message
-        var parts = new List<string>();
-
-        if (!string.IsNullOrEmpty(info.AttrName))
-        {
-            string changeDir = info.Amount > 0 ? "increased" : (info.Amount < 0 ? "decreased" : "changed");
-            if (info.Amount != 0)
-            {
-                parts.Add($"{info.AttrName} {changeDir} by {Math.Abs(info.Amount)}");
-            }
-            else
-            {
-                parts.Add($"{info.AttrName} {changeDir}");
-            }
-        }
-        else if (info.Amount != 0 || fallbackAmount != 0)
-        {
-            int finalAmount = info.Amount != 0 ? info.Amount : fallbackAmount;
-            parts.Add($"modified by {finalAmount}");
-        }
-        else
-        {
-            parts.Add("modified");
-        }
-
-        if (!string.IsNullOrEmpty(info.TargetName))
-        {
-            parts.Add($"on {info.TargetName}");
-        }
-
-        return string.Join(" ", parts);
     }
 
     #endregion
@@ -824,14 +573,7 @@ public static class CombatDescriber
     /// </summary>
     private static void RestartWaveTimer()
     {
-        if (_waveCoroutine != null && Plugin.Instance != null)
-        {
-            Plugin.Instance.StopCoroutine(_waveCoroutine);
-        }
-        if (Plugin.Instance != null)
-        {
-            _waveCoroutine = Plugin.Instance.StartCoroutine(WaveTimeoutCoroutine());
-        }
+        CoroutineHelper.StartSafe(ref _waveCoroutine, WaveTimeoutCoroutine());
     }
 
     /// <summary>
@@ -980,462 +722,6 @@ public static class CombatDescriber
         string result = $"{owner}: {string.Join(", ", elements)}";
 
         return result;
-    }
-
-    #endregion
-
-    #region ===== SHARED: HEALTH WARNINGS =====
-    // Health threshold warnings (low/critical) are active in both modes.
-
-    /// <summary>
-    /// Handler for health changes - checks for threshold warnings.
-    /// </summary>
-    internal static void OnPlayerHealthChanged(PlayerHealthChangedEvent evt)
-    {
-        if (!_active) return;
-
-        try
-        {
-            CheckHealthThresholds();
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger.LogError($"OnPlayerHealthChanged error: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Checks if health thresholds have been crossed.
-    /// </summary>
-    private static void CheckHealthThresholds()
-    {
-        try
-        {
-            var player = Data.Run?.Player;
-            var opponent = Data.Run?.Opponent;
-
-            if (player != null)
-            {
-                int health = player.GetAttributeValue(EPlayerAttributeType.Health) ?? 0;
-                int maxHealth = player.GetAttributeValue(EPlayerAttributeType.HealthMax) ?? 100;
-                float ratio = maxHealth > 0 ? (float)health / maxHealth : 1f;
-
-                if (ratio <= CritHealthThreshold && !_announcedPlayerCrit)
-                {
-                    TolkWrapper.Speak("Critical health!", interrupt: true);
-                    _announcedPlayerCrit = true;
-                    _announcedPlayerLow = true;
-                }
-                else if (ratio <= LowHealthThreshold && !_announcedPlayerLow)
-                {
-                    TolkWrapper.Speak("Low health!", interrupt: true);
-                    _announcedPlayerLow = true;
-                }
-            }
-
-            if (opponent != null)
-            {
-                opponent.Attributes.TryGetValue(EPlayerAttributeType.Health, out int enemyHealth);
-                opponent.Attributes.TryGetValue(EPlayerAttributeType.HealthMax, out int enemyMaxHealth);
-                if (enemyMaxHealth == 0) enemyMaxHealth = 100;
-                float ratio = (float)enemyHealth / enemyMaxHealth;
-
-                if (ratio <= CritHealthThreshold && !_announcedEnemyCrit)
-                {
-                    TolkWrapper.Speak("Enemy critical!", interrupt: true);
-                    _announcedEnemyCrit = true;
-                    _announcedEnemyLow = true;
-                }
-                else if (ratio <= LowHealthThreshold && !_announcedEnemyLow)
-                {
-                    TolkWrapper.Speak("Enemy low!", interrupt: true);
-                    _announcedEnemyLow = true;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger.LogError($"CheckHealthThresholds error: {ex.Message}");
-        }
-    }
-
-    #endregion
-
-    #region ===== PER-CARD COMBAT STATS (FOR RECAP) =====
-
-    /// <summary>
-    /// Tracks trigger count for ALL combat events, regardless of action type.
-    /// This ensures passive items (Water Wheel, Keychain, etc.) appear in combat stats.
-    /// </summary>
-    private static void TrackTriggerCount(string itemName, bool isPlayerItem)
-    {
-        if (string.IsNullOrEmpty(itemName)) return;
-
-        var dict = isPlayerItem ? _playerCardStats : _enemyCardStats;
-        if (!dict.TryGetValue(itemName, out var stats))
-        {
-            stats = new CardCombatStats();
-            dict[itemName] = stats;
-        }
-
-        stats.Triggers++;
-    }
-
-    /// <summary>
-    /// Tracks detailed per-card stats (damage, heal, etc.) for relevant actions only.
-    /// Trigger count is handled separately by TrackTriggerCount.
-    /// </summary>
-    private static void TrackCardStats(string itemName, bool isPlayerItem, ActionType actionType, int amount, bool isCrit, CombatActionData data)
-    {
-        if (string.IsNullOrEmpty(itemName)) return;
-
-        var dict = isPlayerItem ? _playerCardStats : _enemyCardStats;
-        if (!dict.TryGetValue(itemName, out var stats))
-        {
-            stats = new CardCombatStats();
-            dict[itemName] = stats;
-        }
-
-        // Don't increment Triggers here - TrackTriggerCount handles it
-        if (isCrit) stats.Crits++;
-
-        switch (actionType)
-        {
-            case ActionType.PlayerDamage:
-                stats.Damage += amount;
-                break;
-            case ActionType.PlayerHeal:
-                stats.Heal += amount;
-                break;
-            case ActionType.PlayerShieldApply:
-                stats.Shield += amount;
-                break;
-            case ActionType.CardRepair:
-                stats.Repairs++;
-                break;
-        }
-    }
-
-    /// <summary>
-    /// Gets formatted per-card combat stats for the recap screen.
-    /// Returns a list of lines: summary first, then player items sorted by damage, then enemy items.
-    /// </summary>
-    public static List<string> GetCombatStatsLines()
-    {
-        var lines = new List<string>();
-
-        // Summary line
-        lines.Add($"Combat stats. You dealt {_totalPlayerDamageDealt}, took {_totalPlayerDamageTaken}");
-
-        // Player items sorted by damage (highest first), then by triggers
-        if (_playerCardStats.Count > 0)
-        {
-            lines.Add($"--- Your items: {_playerCardStats.Count} ---");
-            var sorted = _playerCardStats.OrderByDescending(kv => kv.Value.Damage)
-                                          .ThenByDescending(kv => kv.Value.Triggers);
-            foreach (var kv in sorted)
-            {
-                lines.Add(kv.Value.Format(kv.Key));
-            }
-        }
-
-        // Enemy items sorted by damage (highest first)
-        if (_enemyCardStats.Count > 0)
-        {
-            lines.Add($"--- Enemy items: {_enemyCardStats.Count} ---");
-            var sorted = _enemyCardStats.OrderByDescending(kv => kv.Value.Damage)
-                                         .ThenByDescending(kv => kv.Value.Triggers);
-            foreach (var kv in sorted)
-            {
-                lines.Add(kv.Value.Format(kv.Key));
-            }
-        }
-
-        if (_playerCardStats.Count == 0 && _enemyCardStats.Count == 0)
-        {
-            lines.Add("No combat data recorded");
-        }
-
-        return lines;
-    }
-
-    /// <summary>
-    /// Whether there are any per-card stats available (combat has occurred).
-    /// </summary>
-    public static bool HasCombatStats => _playerCardStats.Count > 0 || _enemyCardStats.Count > 0;
-
-    #endregion
-
-    #region ===== SHARED: UTILITIES =====
-    // Utility methods used by both modes.
-
-    /// <summary>
-    /// Checks if an action type is relevant for narration.
-    /// </summary>
-    private static bool IsRelevantAction(ActionType type)
-    {
-        return type switch
-        {
-            ActionType.PlayerDamage => true,
-            ActionType.PlayerHeal => true,
-            ActionType.PlayerShieldApply => true,
-            ActionType.PlayerBurnApply => true,
-            ActionType.PlayerPoisonApply => true,
-            ActionType.PlayerRegenApply => true,
-            ActionType.PlayerGoldSteal => true,
-            ActionType.PlayerMaxHealthIncrease => true,
-            ActionType.PlayerMaxHealthDecrease => true,
-            ActionType.CardSlow => true,
-            ActionType.CardFreeze => true,
-            ActionType.CardHaste => true,
-            ActionType.CardCharge => true,
-            ActionType.CardReload => true,
-            ActionType.CardModifyAttribute => true,
-            ActionType.CardRepair => true,
-            ActionType.CardDestroy => true,
-            ActionType.CardDisable => true,
-            ActionType.CardTransform => true,
-            ActionType.CardUpgrade => true,
-            ActionType.CardQuestComplete => true,
-            ActionType.FlyingStart => true,
-            ActionType.FlyingStop => true,
-            ActionType.FlyingToggle => true,
-            _ => false
-        };
-    }
-
-    /// <summary>
-    /// Determines if a card belongs to the player using the Owner property.
-    /// </summary>
-    private static bool IsPlayerCard(Card card)
-    {
-        if (card == null) return false;
-
-        try
-        {
-            var player = Data.Run?.Player;
-            if (player == null) return true; // Default to player if no run data
-
-            // Card.Owner is set to the owning Player instance
-            // Player cards have Owner == Data.Run.Player
-            // Enemy cards have Owner == Data.Run.Opponent
-            // Unowned cards (encounters, etc.) have Owner == null
-            if (card.Owner == null) return true; // Unowned cards default to player
-            return card.Owner == player;
-        }
-        catch
-        {
-            return true;
-        }
-    }
-
-    /// <summary>
-    /// Calculates the effect amount from card attributes or event data.
-    /// </summary>
-    private static int CalculateEffectAmount(CombatActionData data)
-    {
-        var card = data.SourceCard;
-        if (card == null) return 0;
-
-        int amount = data.ActionType switch
-        {
-            ActionType.PlayerDamage => card.GetAttributeValue(ECardAttributeType.DamageAmount) ?? 0,
-            ActionType.PlayerHeal => card.GetAttributeValue(ECardAttributeType.HealAmount) ?? 0,
-            ActionType.PlayerShieldApply => card.GetAttributeValue(ECardAttributeType.ShieldApplyAmount) ?? 0,
-            ActionType.PlayerBurnApply => card.GetAttributeValue(ECardAttributeType.BurnApplyAmount) ?? 0,
-            ActionType.PlayerPoisonApply => card.GetAttributeValue(ECardAttributeType.PoisonApplyAmount) ?? 0,
-            ActionType.PlayerRegenApply => card.GetAttributeValue(ECardAttributeType.RegenApplyAmount) ?? 0,
-            ActionType.CardReload => card.GetAttributeValue(ECardAttributeType.ReloadAmount) ?? 1,
-            ActionType.CardHaste => card.GetAttributeValue(ECardAttributeType.HasteAmount) ?? 0,
-            _ => 0
-        };
-
-        // Fallback to health diff for health-related effects if attribute not found
-        if (amount == 0 && (data.ActionType == ActionType.PlayerDamage || data.ActionType == ActionType.PlayerHeal ||
-            data.ActionType == ActionType.PlayerGoldSteal || data.ActionType == ActionType.PlayerMaxHealthIncrease ||
-            data.ActionType == ActionType.PlayerMaxHealthDecrease))
-        {
-            if (data.HealthBefore > 0 || data.HealthAfter > 0)
-            {
-                amount = (int)Math.Abs(data.HealthBefore - data.HealthAfter);
-            }
-        }
-
-        return amount;
-    }
-
-    /// <summary>
-    /// Holds information about a modified attribute event.
-    /// </summary>
-    private struct ModifyAttributeInfo
-    {
-        public string TargetName;
-        public string AttrName;
-        public int Amount;
-    }
-
-    /// <summary>
-    /// Gets modified attribute information from CardModifyAttribute events.
-    /// </summary>
-    private static ModifyAttributeInfo GetModifyAttributeInfo(CombatActionData data)
-    {
-        var result = new ModifyAttributeInfo();
-
-        try
-        {
-            // Try to get TargetCard property via reflection
-            var targetCardProp = data.GetType().GetProperty("TargetCard");
-            Card targetCard = null;
-            if (targetCardProp != null)
-            {
-                targetCard = targetCardProp.GetValue(data) as Card;
-            }
-
-            result.TargetName = targetCard != null ? ItemReader.GetCardName(targetCard) : null;
-
-            // Try to get the attribute type from the event
-            var attrTypeProp = data.GetType().GetProperty("AttributeType");
-            if (attrTypeProp != null)
-            {
-                var attrValue = attrTypeProp.GetValue(data);
-                if (attrValue != null)
-                {
-                    result.AttrName = GetFriendlyAttributeName(attrValue.ToString());
-                }
-            }
-
-            // Try to get amount from event data
-            var amountProp = data.GetType().GetProperty("Amount");
-            if (amountProp != null)
-            {
-                var amountValue = amountProp.GetValue(data);
-                if (amountValue != null)
-                {
-                    int.TryParse(amountValue.ToString(), out result.Amount);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger.LogDebug($"GetModifyAttributeInfo error: {ex.Message}");
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// Converts attribute type enum names to friendly names.
-    /// </summary>
-    private static string GetFriendlyAttributeName(string attrType)
-    {
-        if (string.IsNullOrEmpty(attrType)) return null;
-
-        return attrType switch
-        {
-            "DamageAmount" => "damage",
-            "HealAmount" => "heal",
-            "ShieldApplyAmount" => "shield",
-            "CritChance" => "crit chance",
-            "Cooldown" => "cooldown",
-            "CooldownMax" => "cooldown",
-            "Ammo" => "ammo",
-            "AmmoMax" => "max ammo",
-            "HasteAmount" => "haste",
-            "SlowAmount" => "slow",
-            "FreezeAmount" => "freeze",
-            "BurnApplyAmount" => "burn",
-            "PoisonApplyAmount" => "poison",
-            "Lifesteal" => "lifesteal",
-            "Multicast" => "multicast",
-            "RegenApplyAmount" => "regen",
-            "Counter" => "counter",
-            "RepairTargets" => "repair targets",
-            _ => attrType.ToLower().Replace("amount", "").Trim()
-        };
-    }
-
-    #endregion
-
-    #region ===== BATCHED MODE: PERIODIC HEALTH =====
-    // Periodic health announcements are only active in batched mode.
-    // Modify these methods to change timing or format of health updates.
-
-    /// <summary>
-    /// Periodic health announcement loop (batched mode only).
-    /// </summary>
-    private static IEnumerator HealthAnnouncementLoop()
-    {
-        // First announcement after 2 seconds
-        yield return new WaitForSeconds(2f);
-        if (_active)
-        {
-            AnnounceHealth();
-        }
-
-        while (_active)
-        {
-            yield return new WaitForSeconds(HealthInterval);
-            if (_active)
-            {
-                AnnounceHealth();
-            }
-        }
-    }
-
-    /// <summary>
-    /// Announces current health status.
-    /// Note: The game may report Health as (actual health + shield), so we subtract shield to get actual health.
-    /// </summary>
-    private static void AnnounceHealth()
-    {
-        try
-        {
-            var player = Data.Run?.Player;
-            var opponent = Data.Run?.Opponent;
-
-            var parts = new List<string>();
-
-            if (player != null)
-            {
-                int reportedHealth = player.GetAttributeValue(EPlayerAttributeType.Health) ?? 0;
-                int shield = player.GetAttributeValue(EPlayerAttributeType.Shield) ?? 0;
-                // Game may include shield in health, so subtract to get actual health
-                int actualHealth = reportedHealth - shield;
-                if (actualHealth < 0) actualHealth = reportedHealth; // Fallback if assumption is wrong
-
-                if (shield > 0)
-                    parts.Add($"You: {actualHealth} health, {shield} shield");
-                else
-                    parts.Add($"You: {reportedHealth} health");
-
-                _lastPlayerHealth = actualHealth;
-            }
-
-            if (opponent != null)
-            {
-                opponent.Attributes.TryGetValue(EPlayerAttributeType.Health, out int reportedEnemyHealth);
-                opponent.Attributes.TryGetValue(EPlayerAttributeType.Shield, out int enemyShield);
-                // Game may include shield in health, so subtract to get actual health
-                int actualEnemyHealth = reportedEnemyHealth - enemyShield;
-                if (actualEnemyHealth < 0) actualEnemyHealth = reportedEnemyHealth; // Fallback if assumption is wrong
-
-                if (enemyShield > 0)
-                    parts.Add($"{_enemyName}: {actualEnemyHealth} health, {enemyShield} shield");
-                else
-                    parts.Add($"{_enemyName}: {reportedEnemyHealth} health");
-
-                _lastEnemyHealth = actualEnemyHealth;
-            }
-
-            if (parts.Count > 0)
-            {
-                TolkWrapper.Speak(string.Join(". ", parts), interrupt: false);
-            }
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger.LogError($"AnnounceHealth error: {ex.Message}");
-        }
     }
 
     #endregion
