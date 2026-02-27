@@ -2,6 +2,18 @@
 
 ---
 
+## February 27, 2026 (v1.8.4)
+
+### Bug Fixes
+- Fixed enchant pedestals still showing upgrade confirmation instead of enchant
+  - Root cause: `TCardEncounterPedestal.Behavior` defaults to `TPedestalBehaviorUpgrade` when deserialization doesn't populate it, making ALL pedestals appear as upgrade
+  - Added new detection strategy via `Data.CurrentEncounterController.CardData.Template` (same path the game's own UI uses)
+  - Added cross-validation: checks `SelectionCriteria` type to catch false upgrades (enchant pedestals use `TCardConditionalEnchantmentEligible`, upgrade pedestals use `TCardConditionalTier`)
+  - Recursive search through composite conditionals (`TCardConditionalAnd`/`TCardConditionalOr`) to find the enchant criteria
+  - Detection now uses 3 strategies + cross-validation instead of 2 strategies alone
+
+---
+
 ## February 27, 2026 (v1.8.3)
 
 ### Code Refactoring

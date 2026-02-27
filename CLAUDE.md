@@ -753,17 +753,23 @@ Data.CardAndSkillLookup.GetCardController(Card cardInstance)
 - **Bug 2**: Enchant preview showed "upgrade from X to Y" instead of enchant info
 - Multiple independent call sites each called `GetCurrentPedestalInfo()` separately - any failure broke that path
 
-### Architecture: Cache + Dual Strategy (`ActionHelper.cs`)
+### Architecture: Cache + Triple Strategy + Cross-Validation (`PedestalManager.cs`)
 - **`_cachedPedestalInfo`**: Static field, set ONCE per pedestal visit
 - **`CachePedestalInfo()`**: Called from `StateChangePatch` when entering Pedestal state (0.3s delay for `PedestalState.OnEnter()`)
 - **`ClearPedestalCache()`**: Called when leaving Pedestal state
 - **`GetCurrentPedestalInfo()`**: Returns cache if available, re-detects on cache miss
-- **`DetectPedestalInfo()`**: Two-strategy detection:
+- **`DetectPedestalInfo()`**: Three-strategy detection:
+  0. `DetectViaEncounterController()` - Runtime encounter card: `Data.CurrentEncounterController.CardData.Template`
   1. `DetectViaDataApi()` - Public API: `Data.GetStatic().Result.GetCardById(Data.CurrentEncounterId)`
   2. `DetectViaPedestalStateReflection()` - Fallback: reflection on `AppState.CurrentState._pedestalTemplate`
 - **`ExtractBehaviorInfo()`**: Shared helper for pattern matching on behavior types
+- **`CrossValidateWithSelectionCriteria()`**: After extracting behavior, checks `SelectionCriteria` to catch false upgrades
+  - `TCardEncounterPedestal.Behavior` defaults to `new TPedestalBehaviorUpgrade()` — if deserialization doesn't populate it, behavior detection returns Upgrade for ALL pedestals
+  - `SelectionCriteria` is different per type: `TCardConditionalEnchantmentEligible` for enchant, `TCardConditionalTier` for upgrade
+  - If Behavior says Upgrade but SelectionCriteria contains `TCardConditionalEnchantmentEligible` → override to Enchant
+  - `FindEnchantCriteria()` searches recursively through `TCardConditionalAnd`/`TCardConditionalOr` wrappers
 
-### Fallback When Both Strategies Fail
+### Fallback When All Strategies Fail
 - `UseCurrentPedestal()` → `CommitToPedestalDirect()`: Sends `CommitToPedestalCommand` without predicting type
 - `EnterActionMode()`: Shows generic "Use pedestal" option (`ActionOption.UsePedestal`) instead of guessing
 - `HandleUpgrade()` (U shortcut): Calls `UseCurrentPedestal()` directly instead of guessing

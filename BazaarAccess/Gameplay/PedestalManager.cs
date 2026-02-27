@@ -8,6 +8,7 @@ using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameShared.Domain.Cards.Encounter.Pedestal;
 using BazaarGameShared.Domain.Cards.Encounter.Pedestal.Behaviors;
 using BazaarGameShared.Domain.Core.Types;
+using BazaarGameShared.Domain.Prerequisites.Conditionals;
 using BazaarGameShared.Domain.Runs;
 using TheBazaar;
 using TheBazaar.AppFramework;
@@ -251,13 +252,23 @@ public static class PedestalManager
     }
 
     /// <summary>
-    /// Detects pedestal type using two strategies:
+    /// Detects pedestal type using three strategies:
+    /// 0. EncounterController (runtime encounter card instance)
     /// 1. Public Data API (Data.GetStatic().GetCardById(CurrentEncounterId))
     /// 2. Fallback: reflection on PedestalState._pedestalTemplate from AppState.CurrentState
+    /// Each result is cross-validated against SelectionCriteria to catch default Behavior values.
     /// </summary>
     private static PedestalInfo DetectPedestalInfo()
     {
         var info = new PedestalInfo();
+
+        // Strategy 0: EncounterController (runtime card instance - most reliable)
+        info = DetectViaEncounterController();
+        if (info.Type != PedestalType.None)
+        {
+            Plugin.Logger.LogInfo($"DetectPedestalInfo: EncounterController succeeded - Type={info.Type}");
+            return info;
+        }
 
         // Strategy 1: Public Data API
         info = DetectViaDataApi();
@@ -275,7 +286,65 @@ public static class PedestalManager
             return info;
         }
 
-        Plugin.Logger.LogWarning("DetectPedestalInfo: Both detection strategies failed");
+        Plugin.Logger.LogWarning("DetectPedestalInfo: All detection strategies failed");
+        return info;
+    }
+
+    /// <summary>
+    /// Detects pedestal type via the runtime EncounterController (same path the game's UI uses).
+    /// Data.CurrentEncounterController.CardData.Template gives the instantiated encounter card.
+    /// </summary>
+    private static PedestalInfo DetectViaEncounterController()
+    {
+        var info = new PedestalInfo();
+
+        try
+        {
+            var controller = Data.CurrentEncounterController;
+            if (controller == null)
+            {
+                Plugin.Logger.LogInfo("DetectViaEncounterController: CurrentEncounterController is null");
+                return info;
+            }
+
+            var cardData = controller.CardData;
+            if (cardData == null)
+            {
+                Plugin.Logger.LogInfo("DetectViaEncounterController: CardData is null");
+                return info;
+            }
+
+            var template = cardData.Template;
+            if (template == null)
+            {
+                Plugin.Logger.LogInfo("DetectViaEncounterController: Template is null");
+                return info;
+            }
+
+            Plugin.Logger.LogInfo($"DetectViaEncounterController: Template type={template.GetType().FullName}");
+
+            var pedestal = template as TCardEncounterPedestal;
+            if (pedestal == null)
+            {
+                Plugin.Logger.LogWarning($"DetectViaEncounterController: Template is {template.GetType().Name}, not TCardEncounterPedestal");
+                return info;
+            }
+
+            var behavior = pedestal.Behavior;
+            Plugin.Logger.LogInfo($"DetectViaEncounterController: Behavior type={behavior?.GetType().FullName ?? "null"}");
+            ExtractBehaviorInfo(behavior, info);
+
+            // Cross-validate: SelectionCriteria can reveal the true pedestal type
+            // when Behavior defaults to TPedestalBehaviorUpgrade
+            CrossValidateWithSelectionCriteria(pedestal, info);
+
+            Plugin.Logger.LogInfo($"DetectViaEncounterController: result Type={info.Type}, Enchant={info.EnchantmentName}");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogError($"DetectViaEncounterController error: {ex.Message}\n{ex.StackTrace}");
+        }
+
         return info;
     }
 
@@ -324,6 +393,10 @@ public static class PedestalManager
             var behavior = pedestal.Behavior;
             Plugin.Logger.LogInfo($"DetectViaDataApi: Behavior type={behavior?.GetType().FullName ?? "null"}");
             ExtractBehaviorInfo(behavior, info);
+
+            // Cross-validate against SelectionCriteria
+            CrossValidateWithSelectionCriteria(pedestal, info);
+
             Plugin.Logger.LogInfo($"DetectViaDataApi: result Type={info.Type}, Enchant={info.EnchantmentName}");
         }
         catch (Exception ex)
@@ -375,6 +448,9 @@ public static class PedestalManager
             }
 
             ExtractBehaviorInfo(pedestal.Behavior, info);
+
+            // Cross-validate against SelectionCriteria
+            CrossValidateWithSelectionCriteria(pedestal, info);
         }
         catch (Exception ex)
         {
@@ -430,6 +506,72 @@ public static class PedestalManager
                 info.Type = PedestalType.Upgrade;
             }
         }
+    }
+
+    /// <summary>
+    /// Cross-validates the detected pedestal type against SelectionCriteria.
+    /// The game uses TCardConditionalEnchantmentEligible for enchant pedestals and
+    /// TCardConditionalTier for upgrade pedestals. If Behavior defaulted to
+    /// TPedestalBehaviorUpgrade but SelectionCriteria says enchant, we override.
+    /// SelectionCriteria can be wrapped in TCardConditionalAnd, so we search recursively.
+    /// </summary>
+    private static void CrossValidateWithSelectionCriteria(TCardEncounterPedestal pedestal, PedestalInfo info)
+    {
+        if (pedestal.SelectionCriteria == null) return;
+
+        var criteriaType = pedestal.SelectionCriteria.GetType();
+        Plugin.Logger.LogInfo($"CrossValidate: SelectionCriteria type={criteriaType.Name}, detected Type={info.Type}");
+
+        // Only override if Behavior says Upgrade - enchant detection is already correct
+        if (info.Type != PedestalType.Upgrade) return;
+
+        // Search for TCardConditionalEnchantmentEligible recursively through composite conditionals
+        var enchantCriteria = FindEnchantCriteria(pedestal.SelectionCriteria);
+        if (enchantCriteria != null)
+        {
+            Plugin.Logger.LogWarning($"CrossValidate: OVERRIDE Upgrade -> Enchant (found TCardConditionalEnchantmentEligible in SelectionCriteria)");
+            info.Type = PedestalType.Enchant;
+            try
+            {
+                info.EnchantmentName = enchantCriteria.Enchantment.ToString();
+                Plugin.Logger.LogInfo($"CrossValidate: Enchantment from criteria = {info.EnchantmentName}");
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger.LogWarning($"CrossValidate: Could not read enchantment from criteria: {ex.Message}");
+                info.EnchantmentName = "unknown";
+            }
+        }
+    }
+
+    /// <summary>
+    /// Recursively searches through composite conditionals (And/Or) to find a
+    /// TCardConditionalEnchantmentEligible instance.
+    /// </summary>
+    private static TCardConditionalEnchantmentEligible FindEnchantCriteria(ITCardConditional conditional)
+    {
+        if (conditional is TCardConditionalEnchantmentEligible enchant)
+            return enchant;
+
+        if (conditional is TCardConditionalAnd andCond)
+        {
+            foreach (var child in andCond.Conditions)
+            {
+                var result = FindEnchantCriteria(child);
+                if (result != null) return result;
+            }
+        }
+
+        if (conditional is TCardConditionalOr orCond)
+        {
+            foreach (var child in orCond.Conditions)
+            {
+                var result = FindEnchantCriteria(child);
+                if (result != null) return result;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
