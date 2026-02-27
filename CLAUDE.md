@@ -30,7 +30,15 @@ BazaarAccess/
 │   ├── ActionMenuHandler.cs    # Action mode overlay (sell/upgrade/enchant/move/reorder)
 │   ├── CombatInputHandler.cs   # Combat-mode input routing (B/G/V/F board navigation)
 │   ├── ReplayInputHandler.cs   # Post-combat replay/recap input routing
-│   ├── ItemReader.cs           # Card stat reading and formatting
+│   ├── CardReading/          # Sub-modules for card data reading
+│   │   ├── TextResolver.cs       # Localized text and token resolution
+│   │   ├── CardProperties.cs     # Name, tier, size, price, tags, descriptions
+│   │   ├── QuestReader.cs        # Quest conditions, progress, rewards
+│   │   ├── DetailLineBuilder.cs  # Detail lines, short/detailed descriptions, stats
+│   │   ├── EncounterReader.cs    # Encounter info, PvP opponent data
+│   │   ├── PropertyDescriber.cs  # Tag and keyword descriptions (I key)
+│   │   └── RankReader.cs         # Player rank, ranked mode detection
+│   ├── ItemReader.cs           # Facade: delegates to CardReading/ sub-modules
 │   ├── CombatDescriber.cs      # Combat narration (batched/individual modes)
 │   ├── ActionHelper.cs         # Buy/sell/move/reorder commands
 │   ├── PedestalManager.cs      # Pedestal detection, caching, upgrade/enchant actions
@@ -75,7 +83,7 @@ Composition-based navigation used by all screens/UIs:
 | Add new game screen | `Screens/`, implement `IAccessibleScreen`, register in `ViewControllerPatch.cs` |
 | Add new popup/dialog | `UI/`, extend `BaseUI`, register in `PopupPatch.cs` |
 | Hook game events | `Patches/StateChangePatch.cs` (subscribe), `CombatEventHandler.cs`, `CardEventHandler.cs`, `ErrorEventHandler.cs` |
-| Modify item reading | `Gameplay/ItemReader.cs` |
+| Modify item reading | `Gameplay/CardReading/` (sub-modules), `Gameplay/ItemReader.cs` (facade) |
 | Combat narration | `Gameplay/CombatDescriber.cs`, `Combat/HealthTracker.cs`, `Combat/CardStatsTracker.cs`, `Combat/EffectFormatter.cs` |
 | Keyboard shortcuts | `Core/KeyboardNavigator.cs` (mapping), `GameplayScreen.cs` (router), `CombatInputHandler.cs`, `ReplayInputHandler.cs` |
 | Item actions | `Gameplay/ActionHelper.cs` (buy/sell/move/reorder), `PedestalManager.cs` (upgrade/enchant) |

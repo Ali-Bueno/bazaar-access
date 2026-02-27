@@ -2,6 +2,23 @@
 
 ---
 
+## February 27, 2026 (v1.8.3)
+
+### Code Refactoring
+Refactored ItemReader into focused sub-modules. No behavior changes.
+
+- **ItemReader** (1,690 → 141 lines): Now a thin facade delegating to 7 sub-modules in `CardReading/`
+  - `CardReading/TextResolver.cs` - Localized text and token resolution
+  - `CardReading/CardProperties.cs` - Name, tier, size, price, tags, temperature, descriptions
+  - `CardReading/DetailLineBuilder.cs` - Detail lines, short/detailed descriptions, combat stats
+  - `CardReading/EncounterReader.cs` - Encounter info, PvP opponent data
+  - `CardReading/QuestReader.cs` - Quest conditions, progress, rewards
+  - `CardReading/PropertyDescriber.cs` - Tag and keyword descriptions (I key)
+  - `CardReading/RankReader.cs` - Player rank, ranked mode detection
+- Zero changes to 14 consumer files — public API unchanged
+
+---
+
 ## February 27, 2026 (v1.8.2)
 
 ### Code Refactoring
