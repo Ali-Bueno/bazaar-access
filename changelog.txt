@@ -2,6 +2,22 @@
 
 ---
 
+## February 27, 2026 (v1.8.2)
+
+### Code Refactoring
+Further refactoring of GameplayNavigator for modularity. No behavior changes.
+
+- **GameplayNavigator** (1,789 → 594 lines): Extracted 4 sub-modules
+  - `Navigation/NavigationTypes.cs` - Shared enums (NavigationSection, RecapSection, etc.) and NavItem class
+  - `Navigation/BoardStashNavigator.cs` - Board/stash refresh, slot navigation, stash toggle, capacity announcements
+  - `Navigation/SelectionNavigator.cs` - Selection data (shop/encounters/loot), card description formatting
+  - `Navigation/GameplayAnnouncer.cs` - All announcements, state descriptions, game actions (exit/reroll)
+- GameplayNavigator is now a thin facade that delegates to sub-navigators
+- Removed unused legacy `BoardNavigator.cs` file
+- Zero changes to consumer files (GameplayScreen, ActionMenuHandler, CombatInputHandler, ReplayInputHandler)
+
+---
+
 ## February 26, 2026 (v1.8.1)
 
 ### Bug Fixes

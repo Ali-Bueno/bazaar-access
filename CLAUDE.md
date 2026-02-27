@@ -15,9 +15,18 @@ BazaarAccess/
 ├── Core/             # TolkWrapper, KeyboardNavigator, MessageBuffer, CoroutineHelper
 ├── Gameplay/         # Main gameplay logic (see sub-modules below)
 │   ├── Combat/       # HealthTracker, CardStatsTracker, EffectFormatter
-│   ├── Navigation/   # DetailReader, HeroNavigator, EnemyNavigator, RecapNavigator, VisualSelector
+│   ├── Navigation/   # Sub-navigators (see below)
+│   │   ├── NavigationTypes.cs      # Enums: NavigationSection, RecapSection, NavItemType, NavItem
+│   │   ├── BoardStashNavigator.cs  # Board/stash refresh, slot nav, stash toggle, capacity
+│   │   ├── SelectionNavigator.cs   # Selection data (shop/encounters/loot), card descriptions
+│   │   ├── GameplayAnnouncer.cs    # Announcements, state descriptions, game actions (exit/reroll)
+│   │   ├── HeroNavigator.cs        # Hero stats/skills navigation
+│   │   ├── EnemyNavigator.cs       # Enemy board/stats/skills navigation
+│   │   ├── RecapNavigator.cs       # Post-combat recap mode navigation
+│   │   ├── DetailReader.cs         # Line-by-line detail reading
+│   │   └── VisualSelector.cs       # Visual selection feedback
 │   ├── GameplayScreen.cs       # Input router, state callbacks
-│   ├── GameplayNavigator.cs    # Core board/stash/section navigation, coordinates sub-navigators
+│   ├── GameplayNavigator.cs    # Facade: coordinates all sub-navigators, section/item nav
 │   ├── ActionMenuHandler.cs    # Action mode overlay (sell/upgrade/enchant/move/reorder)
 │   ├── CombatInputHandler.cs   # Combat-mode input routing (B/G/V/F board navigation)
 │   ├── ReplayInputHandler.cs   # Post-combat replay/recap input routing
@@ -70,6 +79,9 @@ Composition-based navigation used by all screens/UIs:
 | Combat narration | `Gameplay/CombatDescriber.cs`, `Combat/HealthTracker.cs`, `Combat/CardStatsTracker.cs`, `Combat/EffectFormatter.cs` |
 | Keyboard shortcuts | `Core/KeyboardNavigator.cs` (mapping), `GameplayScreen.cs` (router), `CombatInputHandler.cs`, `ReplayInputHandler.cs` |
 | Item actions | `Gameplay/ActionHelper.cs` (buy/sell/move/reorder), `PedestalManager.cs` (upgrade/enchant) |
+| Board/stash data | `Navigation/BoardStashNavigator.cs` (refresh, slots, stash toggle, capacity) |
+| Selection data | `Navigation/SelectionNavigator.cs` (shop/encounters, card descriptions) |
+| Announcements & game actions | `Navigation/GameplayAnnouncer.cs` (announce state/items, exit/reroll) |
 | Hero/enemy navigation | `Navigation/HeroNavigator.cs`, `Navigation/EnemyNavigator.cs`, `Navigation/RecapNavigator.cs` |
 | Action menu | `Gameplay/ActionMenuHandler.cs` (enter/handle/execute action mode) |
 
