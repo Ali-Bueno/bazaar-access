@@ -348,6 +348,7 @@ public static class StateChangePatch
             Plugin.Logger.LogInfo($"OnStateChanged: {_lastState} -> {newState}");
 
             bool stateActuallyChanged = newState != _lastState;
+            var previousState = _lastState;
             _lastState = newState;
 
             // Reset day/hour tracking on new run
@@ -366,6 +367,15 @@ public static class StateChangePatch
             else if (newState != ERunState.Pedestal)
             {
                 PedestalManager.ClearPedestalCache();
+
+                // Force stash closed when leaving Pedestal state.
+                // The game closes the stash UI on state transition but doesn't fire
+                // StorageToggled(false), leaving our internal state desynchronized.
+                if (previousState == ERunState.Pedestal)
+                {
+                    var screenForStash = AccessibilityMgr.GetCurrentScreen() as GameplayScreen;
+                    screenForStash?.OnStorageToggled(false);
+                }
             }
 
             // Check for day/hour changes after a delay (game data updates after state change)

@@ -798,3 +798,26 @@ Data.CardAndSkillLookup.GetCardController(Card cardInstance)
 5. `HandleSellConfirm()` - Sell redirect at pedestals (passes explicit `isEnchant`)
 6. `ActionHelper.UpgradeItem()` - Upgrade execution
 7. `ActionHelper.UseCurrentPedestal()` - Routes to UpgradeItem/EnchantItem/CommitToPedestalDirect
+
+---
+
+## Stash State Fix & Combat Damage Tracking (Mar 3, 2026)
+
+### Stash Stuck Open After Enchanting (`Patches/StateChangePatch.cs`)
+- **Root cause**: When leaving Pedestal state after enchanting from stash, the game closes the stash UI but does NOT fire `StorageToggled(false)` event
+- `BoardStashNavigator._stashOpen` stayed `true`, causing desync with the actual game UI
+- Pressing Space to toggle stash couldn't fix it because the mod thought stash was open while the game had it closed
+- **Fix**: `OnStateChanged()` now saves `previousState` before updating `_lastState`
+  - When `previousState == ERunState.Pedestal` and we're leaving that state, forces `OnStorageToggled(false)`
+  - This resets `_stashOpen = false` and clears stash indices
+
+### Combat Damage Tracking Fix (`Gameplay/Combat/EffectFormatter.cs`)
+- **Root cause**: `CalculateEffectAmount()` read `card.GetAttributeValue(DamageAmount)` — the item's BASE stat
+  - Skills like Glass Cannon that double weapon damage don't change the item's base attribute
+  - Result: H key stats showed only base damage, not actual amplified damage
+  - Example: Anchor base 200 damage × 2 from Glass Cannon = 400 actual, but mod tracked only 200
+- **Fix**: For `PlayerDamage`, `PlayerHeal`, `PlayerShieldApply`, and other health-affecting actions:
+  - Now prefers `HealthBefore/HealthAfter` diff from `CombatActionData` (actual effect after all amplification)
+  - Falls back to card attribute only when health diff data is unavailable
+- `CombatActionData` fields used: `HealthBefore` (float), `HealthAfter` (float) — target's health before/after the effect
+- **Edge case**: Overkill damage may be slightly undercounted (health can't go below 0), but this is far more accurate than base stats which completely ignore all skill amplification

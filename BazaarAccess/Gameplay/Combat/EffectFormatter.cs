@@ -300,18 +300,43 @@ public static class EffectFormatter
     }
 
     /// <summary>
-    /// Calculates the effect amount from card attributes or event data.
+    /// Calculates the effect amount from event health diff or card attributes.
+    /// For damage/heal/shield, prefers the actual HealthBefore/HealthAfter diff because
+    /// card attributes only show base values and don't account for skills that amplify
+    /// effects (e.g., Glass Cannon doubling weapon damage).
     /// </summary>
     public static int CalculateEffectAmount(CombatActionData data)
     {
         var card = data.SourceCard;
         if (card == null) return 0;
 
+        // For damage, heal, shield, and other health-affecting effects:
+        // Prefer HealthBefore/HealthAfter diff (actual effect including skill amplification)
+        // over card attributes (base stats only).
+        if (data.ActionType == ActionType.PlayerDamage || data.ActionType == ActionType.PlayerHeal ||
+            data.ActionType == ActionType.PlayerShieldApply || data.ActionType == ActionType.PlayerGoldSteal ||
+            data.ActionType == ActionType.PlayerMaxHealthIncrease || data.ActionType == ActionType.PlayerMaxHealthDecrease)
+        {
+            if (data.HealthBefore > 0 || data.HealthAfter > 0)
+            {
+                int healthDiff = (int)Math.Abs(data.HealthBefore - data.HealthAfter);
+                if (healthDiff > 0) return healthDiff;
+            }
+
+            // Fallback to card attribute if health diff unavailable
+            int attrAmount = data.ActionType switch
+            {
+                ActionType.PlayerDamage => card.GetAttributeValue(ECardAttributeType.DamageAmount) ?? 0,
+                ActionType.PlayerHeal => card.GetAttributeValue(ECardAttributeType.HealAmount) ?? 0,
+                ActionType.PlayerShieldApply => card.GetAttributeValue(ECardAttributeType.ShieldApplyAmount) ?? 0,
+                _ => 0
+            };
+            return attrAmount;
+        }
+
+        // For non-health effects, use card attributes directly
         int amount = data.ActionType switch
         {
-            ActionType.PlayerDamage => card.GetAttributeValue(ECardAttributeType.DamageAmount) ?? 0,
-            ActionType.PlayerHeal => card.GetAttributeValue(ECardAttributeType.HealAmount) ?? 0,
-            ActionType.PlayerShieldApply => card.GetAttributeValue(ECardAttributeType.ShieldApplyAmount) ?? 0,
             ActionType.PlayerBurnApply => card.GetAttributeValue(ECardAttributeType.BurnApplyAmount) ?? 0,
             ActionType.PlayerPoisonApply => card.GetAttributeValue(ECardAttributeType.PoisonApplyAmount) ?? 0,
             ActionType.PlayerRegenApply => card.GetAttributeValue(ECardAttributeType.RegenApplyAmount) ?? 0,
@@ -319,17 +344,6 @@ public static class EffectFormatter
             ActionType.CardHaste => card.GetAttributeValue(ECardAttributeType.HasteAmount) ?? 0,
             _ => 0
         };
-
-        // Fallback to health diff for health-related effects if attribute not found
-        if (amount == 0 && (data.ActionType == ActionType.PlayerDamage || data.ActionType == ActionType.PlayerHeal ||
-            data.ActionType == ActionType.PlayerGoldSteal || data.ActionType == ActionType.PlayerMaxHealthIncrease ||
-            data.ActionType == ActionType.PlayerMaxHealthDecrease))
-        {
-            if (data.HealthBefore > 0 || data.HealthAfter > 0)
-            {
-                amount = (int)Math.Abs(data.HealthBefore - data.HealthAfter);
-            }
-        }
 
         return amount;
     }

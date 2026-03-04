@@ -2,6 +2,21 @@
 
 ---
 
+## March 3, 2026 (v1.8.5)
+
+### Bug Fixes
+- Fixed stash getting stuck open after enchanting an item from the stash
+  - The game closes the stash UI when leaving Pedestal state but doesn't fire a close event
+  - The mod's internal stash state stayed "open", making Space toggle ineffective
+  - Now forces stash state to closed when transitioning away from Pedestal state
+- Fixed combat damage tracking (H key) not accounting for skills that amplify damage
+  - Skills like Glass Cannon (doubles weapon damage) were not reflected in combat stats
+  - Root cause: damage was read from item's base DamageAmount attribute instead of actual damage dealt
+  - Now uses HealthBefore/HealthAfter diff from combat events, which includes all skill amplification
+  - Also fixes heal and shield tracking for amplified effects
+
+---
+
 ## February 27, 2026 (v1.8.4)
 
 ### Bug Fixes
