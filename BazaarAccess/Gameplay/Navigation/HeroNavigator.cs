@@ -70,16 +70,7 @@ public class HeroNavigator
     {
         if (_subsection == HeroSubsection.Stats)
         {
-            if (_skills.Count > 0)
-            {
-                _subsection = HeroSubsection.Skills;
-                _skillIndex = 0;
-                AnnounceSubsection();
-            }
-            else
-            {
-                TolkWrapper.Speak("No skills equipped");
-            }
+            EnterSkillsSubsection();
         }
         else
         {
@@ -102,17 +93,26 @@ public class HeroNavigator
         }
         else
         {
-            if (_skills.Count > 0)
-            {
-                _subsection = HeroSubsection.Skills;
-                _skillIndex = 0;
-                AnnounceSubsection();
-            }
-            else
-            {
-                TolkWrapper.Speak("No skills equipped");
-            }
+            EnterSkillsSubsection();
         }
+    }
+
+    private void EnterSkillsSubsection()
+    {
+        if (_skills.Count == 0)
+        {
+            TolkWrapper.Speak("No skills equipped");
+            return;
+        }
+
+        _subsection = HeroSubsection.Skills;
+
+        if (_skillIndex < 0)
+            _skillIndex = 0;
+        else if (_skillIndex >= _skills.Count)
+            _skillIndex = _skills.Count - 1;
+
+        AnnounceSubsection();
     }
 
     /// <summary>
@@ -131,7 +131,9 @@ public class HeroNavigator
         }
         else
         {
-            TolkWrapper.Speak($"Hero skills, {_skills.Count} skills");
+            string skillAnnouncement = GetCurrentSkillAnnouncement();
+            TolkWrapper.Speak($"Hero skills, {_skills.Count} skills. {skillAnnouncement}");
+            OnSkillVisualSelect?.Invoke(_skillIndex);
         }
     }
 
@@ -150,33 +152,23 @@ public class HeroNavigator
     /// </summary>
     public void AnnounceSkill()
     {
+        TolkWrapper.Speak(GetCurrentSkillAnnouncement());
+        // Trigger visual selection via callback
+        OnSkillVisualSelect?.Invoke(_skillIndex);
+    }
+
+    private string GetCurrentSkillAnnouncement()
+    {
         if (_skillIndex < 0 || _skillIndex >= _skills.Count)
-        {
-            TolkWrapper.Speak("No skill");
-            return;
-        }
+            return "No skill";
 
         var skill = _skills[_skillIndex];
         if (skill == null)
-        {
-            TolkWrapper.Speak("Empty slot");
-            return;
-        }
+            return "Empty slot";
 
         string name = ItemReader.GetCardName(skill);
         string desc = ItemReader.GetFullDescription(skill);
-
-        if (!string.IsNullOrEmpty(desc))
-        {
-            TolkWrapper.Speak($"{name}: {desc}");
-        }
-        else
-        {
-            TolkWrapper.Speak(name);
-        }
-
-        // Trigger visual selection via callback
-        OnSkillVisualSelect?.Invoke(_skillIndex);
+        return !string.IsNullOrEmpty(desc) ? $"{name}: {desc}" : name;
     }
 
     /// <summary>
