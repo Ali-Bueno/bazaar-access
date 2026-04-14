@@ -34,7 +34,6 @@ namespace BazaarAccess.Gameplay;
 ///
 /// Sub-components:
 /// - HealthTracker: Health monitoring, periodic announcements, threshold warnings
-/// - CardStatsTracker: Per-card combat statistics for recap
 /// - EffectFormatter: Combat effect text formatting and relevance filtering
 /// </summary>
 public static class CombatDescriber
@@ -140,12 +139,6 @@ public static class CombatDescriber
 
     // Backward-compatible inner class alias
     /// <summary>
-    /// Per-card stats accumulated over the entire combat. Persists until next combat starts.
-    /// Delegates to CardStatsTracker.CardCombatStats.
-    /// </summary>
-    public class CardCombatStats : CardStatsTracker.CardCombatStats { }
-
-    /// <summary>
     /// Starts combat narration.
     /// </summary>
     public static void StartDescribing()
@@ -165,9 +158,6 @@ public static class CombatDescriber
         // Reset totals
         _totalPlayerDamageDealt = 0;
         _totalPlayerDamageTaken = 0;
-
-        // Reset per-card stats
-        CardStatsTracker.Clear();
 
         // Get enemy name
         _enemyName = GetEnemyName();
@@ -308,20 +298,14 @@ public static class CombatDescriber
             if (sourceCard == null) return;
 
             // Determine owner
-            bool isPlayerItem = CardStatsTracker.IsPlayerCard(sourceCard);
+            bool isPlayerItem = IsPlayerCard(sourceCard);
             string itemName = ItemReader.GetCardName(sourceCard);
-
-            // Track trigger count for ALL events (so items like Water Wheel, Keychain appear in stats)
-            CardStatsTracker.TrackTriggerCount(itemName, isPlayerItem);
 
             if (!EffectFormatter.IsRelevantAction(data.ActionType)) return;
 
             // Calculate details for relevant actions
             int amount = EffectFormatter.CalculateEffectAmount(data);
             bool isCrit = data.IsCrit;
-
-            // Track detailed per-card stats (damage, heal, etc.)
-            CardStatsTracker.TrackCardStats(itemName, isPlayerItem, data.ActionType, amount, isCrit, data);
 
             // Dispatch to the appropriate mode handler
             if (UseBatchedMode)
@@ -342,21 +326,6 @@ public static class CombatDescriber
     {
         HealthTracker.OnPlayerHealthChanged(evt);
     }
-
-    /// <summary>
-    /// Gets formatted per-card combat stats for the recap screen.
-    /// Delegates to CardStatsTracker.
-    /// </summary>
-    public static List<string> GetCombatStatsLines()
-    {
-        return CardStatsTracker.GetCombatStatsLines(_totalPlayerDamageDealt, _totalPlayerDamageTaken);
-    }
-
-    /// <summary>
-    /// Whether there are any per-card stats available (combat has occurred).
-    /// Delegates to CardStatsTracker.
-    /// </summary>
-    public static bool HasCombatStats => CardStatsTracker.HasCombatStats;
 
     #region ===== BATCHED MODE =====
     // All batched mode specific code here.
@@ -559,6 +528,23 @@ public static class CombatDescriber
         if (!string.IsNullOrEmpty(announcement))
         {
             TolkWrapper.Speak(announcement, interrupt: false);
+        }
+    }
+
+    private static bool IsPlayerCard(BazaarGameClient.Domain.Models.Cards.Card card)
+    {
+        if (card == null) return false;
+
+        try
+        {
+            var player = Data.Run?.Player;
+            if (player == null) return true;
+            if (card.Owner == null) return true;
+            return card.Owner == player;
+        }
+        catch
+        {
+            return true;
         }
     }
 

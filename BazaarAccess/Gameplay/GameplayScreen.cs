@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using BazaarAccess.Accessibility;
 using BazaarAccess.Core;
 using BazaarAccess.Patches;
@@ -36,12 +37,14 @@ public class GameplayScreen : IAccessibleScreen
         _navigator = new GameplayNavigator();
         _actionMenu = new ActionMenuHandler(_navigator, HandleUpgradeConfirm, RefreshAndAnnounce);
         _combatHandler = new CombatInputHandler(_navigator);
-        _replayHandler = new ReplayInputHandler(_navigator, TriggerReplayContinue, TriggerReplayReplay, TriggerReplayRecap);
+        _replayHandler = new ReplayInputHandler(_navigator, TriggerReplayContinue, TriggerReplayReplay, TriggerReplayRecap, TriggerReplayRecapBack);
         _combatEncounterPreview = new CombatEncounterPreviewNavigator();
     }
 
     public void HandleInput(AccessibleKey key)
     {
+        _navigator.SyncVisualRecapState();
+
         if (_combatEncounterPreview.IsActive)
         {
             _combatEncounterPreview.HandleInput(key);
@@ -1231,6 +1234,7 @@ public class GameplayScreen : IAccessibleScreen
     {
         _combatEncounterPreview.Exit(announce: false);
         _navigator.SetReplayMode(inReplayState);
+        _navigator.SyncVisualRecapState();
 
         if (inReplayState)
         {
@@ -1295,6 +1299,14 @@ public class GameplayScreen : IAccessibleScreen
             var exitMethod = replayStateType.GetMethod("Exit");
             if (exitMethod != null)
             {
+                // Recap hover tooltips can persist into the end-of-run victory/defeat screen unless we clear them first.
+                ClearAllTooltips();
+
+                if (_navigator.IsInRecapMode)
+                {
+                    HideNativeRecapView();
+                }
+
                 TolkWrapper.Speak("Continuing");
                 exitMethod.Invoke(currentState, null);
                 // NO llamar a SetReplayMode(false) aquí - OnReplayStateChanged lo hará cuando el estado cambie
@@ -1333,8 +1345,6 @@ public class GameplayScreen : IAccessibleScreen
             {
                 TolkWrapper.Speak("Replaying combat");
                 replayMethod.Invoke(currentState, null);
-                // Salir del modo recap si estábamos en él (R inicia animación)
-                _navigator.SetRecapMode(false);
             }
         }
         catch (System.Exception ex)
@@ -1364,15 +1374,136 @@ public class GameplayScreen : IAccessibleScreen
             var recapMethod = replayStateType.GetMethod("Recap");
             if (recapMethod != null)
             {
-                TolkWrapper.Speak("Recap. V hero, F enemy, G enemy board, B your board, H combat stats.");
                 recapMethod.Invoke(currentState, null);
-                // Activar modo recap - ahora G funcionará
-                _navigator.SetRecapMode(true);
+                ShowNativeRecapView();
+                Plugin.Instance.StartCoroutine(WaitForRecapVisibility(true, "Recap. V hero, F enemy, G enemy board, B your board."));
             }
         }
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"TriggerReplayRecap error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Triggers the Back action while in Recap view.
+    /// Mirrors the native Back button by closing the recap board and returning to replay controls.
+    /// </summary>
+    public void TriggerReplayRecapBack()
+    {
+        try
+        {
+            var currentState = AppState.CurrentState;
+            if (currentState == null) return;
+
+            var replayStateType = typeof(AppState).Assembly.GetType("TheBazaar.ReplayState");
+            if (replayStateType == null || !replayStateType.IsInstanceOfType(currentState))
+            {
+                _navigator.SetReplayMode(false);
+                return;
+            }
+
+            HideNativeRecapView();
+
+            var recapBackMethod = replayStateType.GetMethod("RecapBack");
+            recapBackMethod?.Invoke(currentState, null);
+            Plugin.Instance.StartCoroutine(WaitForRecapVisibility(false, "Exited recap. Enter to continue, R to replay, E to return to recap."));
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"TriggerReplayRecapBack error: {ex.Message}");
+        }
+    }
+
+    private static void ShowNativeRecapView()
+    {
+        try
+        {
+            var boardManager = Singleton<BoardManager>.Instance;
+            if (boardManager == null)
+            {
+                return;
+            }
+
+            boardManager.ToggleOpponentPortrait(isVisible: true);
+
+            var showRecapMethod = boardManager.GetType().GetMethod("ShowRecapView", BindingFlags.Instance | BindingFlags.NonPublic);
+            showRecapMethod?.Invoke(boardManager, null);
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"ShowNativeRecapView error: {ex.Message}");
+        }
+    }
+
+    private static void HideNativeRecapView()
+    {
+        try
+        {
+            var boardManager = Singleton<BoardManager>.Instance;
+            if (boardManager == null || !boardManager.IsRecapViewOpen)
+            {
+                return;
+            }
+
+            var hideRecapMethod = boardManager.GetType().GetMethod("HideRecapView", BindingFlags.Instance | BindingFlags.NonPublic);
+            hideRecapMethod?.Invoke(boardManager, null);
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"HideNativeRecapView error: {ex.Message}");
+        }
+    }
+
+    private static void ClearAllTooltips()
+    {
+        try
+        {
+            var tooltipParent = Data.TooltipParentComponent;
+            if (tooltipParent == null)
+            {
+                return;
+            }
+
+            tooltipParent.UnlockCardTooltipController();
+            tooltipParent.HideSecondaryCardTooltipController();
+            tooltipParent.HideAuxiliaryTooltipController();
+            tooltipParent.HideCardTooltipController();
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"ClearAllTooltips error: {ex.Message}");
+        }
+    }
+
+    private IEnumerator WaitForRecapVisibility(bool expectedVisible, string message)
+    {
+        const float maxWait = 2f;
+        float waited = 0f;
+
+        while (waited < maxWait && IsNativeRecapVisible() != expectedVisible)
+        {
+            yield return null;
+            waited += Time.unscaledDeltaTime > 0f ? Time.unscaledDeltaTime : 0.02f;
+        }
+
+        _navigator.SyncVisualRecapState();
+
+        if (IsNativeRecapVisible() == expectedVisible && !string.IsNullOrEmpty(message))
+        {
+            TolkWrapper.Speak(message);
+        }
+    }
+
+    private static bool IsNativeRecapVisible()
+    {
+        try
+        {
+            return Singleton<BoardManager>.Instance?.IsRecapViewOpen == true;
+        }
+        catch
+        {
+            return false;
         }
     }
 }

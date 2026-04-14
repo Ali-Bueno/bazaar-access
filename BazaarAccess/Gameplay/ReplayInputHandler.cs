@@ -6,7 +6,7 @@ namespace BazaarAccess.Gameplay;
 
 /// <summary>
 /// Handles replay/recap input routing.
-/// Manages recap sub-mode navigation (hero stats, enemy stats, enemy board, player board, combat stats).
+/// Manages recap sub-mode navigation (hero stats, enemy stats, enemy board, player board).
 /// </summary>
 public class ReplayInputHandler
 {
@@ -14,13 +14,15 @@ public class ReplayInputHandler
     private readonly Action _onContinue;
     private readonly Action _onReplay;
     private readonly Action _onRecap;
+    private readonly Action _onRecapBack;
 
-    public ReplayInputHandler(GameplayNavigator navigator, Action onContinue, Action onReplay, Action onRecap)
+    public ReplayInputHandler(GameplayNavigator navigator, Action onContinue, Action onReplay, Action onRecap, Action onRecapBack)
     {
         _navigator = navigator;
         _onContinue = onContinue;
         _onReplay = onReplay;
         _onRecap = onRecap;
+        _onRecapBack = onRecapBack;
     }
 
     /// <summary>
@@ -59,13 +61,8 @@ public class ReplayInputHandler
                 _navigator.AnnounceWins();
                 return;
 
-            case AccessibleKey.CombatSummary: // H = Combat stats per card
-                _navigator.EnterRecapCombatStatsMode();
-                return;
-
             case AccessibleKey.Back: // Backspace = Exit recap
-                _navigator.SetRecapMode(false);
-                TolkWrapper.Speak("Exited recap. Enter to continue, R to replay, E to return to recap.");
+                _onRecapBack();
                 return;
         }
 
@@ -141,18 +138,6 @@ public class ReplayInputHandler
                     return;
                 case AccessibleKey.Down:
                     _navigator.ReadDetailLineDown();
-                    return;
-            }
-        }
-        else if (recapSection == RecapSection.CombatStats)
-        {
-            switch (key)
-            {
-                case AccessibleKey.Up:
-                    _navigator.RecapCombatStatsPrevious();
-                    return;
-                case AccessibleKey.Down:
-                    _navigator.RecapCombatStatsNext();
                     return;
             }
         }

@@ -22,7 +22,7 @@ public class GameplayNavigator
     // Mode flags
     private bool _inCombat = false;
     private bool _inReplayMode = false;
-    private bool _inRecapMode = false;
+    private bool _wasVisualRecapOpen = false;
 
     // Sub-navigators
     public readonly HeroNavigator Hero;
@@ -73,7 +73,7 @@ public class GameplayNavigator
     public bool IsInHeroSection => _currentSection == NavigationSection.Hero;
     public bool IsInCombat => _inCombat;
     public bool IsInReplayMode => _inReplayMode;
-    public bool IsInRecapMode => _inRecapMode;
+    public bool IsInRecapMode => _inReplayMode && IsVisualRecapOpen();
 
     // --- Hero delegates ---
     public HeroSubsection CurrentHeroSubsection => Hero.CurrentSubsection;
@@ -105,7 +105,7 @@ public class GameplayNavigator
 
     public void EnterOpponentBoardMode()
     {
-        bool shouldSetRecap = Enemy.EnterBoardMode(_inRecapMode);
+        bool shouldSetRecap = Enemy.EnterBoardMode(IsInRecapMode);
         if (shouldSetRecap)
             Recap.SetSection(RecapSection.EnemyBoard);
     }
@@ -124,9 +124,6 @@ public class GameplayNavigator
     public void RecapEnemyToStats() => Recap.EnemyToStats();
     public void RecapEnemyToSkills() => Recap.EnemyToSkills();
     public void EnterRecapPlayerBoardMode() => Recap.EnterPlayerBoardMode();
-    public void EnterRecapCombatStatsMode() => Recap.EnterCombatStatsMode();
-    public void RecapCombatStatsPrevious() => Recap.CombatStatsPrevious();
-    public void RecapCombatStatsNext() => Recap.CombatStatsNext();
 
     // --- Detail delegates ---
     public void ClearDetailCache() => Detail.Clear();
@@ -303,15 +300,16 @@ public class GameplayNavigator
     {
         _inReplayMode = inReplayMode;
         if (inReplayMode)
+        {
             _inCombat = false;
+            _wasVisualRecapOpen = IsInRecapMode;
+        }
         else
-            _inRecapMode = false;
-    }
-
-    public void SetRecapMode(bool inRecapMode)
-    {
-        _inRecapMode = inRecapMode;
-        if (!inRecapMode) Recap.Reset();
+        {
+            _wasVisualRecapOpen = false;
+            Recap.Reset();
+            Enemy.Exit();
+        }
     }
 
     public void SetStashState(bool isOpen) => Board.SetStashState(isOpen, _currentSection);
@@ -540,6 +538,37 @@ public class GameplayNavigator
                     Detail.InitCustom(lines);
                 }
             }
+        }
+    }
+
+    public void SyncVisualRecapState()
+    {
+        bool isRecapOpen = IsInRecapMode;
+        if (isRecapOpen == _wasVisualRecapOpen)
+        {
+            return;
+        }
+
+        Recap.Reset();
+        Detail.Clear();
+
+        if (!isRecapOpen)
+        {
+            Enemy.Exit();
+        }
+
+        _wasVisualRecapOpen = isRecapOpen;
+    }
+
+    private static bool IsVisualRecapOpen()
+    {
+        try
+        {
+            return Singleton<BoardManager>.Instance?.IsRecapViewOpen == true;
+        }
+        catch
+        {
+            return false;
         }
     }
 
