@@ -37,7 +37,7 @@ public class GameplayScreen : IAccessibleScreen
     public GameplayScreen()
     {
         _navigator = new GameplayNavigator();
-        _actionMenu = new ActionMenuHandler(_navigator, HandleUpgradeConfirm, RefreshAndAnnounce, TryStartItemInspect);
+        _actionMenu = new ActionMenuHandler(_navigator, HandlePedestalAction, RefreshAndAnnounce, TryStartItemInspect);
         _combatHandler = new CombatInputHandler(_navigator);
         _replayHandler = new ReplayInputHandler(_navigator, TriggerReplayContinue, TriggerReplayReplay, TriggerReplayRecap, TriggerReplayRecapBack);
         _combatEncounterPreview = new CombatEncounterPreviewNavigator();
@@ -341,30 +341,10 @@ public class GameplayScreen : IAccessibleScreen
             return;
         }
 
-        // Route through confirmation dialog with explicit pedestal type detection
         var currentState = StateChangePatch.GetCurrentRunState();
         if (currentState == ERunState.Pedestal)
         {
-            var pedestalInfo = PedestalManager.GetCurrentPedestalInfo();
-            Plugin.Logger.LogInfo($"HandleUpgrade: detected pedestal type={pedestalInfo.Type}");
-            if (pedestalInfo.Type == PedestalManager.PedestalType.Enchant ||
-                pedestalInfo.Type == PedestalManager.PedestalType.EnchantRandom)
-            {
-                HandleUpgradeConfirm(card, isEnchant: true);
-            }
-            else if (pedestalInfo.Type == PedestalManager.PedestalType.Upgrade)
-            {
-                HandleUpgradeConfirm(card, isEnchant: false);
-            }
-            else
-            {
-                // Detection failed - use the pedestal directly (game handles the logic)
-                Plugin.Logger.LogWarning("HandleUpgrade: detection failed, using pedestal directly");
-                if (PedestalManager.UseCurrentPedestal(card))
-                {
-                    Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
-                }
-            }
+            HandlePedestalAction(card);
         }
         else
         {
@@ -749,15 +729,6 @@ public class GameplayScreen : IAccessibleScreen
         var itemCard = card as ItemCard;
         if (itemCard == null) { TolkWrapper.Speak("Cannot sell this"); return; }
 
-        // Check if we're in Pedestal state - offer pedestal action instead of sell
-        var currentState = StateChangePatch.GetCurrentRunState();
-        if (currentState == ERunState.Pedestal && PedestalManager.CanUpgrade())
-        {
-            bool isEnchant = PedestalManager.IsEnchantPedestal();
-            HandleUpgradeConfirm(card, isEnchant: isEnchant);
-            return;
-        }
-
         if (!_navigator.CanSellInCurrentState())
         {
             TolkWrapper.Speak("Cannot sell right now");
@@ -776,136 +747,17 @@ public class GameplayScreen : IAccessibleScreen
         AccessibilityMgr.ShowUI(ui);
     }
 
-    /// <summary>
-    /// Shows upgrade confirmation dialog with tier information.
-    /// </summary>
-    /// <param name="card">The card to upgrade/enchant</param>
-    /// <param name="isEnchant">If known: true=enchant, false=upgrade. Null=auto-detect from pedestal.</param>
-    private void HandleUpgradeConfirm(Card card, bool? isEnchant = null)
+    private void HandlePedestalAction(Card card)
     {
-        Plugin.Logger.LogInfo($"HandleUpgradeConfirm called for card: {card?.GetType().Name ?? "null"}, isEnchant={isEnchant}");
-
-        string name = ItemReader.GetCardName(card);
-
-        // Get pedestal info
-        var pedestalInfo = PedestalManager.GetCurrentPedestalInfo();
-        Plugin.Logger.LogInfo($"HandleUpgradeConfirm: pedestalInfo.Type={pedestalInfo.Type}, name={name}");
-
-        // Determine if this is an enchant action
-        bool doEnchant;
-        if (isEnchant.HasValue)
+        if (card == null)
         {
-            doEnchant = isEnchant.Value;
-        }
-        else
-        {
-            doEnchant = pedestalInfo.Type == PedestalManager.PedestalType.Enchant ||
-                        pedestalInfo.Type == PedestalManager.PedestalType.EnchantRandom;
+            TolkWrapper.Speak("No item selected");
+            return;
         }
 
-        if (doEnchant)
+        if (PedestalManager.UseCurrentPedestal(card))
         {
-            // Enchantment altar
-            // Check if already enchanted
-            if (card is ItemCard itemCard && itemCard.Enchantment.HasValue)
-            {
-                string currentEnchant = ItemReader.GetEnchantmentName(itemCard.Enchantment.Value);
-                TolkWrapper.Speak($"{name} is already enchanted with {currentEnchant}");
-                return;
-            }
-
-            string enchantName = pedestalInfo.EnchantmentName ?? "random";
-
-            // Build message with preview
-            var messageParts = new List<string>();
-            if (pedestalInfo.Type == PedestalManager.PedestalType.EnchantRandom)
-            {
-                messageParts.Add($"Enchant {name} with a random enchantment?");
-            }
-            else
-            {
-                messageParts.Add($"Enchant {name} with {enchantName}.");
-                // Get enchantment preview
-                var preview = PedestalManager.GetEnchantPreview(card, enchantName);
-                if (preview.Count > 0)
-                {
-                    messageParts.Add("Effects: " + string.Join(", ", preview));
-                }
-            }
-            messageParts.Add("Press U to confirm, Backspace to cancel.");
-
-            string message = string.Join(" ", messageParts);
-
-            var ui = new ConfirmActionUI(ConfirmActionType.Upgrade, name, 0, message,
-                onConfirm: () => {
-                    if (PedestalManager.UseCurrentPedestal(card))
-                    {
-                        Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
-                    }
-                },
-                onCancel: () => TolkWrapper.Speak("Cancelled"));
-            AccessibilityMgr.ShowUI(ui);
-        }
-        else
-        {
-            // Upgrade altar
-            string currentTier = ItemReader.GetTierName(card);
-            var upgradeInfo = PedestalManager.GetCurrentPedestalInfo();
-
-            // Check if already at max tier
-            if (card.Tier == ETier.Legendary)
-            {
-                TolkWrapper.Speak($"{name} is already at {currentTier}, cannot upgrade further");
-                return;
-            }
-
-            // Build message with preview
-            var messageParts = new List<string>();
-
-            if (upgradeInfo.TargetTier.HasValue)
-            {
-                if (upgradeInfo.TargetTier.Value == card.Tier)
-                {
-                    messageParts.Add($"Upgrade {name} stats. Stays {currentTier}.");
-                }
-                else
-                {
-                    messageParts.Add($"Upgrade {name} from {currentTier} to {ItemReader.GetTierName(upgradeInfo.TargetTier.Value)}.");
-                }
-            }
-            else
-            {
-                string nextTier = TierHelper.GetNextName(card.Tier);
-                messageParts.Add($"Upgrade {name} from {currentTier} to {nextTier}.");
-            }
-
-            // Get post-upgrade stats
-            try
-            {
-                var preview = PedestalManager.GetUpgradePreview(card);
-                if (preview.Count > 0)
-                {
-                    messageParts.Add("After upgrade: " + string.Join(", ", preview));
-                }
-            }
-            catch (System.Exception ex)
-            {
-                Plugin.Logger.LogWarning($"GetUpgradePreview failed: {ex.Message}");
-            }
-
-            messageParts.Add("Press U to confirm, Backspace to cancel.");
-
-            string message = string.Join(" ", messageParts);
-
-            var ui = new ConfirmActionUI(ConfirmActionType.Upgrade, name, 0, message,
-                onConfirm: () => {
-                    if (PedestalManager.UpgradeItem(card))
-                    {
-                        Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
-                    }
-                },
-                onCancel: () => TolkWrapper.Speak("Cancelled"));
-            AccessibilityMgr.ShowUI(ui);
+            Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
         }
     }
 

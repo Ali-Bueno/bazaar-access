@@ -33,7 +33,7 @@ public enum ActionOption
 public class ActionMenuHandler
 {
     private readonly GameplayNavigator _navigator;
-    private readonly Action<Card, bool?> _onUpgradeConfirm;
+    private readonly Action<Card> _onUsePedestalAction;
     private readonly Action _onRefreshAndAnnounce;
     private readonly Action<Card> _onShowDetails;
 
@@ -55,12 +55,12 @@ public class ActionMenuHandler
 
     public ActionMenuHandler(
         GameplayNavigator navigator,
-        Action<Card, bool?> onUpgradeConfirm,
+        Action<Card> onUsePedestalAction,
         Action onRefreshAndAnnounce,
         Action<Card> onShowDetails)
     {
         _navigator = navigator;
-        _onUpgradeConfirm = onUpgradeConfirm;
+        _onUsePedestalAction = onUsePedestalAction;
         _onRefreshAndAnnounce = onRefreshAndAnnounce;
         _onShowDetails = onShowDetails;
     }
@@ -432,17 +432,16 @@ public class ActionMenuHandler
                 break;
 
             case ActionOption.Upgrade:
-                // Show confirmation dialog with preview instead of executing directly
                 if (itemCard != null)
                 {
-                    _onUpgradeConfirm(itemCard, false);
+                    _onUsePedestalAction?.Invoke(itemCard);
                 }
                 break;
 
             case ActionOption.Enchant:
                 if (itemCard != null)
                 {
-                    _onUpgradeConfirm(itemCard, true);
+                    _onUsePedestalAction?.Invoke(itemCard);
                 }
                 break;
 

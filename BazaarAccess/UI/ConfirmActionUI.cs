@@ -12,8 +12,7 @@ public enum ConfirmActionType
     Buy,
     Sell,
     Move,
-    Select,
-    Upgrade
+    Select
 }
 
 /// <summary>
@@ -53,7 +52,6 @@ public class ConfirmActionUI : IAccessibleUI
             ConfirmActionType.Sell => "Confirm Sale",
             ConfirmActionType.Move => "Confirm Move",
             ConfirmActionType.Select => "Confirm Selection",
-            ConfirmActionType.Upgrade => "Confirm Upgrade",
             _ => "Confirm"
         };
     }
@@ -81,15 +79,6 @@ public class ConfirmActionUI : IAccessibleUI
                     _onCancel?.Invoke();
                 }
                 Close();
-                break;
-
-            case AccessibleKey.Upgrade:
-                // U key confirms directly for upgrade/enchant dialogs
-                if (_actionType == ConfirmActionType.Upgrade)
-                {
-                    _onConfirm?.Invoke();
-                    Close();
-                }
                 break;
 
             case AccessibleKey.Back:
@@ -120,7 +109,6 @@ public class ConfirmActionUI : IAccessibleUI
                 ConfirmActionType.Sell => $"Sell {_itemName} for {_price} gold?",
                 ConfirmActionType.Move => $"Move {_itemName}?",
                 ConfirmActionType.Select => $"Select {_itemName}?",
-                ConfirmActionType.Upgrade => $"Upgrade {_itemName}?",
                 _ => $"Confirm action for {_itemName}?"
             };
         }
