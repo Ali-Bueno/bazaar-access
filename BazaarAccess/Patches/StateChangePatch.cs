@@ -14,6 +14,7 @@ using UnityEngine;
 // For combat describer events
 using EffectTriggeredEvent = TheBazaar.EffectTriggeredEvent;
 using PlayerHealthChangedEvent = TheBazaar.PlayerHealthChangedEvent;
+using PlayerEnragedEvent = TheBazaar.PlayerEnragedEvent;
 
 namespace BazaarAccess.Patches;
 
@@ -83,6 +84,10 @@ public static class StateChangePatch
             // === Combat events ===
             SubscribeToEventNoParam("CombatStarted", CombatEventHandler.OnCombatStarted);
             SubscribeToEventNoParam("CombatEnded", CombatEventHandler.OnCombatEnded);
+            SubscribeToEvent("PlayerEnragedStarted", typeof(Action<PlayerEnragedEvent>),
+                (Action<PlayerEnragedEvent>)CombatEventHandler.OnPlayerEnragedStarted);
+            SubscribeToEvent("PlayerEnragedEnded", typeof(Action<PlayerEnragedEvent>),
+                (Action<PlayerEnragedEvent>)CombatEventHandler.OnPlayerEnragedEnded);
 
             // === Victory/defeat events ===
             // OnCombatPvEFinish fires for ALL combats (PvE and PvP) with the result
