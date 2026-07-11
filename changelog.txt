@@ -2,6 +2,24 @@
 
 ---
 
+## July 11, 2026 (v1.9.1)
+
+### Fixes
+- Item tooltips now read the stat that auras affect: passives like "Your items have +1" or
+  "Your rightmost Shield item has +10" now say "+1 damage", "+10 shield", etc. (the stat was
+  shown only as an icon before, so it was invisible to the screen reader)
+
+### Options menu overhaul
+- The options menu is now organized as a single flat list with a header before each section
+  (Audio, Video, Gameplay, Keybindings, Accessibility, Support). Every setting is reachable in
+  order — including Language and Keybindings, which could not be reached before
+- Fixed having to press Escape twice before the options menu got focus
+- Dropdowns (Language, Resolution, Framerate) now preview options as you arrow through them and
+  only apply on Enter. Browsing the language list no longer re-localizes the game or pops the
+  "restart required" prompt on every step
+
+---
+
 ## July 11, 2026 (v1.9.0)
 
 Big thanks to community contributors **Neurrone** (bazaar-13-fixes) and **mohammad-aloufi**

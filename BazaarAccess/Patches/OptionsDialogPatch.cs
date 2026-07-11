@@ -1,91 +1,122 @@
+using System.Collections;
+using System.Reflection;
 using BazaarAccess.Accessibility;
 using BazaarAccess.UI;
 using HarmonyLib;
+using TMPro;
 using UnityEngine;
-using TheBazaar;
-using TheBazaar.UI;
-using System.Reflection;
+using UnityEngine.UI;
 
 namespace BazaarAccess.Patches;
 
 /// <summary>
-/// Hook en OptionsDialogController para hacer accesible el menú de opciones.
-/// Solo activa la UI cuando el menú está realmente visible.
+/// Detects the options dialog opening. Hooks UIPopup.Show() (type-filtered) instead of OnEnable
+/// to avoid the cached dialog's spurious load-time enable/disable. See Progress.md
+/// ("Options dialog rework") for the double-open root cause.
 /// </summary>
 [HarmonyPatch]
 public static class OptionsDialogShowPatch
 {
-    static MethodBase TargetMethod() => AccessTools.Method(AccessTools.TypeByName("OptionsDialogController"), "OnEnable");
+    static MethodBase TargetMethod() => AccessTools.Method(AccessTools.TypeByName("UIPopup"), "Show");
 
     private static OptionsUI _currentOptionsUI;
     private static bool _isOpen = false;
+    private static bool _pendingOpen = false;
     private static float _lastCloseTime = 0f;
 
     [HarmonyPostfix]
     public static void Postfix(MonoBehaviour __instance)
     {
-        // Cooldown para evitar reabrir inmediatamente después de cerrar
+        // Show() is virtual on UIPopup and shared by all popups; we only want the options dialog.
+        if (__instance == null || __instance.GetType().Name != "OptionsDialogController") return;
+
+        // Cooldown to avoid reopening right after closing.
         if (Time.time - _lastCloseTime < 0.3f)
         {
             return;
         }
 
-        // Evitar abrir múltiples veces
-        if (_isOpen) return;
+        // Avoid opening (or trying to) more than once.
+        if (_isOpen || _pendingOpen) return;
 
-        // Verificar si el diálogo está realmente visible antes de crear UI
-        if (!IsReallyVisible(__instance.transform))
+        if (IsReallyVisible(__instance.transform))
         {
+            Open(__instance);
             return;
         }
 
-        _isOpen = true;
-        _currentOptionsUI = new OptionsUI(__instance.transform);
-        AccessibilityMgr.ShowUI(_currentOptionsUI);
-        Plugin.Logger.LogInfo("OptionsUI abierta (desde OnEnable)");
+        // Still animating in: retry briefly instead of giving up (which forced reopening).
+        Plugin.Instance.StartCoroutine(WaitAndOpen(__instance));
     }
 
-    /// <summary>
-    /// Verifica si el menú está realmente visible para el usuario.
-    /// </summary>
+    private static IEnumerator WaitAndOpen(MonoBehaviour instance)
+    {
+        _pendingOpen = true;
+        float deadline = Time.time + 1.5f;
+
+        while (Time.time < deadline)
+        {
+            if (_isOpen) break;
+            if (instance == null || !instance.gameObject.activeInHierarchy) break;
+
+            if (IsReallyVisible(instance.transform))
+            {
+                Open(instance);
+                break;
+            }
+
+            yield return null;
+        }
+
+        _pendingOpen = false;
+    }
+
+    private static void Open(MonoBehaviour instance)
+    {
+        _isOpen = true;
+        _currentOptionsUI = new OptionsUI(instance.transform);
+        AccessibilityMgr.ShowUI(_currentOptionsUI);
+        Plugin.Logger.LogInfo("OptionsUI opened (from UIPopup.Show)");
+    }
+
+    // True once the dialog is actually visible and loaded (not just mid-animation).
     private static bool IsReallyVisible(Transform root)
     {
         if (root == null) return false;
         if (!root.gameObject.activeInHierarchy) return false;
 
-        // Verificar CanvasGroup (alpha > 0, interactable)
         var canvasGroup = root.GetComponent<CanvasGroup>();
         if (canvasGroup != null)
         {
-            if (canvasGroup.alpha < 0.5f) return false; // Más estricto
+            if (canvasGroup.alpha < 0.5f) return false;
             if (!canvasGroup.interactable) return false;
             if (canvasGroup.blocksRaycasts == false) return false;
         }
 
-        // Verificar escala (no es 0)
         var scale = root.localScale;
         if (scale.x < 0.5f || scale.y < 0.5f) return false;
 
-        // IMPORTANTE: Verificar que hay sliders activos e interactuables
-        // Esto es la mejor forma de saber si el menú de opciones está realmente visible
-        var sliders = root.GetComponentsInChildren<UnityEngine.UI.Slider>(false);
-        bool hasActiveSlider = false;
-        foreach (var slider in sliders)
+        // At least one active, interactable setting control = the dialog finished loading.
+        // Accept slider/toggle/dropdown so we don't rely on the default section having a slider.
+        if (!HasActiveInteractable<Slider>(root)
+            && !HasActiveInteractable<Toggle>(root)
+            && !HasActiveInteractable<TMP_Dropdown>(root))
         {
-            if (slider.gameObject.activeInHierarchy && slider.interactable)
-            {
-                hasActiveSlider = true;
-                break;
-            }
-        }
-
-        if (!hasActiveSlider)
-        {
-            Plugin.Logger.LogDebug("IsReallyVisible: No active interactable sliders found");
+            Plugin.Logger.LogDebug("IsReallyVisible: no active setting controls yet");
             return false;
         }
 
         return true;
+    }
+
+    private static bool HasActiveInteractable<T>(Transform root) where T : Selectable
+    {
+        foreach (var control in root.GetComponentsInChildren<T>(false))
+        {
+            if (control.gameObject.activeInHierarchy && control.IsInteractable())
+                return true;
+        }
+        return false;
     }
 
     public static void SetClosed()

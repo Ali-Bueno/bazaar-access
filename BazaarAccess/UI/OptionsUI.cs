@@ -1,5 +1,7 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using BazaarAccess.Accessibility;
 using TMPro;
 using UnityEngine;
@@ -8,235 +10,354 @@ using UnityEngine.UI;
 namespace BazaarAccess.UI;
 
 /// <summary>
-/// UI accesible para el menú de opciones.
-/// Detecta automáticamente si estamos en la sección principal o en gameplay settings.
+/// Accessible options menu. Builds a flat, section-headed list from the dialog's live controls.
+/// See Progress.md ("Options dialog rework") for the ScrollSpy rationale.
 /// </summary>
 public class OptionsUI : BaseUI
 {
-    private bool _inGameplaySection = false;
+    private const BindingFlags PrivateInstance = BindingFlags.NonPublic | BindingFlags.Instance;
 
-    public override string UIName => _inGameplaySection ? "Gameplay Settings" : "Options";
+    private struct SectionEntry
+    {
+        public Transform Nav;
+        public Transform Section;
+    }
+
+    public override string UIName => "Options";
 
     public OptionsUI(Transform root) : base(root)
     {
-        DetectCurrentSection();
-        LogAllElements();
-    }
-
-    /// <summary>
-    /// Detecta si estamos en la sección de gameplay settings.
-    /// </summary>
-    private void DetectCurrentSection()
-    {
-        // Buscar el overlay de gameplay settings
-        var gameplayOverlay = FindGameObject("GameplaySettingsOverlay")
-                           ?? FindGameObject("_gameplaySettingsOverlay")
-                           ?? FindGameObject("GameplayOverlay");
-
-        // También buscar el botón de volver que solo aparece en gameplay settings
-        var backButton = FindButtonByName("Btn_Back")
-                      ?? FindButtonByName("_gameplayBackButton")
-                      ?? FindButtonByName("Btn_GameplayBack");
-
-        _inGameplaySection = (gameplayOverlay != null && gameplayOverlay.activeInHierarchy) ||
-                            (backButton != null && backButton.gameObject.activeInHierarchy && backButton.interactable);
-    }
-
-    private GameObject FindGameObject(string name)
-    {
-        var all = Root.GetComponentsInChildren<Transform>(true);
-        foreach (var t in all)
-        {
-            if (t.gameObject.name.Equals(name, System.StringComparison.OrdinalIgnoreCase))
-                return t.gameObject;
-        }
-        return null;
-    }
-
-    private void LogAllElements()
-    {
-        Plugin.Logger.LogInfo($"=== OptionsUI elementos (Gameplay: {_inGameplaySection}) ===");
-
-        var buttons = Root.GetComponentsInChildren<Button>(true);
-        foreach (var btn in buttons)
-        {
-            if (btn.gameObject.activeInHierarchy && btn.interactable)
-            {
-                string text = GetComponentText(btn.transform);
-                Plugin.Logger.LogInfo($"[Btn ACTIVO] {btn.gameObject.name}: '{text}'");
-            }
-        }
-
-        var toggles = Root.GetComponentsInChildren<Toggle>(true);
-        foreach (var toggle in toggles)
-        {
-            if (toggle.gameObject.activeInHierarchy)
-            {
-                string text = GetComponentText(toggle.transform);
-                Plugin.Logger.LogInfo($"[Toggle] {toggle.gameObject.name}: '{text}' = {toggle.isOn}");
-            }
-        }
-
-        var sliders = Root.GetComponentsInChildren<Slider>(true);
-        foreach (var slider in sliders)
-        {
-            if (slider.gameObject.activeInHierarchy)
-            {
-                string text = GetComponentText(slider.transform.parent);
-                Plugin.Logger.LogInfo($"[Slider] {slider.gameObject.name}: '{text}' = {slider.value:F2}");
-            }
-        }
-
-        var dropdowns = Root.GetComponentsInChildren<TMP_Dropdown>(true);
-        foreach (var dd in dropdowns)
-        {
-            if (dd.gameObject.activeInHierarchy)
-            {
-                string caption = dd.captionText?.text ?? "";
-                Plugin.Logger.LogInfo($"[Dropdown] {dd.gameObject.name}: '{caption}'");
-            }
-        }
-
-        Plugin.Logger.LogInfo("=== Fin OptionsUI ===");
-    }
-
-    private string GetComponentText(Transform t)
-    {
-        if (t == null) return "";
-        var tmp = t.GetComponentInChildren<TMP_Text>();
-        if (tmp != null && !string.IsNullOrWhiteSpace(tmp.text))
-            return tmp.text.Trim();
-        return "";
     }
 
     protected override void BuildMenu()
     {
-        if (_inGameplaySection)
+        if (Root == null) return;
+
+        // Rebind + reset-to-default buttons are exposed via the keybind option, not as buttons.
+        var keybindButtons = CollectKeybindOwnedButtons();
+        int added = 0;
+
+        var sections = GetScrollSpySections();
+        if (sections != null && sections.Count > 0)
         {
-            BuildGameplayMenu();
+            // Tab rows and section panels are covered per-section; exclude them from the footer sweep.
+            var skipRoots = new List<Transform>();
+            foreach (var entry in sections)
+            {
+                if (entry.Nav != null) skipRoots.Add(entry.Nav);
+                if (entry.Section != null) skipRoots.Add(entry.Section);
+            }
+
+            foreach (var entry in sections)
+            {
+                if (entry.Section == null || !entry.Section.gameObject.activeInHierarchy) continue;
+
+                // Header goes at the current menu size (counts headers already inserted, not `added`).
+                int headerIndex = Menu.OptionCount;
+                int sectionControls = BuildControlsUnder(entry.Section, keybindButtons);
+                if (sectionControls > 0)
+                {
+                    InsertHeaderBefore(headerIndex, GetSectionHeader(entry));
+                    added += sectionControls;
+                }
+            }
+
+            // Footer controls (Save/Close/Exit) that live outside any section.
+            added += BuildControlsUnder(Root, keybindButtons, skipRoots);
         }
         else
         {
-            BuildMainMenu();
+            // No ScrollSpy: flat sweep of the whole dialog.
+            added += BuildControlsUnder(Root, keybindButtons);
         }
+
+        Plugin.Logger.LogInfo($"OptionsUI: built {added} options dynamically");
+        if (added == 0)
+            Plugin.Logger.LogWarning("OptionsUI: no active control found in the dialog");
     }
 
-    private void BuildMainMenu()
+    // === Rebuild ===
+
+    public void RebuildMenu()
     {
-        // Botón para ir a gameplay settings
-        AddSectionButton("Btn_GameplaySettings");
+        if (Root == null || !Root.gameObject.activeInHierarchy) return;
 
-        // === Sliders de audio ===
-        AddSliderOption("Slider_Master");
-        AddSliderOption("Slider_Music");
-        AddSliderOption("Slider_SoundEffects");
-        AddSliderOption("Slider_Voice");
+        // Skip while the dialog is fading out (still active but no longer interactable).
+        var canvasGroup = Root.GetComponent<CanvasGroup>();
+        if (canvasGroup != null && (!canvasGroup.interactable || canvasGroup.alpha < 0.5f)) return;
 
-        // === Dropdowns de video ===
-        AddDropdownOption("Dropdown", "Resolution");
-        AddDropdownOptionByIndex(1, "Framerate");
-
-        // === Toggles de video ===
-        AddToggleOption("Toggle_Windowed");
-        AddToggleOption("Toggle_VSync");
-        AddToggleOption("Toggle_SkipVideo");
-
-        // === Botones de acción ===
-        AddButtonIfActive("Btn_Privacy");
-        AddButtonIfActive("Btn_Terms");
-        AddButtonIfActive("Btn_Save");
-        AddButtonIfActive("Btn_ExitToDesktop");
-        AddButtonIfActive("Btn_Close");
+        Menu.Clear();
+        BuildMenu();
+        Menu.StartReading(announceMenuName: true);
     }
 
-    private void BuildGameplayMenu()
+    private IEnumerator RebuildAfterDelay()
     {
-        // Botón de volver (primero para fácil acceso)
-        AddBackToMainButton();
-
-        // === Toggles de gameplay/accesibilidad ===
-        AddToggleOption("Toggle_Keyword");
-        AddToggleOption("Toggle_DisableScreenShake");
-        AddToggleOption("Toggle_MotionSensitivity");
-        AddToggleOption("Toggle_AlternativeInput");
-        AddToggleOption("Toggle_Clock");
-        AddToggleOption("Toggle_HealthBarIcons");
-        AddToggleOption("Toggle_GemStatusIcons");
-        AddToggleOption("Toggle_ClosedCaptions");
-
-        // === Dropdown de idioma ===
-        AddDropdownOption("Dropdown_Language", "Language");
-
-        // === Keybinds (si existen) ===
-        AddAllKeybindButtons();
+        // A new section's controls activate a frame or two after the click.
+        yield return null;
+        yield return null;
+        RebuildMenu();
     }
 
-    private void AddBackToMainButton()
-    {
-        // Buscar cualquier botón de volver
-        string[] backButtonNames = { "Btn_Back", "Btn_GameplayBack", "_gameplayBackButton" };
+    // === Control building ===
 
-        foreach (var name in backButtonNames)
+    /// <summary>
+    /// Adds one option per interactable control under <paramref name="root"/>, in hierarchy order.
+    /// Returns the count added. Skips anything under <paramref name="skipRoots"/>.
+    /// </summary>
+    private int BuildControlsUnder(Transform root, HashSet<Button> keybindButtons, List<Transform> skipRoots = null)
+    {
+        int added = 0;
+        // includeInactive:false → only active GameObjects, in hierarchy order (preserves visual order).
+        foreach (var t in root.GetComponentsInChildren<Transform>(false))
         {
-            var button = FindButtonByName(name);
-            if (button != null && button.gameObject.activeInHierarchy && button.interactable)
+            if (skipRoots != null && IsUnderAny(t, skipRoots)) continue;
+            if (TryAddControl(t.gameObject, keybindButtons)) added++;
+        }
+        return added;
+    }
+
+    // Uses IsInteractable() (effective, respects CanvasGroups) rather than the serialized flag.
+    private bool TryAddControl(GameObject go, HashSet<Button> keybindButtons)
+    {
+        var keybind = GetKeybindController(go);
+        if (keybind != null)
+        {
+            var kbButton = GetKeybindButton(keybind);
+            if (kbButton == null || kbButton.IsInteractable())
             {
-                Menu.AddOption(
-                    () => GetButtonText(name).Length > 0 ? GetButtonText(name) : "Back",
-                    () => {
-                        ClickButtonByName(name);
-                        _inGameplaySection = false;
-                        Plugin.Instance.StartCoroutine(RebuildAfterDelay());
-                    });
-                return;
+                AddKeybindOption(keybind);
+                return true;
             }
+            return false;
         }
-    }
 
-    private void AddAllKeybindButtons()
-    {
-        // Buscar todos los KeyBindController en el menú
-        var keybindControllers = Root.GetComponentsInChildren<MonoBehaviour>(true)
-            .Where(m => m.GetType().Name == "KeyBindController" && m.gameObject.activeInHierarchy);
-
-        foreach (var controller in keybindControllers)
+        var slider = go.GetComponent<Slider>();
+        if (slider != null && slider.IsInteractable())
         {
-            // Obtener el botón del keybind
-            var buttonField = controller.GetType().GetField("_keybindButton",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var button = buttonField?.GetValue(controller) as Button;
-
-            if (button == null || !button.interactable) continue;
-
-            // Capturar referencias para el closure
-            var ctrl = controller;
-            var btn = button;
-
-            Menu.AddOption(
-                () => GetKeybindLabel(ctrl),
-                () => btn.onClick.Invoke());
+            AddSliderOption(slider);
+            return true;
         }
+
+        var dropdown = go.GetComponent<TMP_Dropdown>();
+        if (dropdown != null && dropdown.IsInteractable())
+        {
+            AddDropdownOption(dropdown);
+            return true;
+        }
+
+        var toggle = go.GetComponent<Toggle>();
+        if (toggle != null && toggle.IsInteractable() && !IsInsideDropdown(go))
+        {
+            AddToggleOption(toggle);
+            return true;
+        }
+
+        var button = go.GetComponent<Button>();
+        if (button != null && button.IsInteractable() && !keybindButtons.Contains(button))
+        {
+            AddButtonOption(button);
+            return true;
+        }
+
+        return false;
     }
 
+    // === Sections (ScrollSpy) ===
+
+    // Reads the (tab, panel) pairs from ScrollSpyController._entries by reflection. Null if absent.
+    private List<SectionEntry> GetScrollSpySections()
+    {
+        var spy = Root.GetComponentsInChildren<MonoBehaviour>(true)
+            .FirstOrDefault(m => m != null && m.GetType().Name == "ScrollSpyController");
+        if (spy == null) return null;
+
+        var entriesValue = spy.GetType().GetField("_entries", PrivateInstance)?.GetValue(spy);
+        if (!(entriesValue is IEnumerable entries)) return null;
+
+        var result = new List<SectionEntry>();
+        foreach (var entry in entries)
+        {
+            if (entry == null) continue;
+            var type = entry.GetType();
+            result.Add(new SectionEntry
+            {
+                Nav = type.GetField("NavButtonRoot")?.GetValue(entry) as Transform,
+                Section = type.GetField("SectionRoot")?.GetValue(entry) as Transform
+            });
+        }
+        return result;
+    }
+
+    private string GetSectionHeader(SectionEntry entry)
+    {
+        string label = entry.Nav != null ? FirstText(entry.Nav) : null;
+        if (string.IsNullOrEmpty(label) && entry.Section != null)
+            label = FirstText(entry.Section) ?? entry.Section.gameObject.name;
+        return label;
+    }
+
+    // Inserts a non-interactive section header just before that section's controls.
+    private void InsertHeaderBefore(int index, string text)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+        Menu.InsertOption(index, new MenuOption(() => text, null));
+    }
+
+    // === Option builders ===
+
+    private void AddSliderOption(Slider slider)
+    {
+        Menu.AddOption(
+            () => GetSliderText(slider),
+            null,
+            null,
+            (direction) => AdjustSlider(slider, direction));
+    }
+
+    private void AddToggleOption(Toggle toggle)
+    {
+        Menu.AddOption(
+            () => GetToggleText(toggle),
+            () => ToggleValue(toggle),
+            null,
+            (direction) => ToggleValue(toggle));
+    }
+
+    private void AddDropdownOption(TMP_Dropdown dropdown)
+    {
+        // Browse with arrows without committing; apply on Enter. Committing on every arrow made
+        // the language dropdown re-localize / prompt a restart on each step.
+        int pending = dropdown.value;
+        Menu.AddOption(
+            () => GetDropdownText(dropdown, pending),
+            () => CommitDropdown(dropdown, pending),
+            null,
+            (direction) =>
+            {
+                int count = dropdown.options?.Count ?? 0;
+                if (count == 0) return;
+                int next = Mathf.Clamp(pending + direction, 0, count - 1);
+                if (next == pending) return;
+                pending = next;
+                Core.TolkWrapper.Speak(GetDropdownOptionText(dropdown, pending));
+            });
+    }
+
+    private void AddButtonOption(Button button)
+    {
+        Menu.AddOption(
+            () => GetButtonText(button),
+            () =>
+            {
+                button.onClick.Invoke();
+                // The button may open another panel or close the dialog; RebuildMenu guards both.
+                Plugin.Instance.StartCoroutine(RebuildAfterDelay());
+            });
+    }
+
+    private void AddKeybindOption(MonoBehaviour keybindController)
+    {
+        Menu.AddOption(
+            () => GetKeybindLabel(keybindController),
+            () => GetKeybindButton(keybindController)?.onClick.Invoke());
+    }
+
+    // === Labels and values ===
+
+    private string GetSliderText(Slider slider)
+    {
+        string label = LabelFromParent(slider.transform) ?? slider.gameObject.name;
+        int percent = Mathf.RoundToInt(slider.normalizedValue * 100);
+        return $"{label}: {percent}%";
+    }
+
+    private string GetToggleText(Toggle toggle)
+    {
+        string label = NearbyLabel(toggle.transform) ?? toggle.gameObject.name;
+        string state = toggle.isOn ? "on" : "off";
+        return $"{label}: {state}";
+    }
+
+    private string GetDropdownText(TMP_Dropdown dropdown, int index)
+    {
+        string value = GetDropdownOptionText(dropdown, index);
+        string label = LabelFromParent(dropdown.transform, exclude: value) ?? dropdown.gameObject.name;
+        return $"{label}: {value}";
+    }
+
+    private string GetDropdownOptionText(TMP_Dropdown dropdown, int index)
+    {
+        var options = dropdown.options;
+        if (options != null && index >= 0 && index < options.Count)
+            return options[index].text?.Trim() ?? "";
+        return "";
+    }
+
+    private string GetButtonText(Button button)
+    {
+        var tmp = button.GetComponentInChildren<TMP_Text>();
+        if (tmp != null && !string.IsNullOrWhiteSpace(tmp.text))
+            return tmp.text.Trim();
+        return button.gameObject.name;
+    }
+
+    // === Value adjustment ===
+
+    private void AdjustSlider(Slider slider, int direction)
+    {
+        float step = 0.1f;
+        float newNormalized = Mathf.Clamp01(slider.normalizedValue + (step * direction));
+
+        // Map normalized value (0-1) back to the slider's real range.
+        slider.value = Mathf.Lerp(slider.minValue, slider.maxValue, newNormalized);
+        slider.onValueChanged?.Invoke(slider.value);
+
+        int percent = Mathf.RoundToInt(newNormalized * 100);
+        Core.TolkWrapper.Speak($"{percent}%");
+    }
+
+    private void ToggleValue(Toggle toggle)
+    {
+        // Setting isOn fires onValueChanged, so the game applies the change.
+        toggle.isOn = !toggle.isOn;
+        Core.TolkWrapper.Speak(toggle.isOn ? "on" : "off");
+    }
+
+    private void CommitDropdown(TMP_Dropdown dropdown, int index)
+    {
+        int count = dropdown.options?.Count ?? 0;
+        if (index < 0 || index >= count) return;
+
+        // Setting value fires onValueChanged → the game applies it (may prompt a restart).
+        if (dropdown.value != index)
+            dropdown.value = index;
+        Core.TolkWrapper.Speak(GetDropdownOptionText(dropdown, index));
+    }
+
+    // === Keybinds ===
+
+    private Button GetKeybindButton(MonoBehaviour keybindController)
+    {
+        var field = keybindController.GetType().GetField("_keybindButton", PrivateInstance);
+        return field?.GetValue(keybindController) as Button;
+    }
+
+    // Reads the action name + current key from KeyBindController (new Input System) by reflection.
     private string GetKeybindLabel(MonoBehaviour keybindController)
     {
-        // Obtener el nombre de la acción.
-        // El build actual usa el nuevo Input System: KeyBindController ya no expone un
-        // enum `_keybindAction`, sino `_action` (InputActionReference) y `_resolvedAction`
-        // (InputAction, resuelto en OnEnable). Leemos el nombre por reflexión para no
-        // depender del ensamblado del Input System.
         string actionName = "Keybind";
         var ctrlType = keybindController.GetType();
         var actionValue =
-            ctrlType.GetField("_resolvedAction", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(keybindController)
-            ?? ctrlType.GetField("_action", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(keybindController);
+            ctrlType.GetField("_resolvedAction", PrivateInstance)?.GetValue(keybindController)
+            ?? ctrlType.GetField("_action", PrivateInstance)?.GetValue(keybindController);
 
         if (actionValue != null)
         {
             var rawName = actionValue.GetType().GetProperty("name")?.GetValue(actionValue) as string;
             if (!string.IsNullOrEmpty(rawName))
             {
-                // El nombre puede venir como "Map/Action"; quedarnos con la última parte.
+                // Name may be "Map/Action"; keep the last segment.
                 int slash = rawName.LastIndexOf('/');
                 if (slash >= 0 && slash < rawName.Length - 1)
                     rawName = rawName.Substring(slash + 1);
@@ -244,26 +365,18 @@ public class OptionsUI : BaseUI
             }
         }
 
-        // Obtener la tecla actual
         string keyText = "";
-        var textField = keybindController.GetType().GetField("_keybindText",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-        if (textField != null)
+        var textField = ctrlType.GetField("_keybindText", PrivateInstance);
+        if (textField != null && textField.GetValue(keybindController) is TMP_Text tmpText)
         {
-            var tmpText = textField.GetValue(keybindController) as TMP_Text;
-            if (tmpText != null)
-            {
-                keyText = tmpText.text?.Trim() ?? "";
-            }
+            keyText = tmpText.text?.Trim() ?? "";
         }
 
-        return $"{actionName}: {keyText}";
+        return string.IsNullOrEmpty(keyText) ? actionName : $"{actionName}: {keyText}";
     }
 
     private string ConvertActionToReadableName(string actionEnum)
     {
-        // Convertir nombres del enum a nombres legibles
         return actionEnum switch
         {
             "ToggleStash" => "Toggle Stash",
@@ -275,235 +388,110 @@ public class OptionsUI : BaseUI
         };
     }
 
-    public void RebuildMenu()
+    private HashSet<Button> CollectKeybindOwnedButtons()
     {
-        Menu.Clear();
-        DetectCurrentSection();
-        LogAllElements();
-        BuildMenu();
-        Menu.StartReading(announceMenuName: true);
-    }
+        var owned = new HashSet<Button>();
+        var controllers = Root.GetComponentsInChildren<MonoBehaviour>(true)
+            .Where(m => m != null && m.GetType().Name == "KeyBindController");
 
-    private void AddSectionButton(string name)
-    {
-        var button = FindButtonByName(name);
-        if (button != null && button.gameObject.activeInHierarchy && button.interactable)
+        foreach (var controller in controllers)
         {
-            Menu.AddOption(
-                () => GetButtonText(name),
-                () => {
-                    ClickButtonByName(name);
-                    _inGameplaySection = true;
-                    Plugin.Instance.StartCoroutine(RebuildAfterDelay());
-                });
-        }
-    }
-
-    private System.Collections.IEnumerator RebuildAfterDelay()
-    {
-        yield return null;
-        yield return null;
-        RebuildMenu();
-    }
-
-    private void AddButtonIfActive(string name)
-    {
-        var button = FindButtonByName(name);
-        if (button != null && button.gameObject.activeInHierarchy && button.interactable)
-        {
-            Menu.AddOption(
-                () => GetButtonText(name),
-                () => ClickButtonByName(name));
-        }
-    }
-
-    private void AddSliderOption(string name)
-    {
-        var slider = FindSlider(name);
-        if (slider != null && slider.gameObject.activeInHierarchy)
-        {
-            Menu.AddOption(
-                () => GetSliderText(name),
-                null,
-                null,
-                (direction) => AdjustSlider(name, direction));
-        }
-    }
-
-    private void AddToggleOption(string name)
-    {
-        var toggle = FindToggle(name);
-        if (toggle != null && toggle.gameObject.activeInHierarchy)
-        {
-            Menu.AddOption(
-                () => GetToggleText(name),
-                () => ToggleValue(name),
-                null,
-                (direction) => ToggleValue(name));
-        }
-    }
-
-    private void AddDropdownOption(string name, string fallbackLabel)
-    {
-        var dropdown = FindDropdown(name);
-        if (dropdown != null && dropdown.gameObject.activeInHierarchy)
-        {
-            Menu.AddOption(
-                () => GetDropdownText(name, fallbackLabel),
-                null,
-                null,
-                (direction) => AdjustDropdown(name, direction));
-        }
-    }
-
-    private void AddDropdownOptionByIndex(int index, string fallbackLabel)
-    {
-        var dropdowns = Root.GetComponentsInChildren<TMP_Dropdown>(true)
-            .Where(d => d.gameObject.activeInHierarchy)
-            .ToArray();
-
-        if (index < dropdowns.Length)
-        {
-            var dropdown = dropdowns[index];
-            string name = dropdown.gameObject.name;
-            Menu.AddOption(
-                () => GetDropdownText(name, fallbackLabel),
-                null,
-                null,
-                (direction) => AdjustDropdown(name, direction));
-        }
-    }
-
-    // === Helpers ===
-
-    private TMP_Dropdown FindDropdown(string name)
-    {
-        return Root.GetComponentsInChildren<TMP_Dropdown>(true)
-            .FirstOrDefault(d => d.gameObject.name.Equals(name, System.StringComparison.OrdinalIgnoreCase));
-    }
-
-    private string GetSliderText(string name)
-    {
-        var slider = FindSlider(name);
-        if (slider == null) return name;
-
-        string label = GetSliderLabel(name);
-        // Usar normalizedValue para obtener el porcentaje correcto (0-100%)
-        int percent = Mathf.RoundToInt(slider.normalizedValue * 100);
-        return $"{label}: {percent}%";
-    }
-
-    private string GetToggleText(string name)
-    {
-        var toggle = FindToggle(name);
-        if (toggle == null) return name;
-
-        string label = GetToggleLabel(name);
-        string state = toggle.isOn ? "on" : "off";
-        return $"{label}: {state}";
-    }
-
-    private string GetDropdownText(string name, string fallbackLabel)
-    {
-        var dropdown = FindDropdown(name);
-        if (dropdown == null) return fallbackLabel;
-
-        string label = fallbackLabel;
-        var parent = dropdown.transform.parent;
-        if (parent != null)
-        {
-            var tmp = parent.GetComponentInChildren<TMP_Text>();
-            if (tmp != null && tmp.gameObject != dropdown.captionText?.gameObject)
-            {
-                string text = tmp.text?.Trim();
-                if (!string.IsNullOrWhiteSpace(text) && text != dropdown.captionText?.text)
-                {
-                    label = text;
-                }
-            }
+            var type = controller.GetType();
+            if (type.GetField("_keybindButton", PrivateInstance)?.GetValue(controller) is Button rebind)
+                owned.Add(rebind);
+            if (type.GetField("_resetToDefaultButton", PrivateInstance)?.GetValue(controller) is Button reset)
+                owned.Add(reset);
         }
 
-        string value = dropdown.captionText?.text ?? "";
-        return $"{label}: {value}";
+        return owned;
     }
 
-    private void AdjustSlider(string name, int direction)
+    private MonoBehaviour GetKeybindController(GameObject go)
     {
-        var slider = FindSlider(name);
-        if (slider == null) return;
-
-        // Usar normalizedValue para ajustar correctamente en el rango del slider
-        float step = 0.1f;
-        float oldValue = slider.normalizedValue;
-        float newValue = Mathf.Clamp01(oldValue + (step * direction));
-
-        // Set using the actual value property to ensure proper event triggering
-        // This maps normalizedValue (0-1) to the slider's actual range (minValue to maxValue)
-        slider.value = Mathf.Lerp(slider.minValue, slider.maxValue, newValue);
-
-        // Force invoke onValueChanged in case the game needs explicit notification
-        slider.onValueChanged?.Invoke(slider.value);
-
-        int percent = Mathf.RoundToInt(newValue * 100);
-        Core.TolkWrapper.Speak($"{percent}%");
-
-        Plugin.Logger.LogDebug($"AdjustSlider {name}: {oldValue:F2} -> {newValue:F2} (value={slider.value:F2}, min={slider.minValue}, max={slider.maxValue})");
+        return go.GetComponents<MonoBehaviour>()
+            .FirstOrDefault(m => m != null && m.GetType().Name == "KeyBindController");
     }
 
-    private void ToggleValue(string name)
+    // === Label helpers ===
+
+    // Label text under the control's parent (typical [Label][Control] row). Skips `exclude`
+    // (e.g. a dropdown caption, which is the value) and the control's own inner text.
+    private string LabelFromParent(Transform t, string exclude = null)
     {
-        var toggle = FindToggle(name);
-        if (toggle == null) return;
+        var parent = t.parent;
+        if (parent == null) return null;
 
-        toggle.isOn = !toggle.isOn;
-
-        string state = toggle.isOn ? "on" : "off";
-        Core.TolkWrapper.Speak(state);
-    }
-
-    private void AdjustDropdown(string name, int direction)
-    {
-        var dropdown = FindDropdown(name);
-        if (dropdown == null) return;
-
-        var optionsProp = dropdown.GetType().GetProperty("options");
-        if (optionsProp == null) return;
-
-        var options = optionsProp.GetValue(dropdown);
-        if (options == null) return;
-
-        var countProp = options.GetType().GetProperty("Count");
-        if (countProp == null) return;
-
-        int optionCount = (int)countProp.GetValue(options);
-        int newIndex = dropdown.value + direction;
-        if (newIndex >= 0 && newIndex < optionCount)
+        foreach (var tmp in parent.GetComponentsInChildren<TMP_Text>(false))
         {
-            dropdown.value = newIndex;
+            if (tmp.transform.IsChildOf(t)) continue;
 
-            string value = dropdown.captionText?.text ?? "";
-            Core.TolkWrapper.Speak(value);
+            string text = tmp.text?.Trim();
+            if (string.IsNullOrWhiteSpace(text)) continue;
+            if (!string.IsNullOrEmpty(exclude) && text == exclude) continue;
+
+            return text;
         }
+        return null;
     }
+
+    // Toggle label: child text first (label as child), else a sibling under the same parent.
+    private string NearbyLabel(Transform t)
+    {
+        var childTmp = t.GetComponentInChildren<TMP_Text>();
+        if (childTmp != null && !string.IsNullOrWhiteSpace(childTmp.text))
+            return childTmp.text.Trim();
+
+        return LabelFromParent(t);
+    }
+
+    private string FirstText(Transform t)
+    {
+        foreach (var tmp in t.GetComponentsInChildren<TMP_Text>(false))
+        {
+            string text = tmp.text?.Trim();
+            if (!string.IsNullOrWhiteSpace(text)) return text;
+        }
+        return null;
+    }
+
+    private bool IsInsideDropdown(GameObject go)
+    {
+        return go.GetComponentInParent<TMP_Dropdown>() != null;
+    }
+
+    private bool IsUnderAny(Transform t, List<Transform> roots)
+    {
+        foreach (var r in roots)
+            if (r != null && t.IsChildOf(r)) return true;
+        return false;
+    }
+
+    // === Back ===
 
     protected override void OnBack()
     {
-        if (_inGameplaySection)
+        // Delegate to the dialog's own back logic (closes an open sub-panel, else closes the dialog).
+        var controller = FindOptionsController();
+        if (controller != null)
         {
-            // Volver a la sección principal
-            string[] backButtonNames = { "Btn_Back", "Btn_GameplayBack", "_gameplayBackButton" };
-            foreach (var name in backButtonNames)
+            var method = controller.GetType().GetMethod("OnBackButtonClicked",
+                BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            if (method != null)
             {
-                if (ClickButtonByName(name))
-                {
-                    _inGameplaySection = false;
-                    Plugin.Instance.StartCoroutine(RebuildAfterDelay());
-                    return;
-                }
+                method.Invoke(controller, null);
+                Plugin.Instance.StartCoroutine(RebuildAfterDelay());
+                return;
             }
         }
 
-        // Cerrar opciones
-        ClickButtonByName("Btn_Close");
+        if (!ClickButtonByName("Btn_Close"))
+            ClickButtonByName("CloseButton");
+    }
+
+    private MonoBehaviour FindOptionsController()
+    {
+        if (Root == null) return null;
+        return Root.GetComponents<MonoBehaviour>()
+            .FirstOrDefault(m => m != null && m.GetType().Name == "OptionsDialogController");
     }
 }

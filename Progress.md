@@ -111,3 +111,56 @@ Added automatic announcements when the day or hour changes during gameplay, help
   - Added `DelayedCheckDayHourChanges()` coroutine (0.5s delay)
   - Called from `OnStateChanged()`, `OnBoardTransitionFinished()`, `OnNewDayTransitionFinished()`
   - Reset tracking on `NewRun` state
+
+## July 11, 2026
+
+### Aura tooltip attribute reading (`Gameplay/CardReading/TextResolver.cs`)
+
+Aura tooltips like "Your items have +1" or "Your rightmost Shield item has +10" were read
+without the affected attribute. The game's tooltip template only holds the numeric value token
+(`{aura.0}`); the attribute (damage, shield, ...) is shown purely as an ICON, invisible to a
+screen reader. Normal ability tooltips spell the word out in the template, so they read fine.
+
+**Fix:** `RenderWithAttributeNames()` iterates the parsed `TooltipBuilder.Components` instead of
+calling `builder.Render()`. For each `TooltipComponentAura`, it reads the modified attribute from
+the aura's action (`TAuraActionCardModifyAttribute.AttributeType` for items,
+`TAuraActionPlayerModifyAttribute.AttributeType` for the player) and appends the friendly name
+(reusing `EffectFormatter.GetFriendlyAttributeName`). `NextTextStartsWith` skips the append when
+the following text already spells the word, avoiding "10 damage damage". Only aura tokens are
+touched, so weapon/ability tooltips are unchanged. Note: the component's own `ReferencedAttribute`
+is null for flat auras (it only reflects reference-typed values), which is why we read the action.
+
+### Options dialog rework (`UI/OptionsUI.cs`, `Patches/OptionsDialogPatch.cs`)
+
+Two problems, both from how the current build's options dialog is structured.
+
+**1. "Tabs" list everything at once.** The dialog is NOT swapped panels. All settings live in one
+`ScrollRect`; the tabs are a `ScrollSpyController` (`TheBazaar.UI.Components`) whose nav Toggles
+just scroll the ScrollRect to each section. Non-selected sections stay `activeInHierarchy` and
+interactable — only clipped by the viewport. So a hierarchy sweep lists every section's controls.
+
+Fix: build a flat, section-headed list. `GetScrollSpySections()` reads `ScrollSpyController._entries`
+by reflection (each entry: public `NavButtonRoot` = tab, `SectionRoot` = panel); we emit a
+non-interactive header (tab label) then that section's controls, then footer controls outside any
+section. Everything stays reachable and every control is always active, so changing values works
+regardless of scroll. Falls back to a flat sweep if no ScrollSpy is present. Controls are filtered
+by `IsInteractable()` (effective, respects CanvasGroups), not the serialized flag.
+
+**2. Had to press Escape twice to focus the menu.** The dialog instance is cached by
+`PopupManager`. On first instantiation it fires a spurious `OnEnable`/`OnDisable` pair (prefab is
+active, then `SetActive(false)`), before the real open. Our old hook on `OnEnable` treated the
+spurious `OnDisable` as a close → set the 0.3s reopen cooldown → the real `OnEnable` (within that
+window) was dropped. `UIPopup.Show()`/`Hide()` are plain `SetActive`, so `Show()` is only called
+on genuine opens (never the spurious load activation).
+
+Fix: hook `UIPopup.Show()` (type-filtered to `OptionsDialogController`) instead of `OnEnable`.
+Also, `IsReallyVisible` retries via a short coroutine while the dialog animates in (was giving up
+on the first frame), and accepts any active slider/toggle/dropdown as the "loaded" signal.
+Remaining edge: `PopupManager.ShowSettings` is `async void` with request-id supersession; if a
+competing `HideSettings` fires during the first async Addressables load the game itself may skip
+the open. If double-open persists from hero select, pre-warm the dialog at main-menu load.
+
+**3. Dropdowns browse without committing.** Arrows previewed by setting `dropdown.value` each
+step, which fired the game handler — the language dropdown re-localized / prompted a restart on
+every arrow press. Now dropdowns track a pending index (read from `options[index]`), speak it on
+arrow, and only commit (`dropdown.value = pending`, firing onValueChanged) on Enter.

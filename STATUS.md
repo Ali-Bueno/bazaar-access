@@ -23,7 +23,7 @@
 | Day/Hour progression announce | done | `Patches/StateChangePatch.cs` delayed coroutine (Progress.md) |
 | End-of-run screens | done | `Patches/EndOfRunPatch.cs`, `UI/ChestRewardsUI.cs`; stats/challenges/achievements (changelog v1.2.0) |
 | PvP opponent rank / recap | done | Rank+division on ranked encounters; recap keys V/F/G/B (changelog v1.2.0) |
-| Options dialog | done | `Patches/OptionsDialogPatch.cs`, `UI/OptionsUI.cs` |
+| Options dialog | done | `Patches/OptionsDialogPatch.cs`, `UI/OptionsUI.cs` — rebuilt 2026-07-11 as a flat, section-headed list from the ScrollSpy sections (reaches Language + Keybindings); hooks `UIPopup.Show` to fix the double-open; dropdowns preview on arrow / apply on Enter. Verified in-game (v1.9.1) |
 | Fight menu | done | `Patches/FightMenuPatch.cs`, `UI/FightMenuUI.cs` |
 | Tutorial / popups / confirm dialogs | done | `Patches/TutorialPatch.cs`, `PopupPatch.cs`, `UI/GenericPopupUI.cs`, `ConfirmationDialogUI.cs` |
 | Item inspect (right-click panel) | done | `Gameplay/ItemInspect/ItemInspectNavigator.cs` — press `x` on an item or via context menu (PR #7) |
@@ -48,7 +48,7 @@
 | Screen abstractions | `Accessibility/BaseScreen.cs`, `BaseUI.cs`, `AccessibleMenu.cs`, `AccessibilityMgr.cs` | src tree |
 
 ## Next step
-In-game verification pass of the 2026-07-01 game build: confirm the merged PR features (item inspect `x`, combat encounter preview, shop details menu, native recap stats, rage/enrage) read correctly with a screen reader, and that the 6 API-adaptation fixes behave at runtime (challenge text, chest rewards, tooltip resolution, pedestal detection, combat preview).
+Options dialog rework + aura-tooltip attribute reading verified in-game (v1.9.1, committed). Remaining pending pass: confirm the merged PR features (item inspect `x`, combat encounter preview, shop details, native recap stats, rage/enrage) and the 6 API-adaptation fixes behave at runtime.
 
 ## Known issues / open questions
 - Combat is intentionally key-gated (only V/F/H etc. active during a fight) — confirm no gameplay key collisions after game updates.

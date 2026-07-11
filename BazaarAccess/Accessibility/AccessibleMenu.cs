@@ -48,6 +48,16 @@ public class AccessibleMenu
         _options.Add(option);
     }
 
+    /// <summary>
+    /// Inserts an option at the given index (clamped to the valid range).
+    /// </summary>
+    public void InsertOption(int index, MenuOption option)
+    {
+        if (index < 0) index = 0;
+        if (index > _options.Count) index = _options.Count;
+        _options.Insert(index, option);
+    }
+
     public void AddOption(Func<string> getText, Action onConfirm, Action onRead, Action<int> onAdjust)
     {
         _options.Add(new MenuOption(getText, onConfirm, onRead, onAdjust));
