@@ -15,6 +15,8 @@ namespace BazaarAccess.Gameplay.Navigation;
 /// </summary>
 public static class VisualSelector
 {
+    private static int _syntheticPointerNonce;
+
     /// <summary>
     /// Finds the CardController for a card and triggers visual selection (hover, sound, tooltip).
     /// </summary>
@@ -163,15 +165,75 @@ public static class VisualSelector
     /// </summary>
     private static void ApplySelection(CardController controller)
     {
+        if (controller is EncounterController encounterController)
+        {
+            ApplyEncounterSelection(encounterController);
+            return;
+        }
+
         var eventSystem = EventSystem.current;
+        Vector2 pointerPosition = GetSyntheticPointerPosition();
         var pointerData = new PointerEventData(eventSystem)
         {
-            position = Vector2.zero
+            position = pointerPosition
         };
 
         controller.OnPointerEnter(pointerData);
         controller.HoverMove();
         TriggerHoverSound(controller);
+    }
+
+    private static void ApplyEncounterSelection(EncounterController controller)
+    {
+        try
+        {
+            if (controller == null || Data.TooltipParentComponent == null)
+                return;
+
+            SetCursorOverCard(controller, true);
+
+            var tooltipData = controller.GetTooltipData();
+            if (tooltipData != null)
+            {
+                Data.TooltipParentComponent.ShowCardTooltipController(
+                    controller.transform,
+                    GetTooltipOffset(controller),
+                    tooltipData);
+            }
+
+            controller.HoverMove();
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogWarning($"ApplyEncounterSelection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// EncounterController only starts hover when the pointer position changes.
+    /// Use a non-zero screen position that keeps changing so revisiting the same
+    /// encounter still counts as mouse movement.
+    /// </summary>
+    private static Vector2 GetSyntheticPointerPosition()
+    {
+        int nonce = _syntheticPointerNonce++;
+        float jitterX = (nonce % 29) + 1f;
+        float jitterY = ((nonce / 29) % 11) + 1f;
+
+        try
+        {
+            Vector3 mousePosition = Input.mousePosition;
+            if (mousePosition.x > 0f || mousePosition.y > 0f)
+                return new Vector2(mousePosition.x + jitterX, mousePosition.y + jitterY);
+        }
+        catch
+        {
+            // Fall through to center-screen fallback.
+        }
+
+        float x = Screen.width > 0 ? Screen.width * 0.5f : 1f;
+        float y = Screen.height > 0 ? Screen.height * 0.5f : 1f;
+        return new Vector2(x + jitterX, y + jitterY);
     }
 
     /// <summary>
@@ -219,6 +281,7 @@ public static class VisualSelector
                 foreach (var socket in bm.playerItemSockets)
                 {
                     socket?.CardController?.ResetPosition(hideTooltips: true);
+                    SetCursorOverCard(socket?.CardController, false);
                 }
             }
 
@@ -227,6 +290,7 @@ public static class VisualSelector
                 foreach (var socket in bm.opponentItemSockets)
                 {
                     socket?.CardController?.ResetPosition(hideTooltips: true);
+                    SetCursorOverCard(socket?.CardController, false);
                 }
             }
 
@@ -235,6 +299,7 @@ public static class VisualSelector
                 foreach (var socket in bm.playerSkillSockets)
                 {
                     socket?.CardController?.ResetPosition(hideTooltips: true);
+                    SetCursorOverCard(socket?.CardController, false);
                 }
             }
 
@@ -243,6 +308,7 @@ public static class VisualSelector
                 foreach (var socket in bm.opponentSkillSockets)
                 {
                     socket?.CardController?.ResetPosition(hideTooltips: true);
+                    SetCursorOverCard(socket?.CardController, false);
                 }
             }
 
@@ -251,6 +317,7 @@ public static class VisualSelector
                 foreach (var socket in bm.playerStorageSockets)
                 {
                     socket?.CardController?.ResetPosition(hideTooltips: true);
+                    SetCursorOverCard(socket?.CardController, false);
                 }
             }
         }
@@ -264,5 +331,44 @@ public static class VisualSelector
     {
         try { return Singleton<BoardManager>.Instance; }
         catch { return null; }
+    }
+
+    private static Vector3 GetTooltipOffset(CardController controller)
+    {
+        try
+        {
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+            PropertyInfo property = typeof(CardController).GetProperty("TooltipOffset", flags);
+            if (property?.GetValue(controller) is Vector3 offset)
+                return offset;
+
+            FieldInfo field = typeof(CardController).GetField("tooltipOffset", flags);
+            if (field?.GetValue(controller) is Vector3 fieldOffset)
+                return fieldOffset;
+        }
+        catch
+        {
+            // Fall back to zero offset below.
+        }
+
+        return Vector3.zero;
+    }
+
+    private static void SetCursorOverCard(CardController controller, bool isOverCard)
+    {
+        try
+        {
+            if (controller == null)
+                return;
+
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+            PropertyInfo property = typeof(CardController).GetProperty("IsCursorOverCard", flags);
+            MethodInfo setter = property?.GetSetMethod(nonPublic: true);
+            setter?.Invoke(controller, new object[] { isOverCard });
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogWarning($"VisualSelector.SetCursorOverCard error: {ex.Message}");
+        }
     }
 }

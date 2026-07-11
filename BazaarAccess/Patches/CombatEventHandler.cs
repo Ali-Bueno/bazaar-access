@@ -4,6 +4,7 @@ using BazaarAccess.Core;
 using BazaarAccess.Gameplay;
 using BazaarBattleService.Models;
 using BazaarGameShared.Domain.Core.Types;
+using BazaarGameShared.Domain.Runs;
 using BazaarGameShared.Infra.Messages.GameSimEvents;
 using TheBazaar;
 using UnityEngine;
@@ -59,6 +60,36 @@ public static class CombatEventHandler
 
         var screen = AccessibilityMgr.GetCurrentScreen() as GameplayScreen;
         screen?.OnCombatStateChanged(false);
+    }
+
+    /// <summary>
+    /// Announces when a combatant becomes enraged during combat.
+    /// </summary>
+    public static void OnPlayerEnragedStarted(PlayerEnragedEvent evt)
+    {
+        if (!StateChangePatch.IsInCombat || evt == null)
+            return;
+
+        string message = evt.CombatantId == ECombatantId.Player
+            ? "You are enraged"
+            : $"{GetOpponentDisplayName()} is enraged";
+
+        TolkWrapper.Speak(message);
+    }
+
+    /// <summary>
+    /// Announces when a combatant is no longer enraged during combat.
+    /// </summary>
+    public static void OnPlayerEnragedEnded(PlayerEnragedEvent evt)
+    {
+        if (!StateChangePatch.IsInCombat || evt == null)
+            return;
+
+        string message = evt.CombatantId == ECombatantId.Player
+            ? "Your enrage ends"
+            : $"{GetOpponentDisplayName()}'s enrage ends";
+
+        TolkWrapper.Speak(message);
     }
 
     /// <summary>
@@ -160,5 +191,26 @@ public static class CombatEventHandler
             StateChangePatch._combatBoardReady = true;
             Plugin.Logger.LogInfo("Combat board ready (after delay)");
         }
+    }
+
+    private static string GetOpponentDisplayName()
+    {
+        try
+        {
+            var currentState = Data.CurrentState?.StateName;
+            bool isPvpCombat = currentState == ERunState.PVPCombat;
+            var pvpOpponent = Data.SimPvpOpponent;
+
+            if (isPvpCombat && pvpOpponent != null && !string.IsNullOrEmpty(pvpOpponent.Name))
+            {
+                return pvpOpponent.Name;
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.LogWarning($"GetOpponentDisplayName error: {ex.Message}");
+        }
+
+        return "Enemy";
     }
 }

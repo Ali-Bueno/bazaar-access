@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using BazaarGameClient.Domain.Models.Cards;
+using BazaarGameShared.Domain.Cards.Encounter.Combat;
 using BazaarGameShared.Domain.Core.Types;
 using TheBazaar;
 
@@ -37,6 +38,32 @@ internal static class EncounterReader
         }
 
         return $"{name}, {type}, {tier}";
+    }
+
+    internal static List<string> GetCombatEncounterDetailLines(Card card)
+    {
+        var lines = new List<string>();
+        if (card == null) return lines;
+
+        lines.Add(CardProperties.GetCardName(card));
+        lines.Add(CardProperties.GetTierName(card));
+
+        if (TryGetCombatEncounterRewards(card, out uint monsterLevel, out int xpReward, out int goldReward))
+        {
+            lines.Add($"Level: {monsterLevel}");
+            lines.Add($"XP: {xpReward}");
+            lines.Add($"Gold: {goldReward}");
+        }
+
+        string desc = CardProperties.GetDescription(card);
+        if (!string.IsNullOrEmpty(desc))
+            lines.Add(desc);
+
+        string flavor = CardProperties.GetFlavorText(card);
+        if (!string.IsNullOrEmpty(flavor))
+            lines.Add(flavor);
+
+        return lines;
     }
 
     public static string GetEncounterDetailedInfo(Card card)
@@ -77,6 +104,17 @@ internal static class EncounterReader
         sb.Append(CardProperties.GetCardName(card));
         sb.Append(", ");
         sb.Append(GetEncounterTypeName(card.Type));
+
+        if (TryGetCombatEncounterRewards(card, out uint monsterLevel, out int xpReward, out int goldReward))
+        {
+            sb.Append(", Level ");
+            sb.Append(monsterLevel);
+            sb.Append(", ");
+            sb.Append(xpReward);
+            sb.Append(" XP, ");
+            sb.Append(goldReward);
+            sb.Append(" gold");
+        }
 
         string desc = CardProperties.GetDescription(card);
         if (!string.IsNullOrEmpty(desc))
@@ -232,6 +270,24 @@ internal static class EncounterReader
             ECardType.PvpEncounter => "PvP",
             _ => "Encounter"
         };
+    }
+
+    private static bool TryGetCombatEncounterRewards(Card card, out uint monsterLevel, out int xpReward, out int goldReward)
+    {
+        monsterLevel = 0;
+        xpReward = 0;
+        goldReward = 0;
+
+        if (card?.Type != ECardType.CombatEncounter)
+            return false;
+
+        if (card.Template is not TCardEncounterCombat combatTemplate)
+            return false;
+
+        monsterLevel = (combatTemplate.CombatantType as TCombatantMonster)?.Level ?? 0;
+        xpReward = combatTemplate.RewardCombatXp;
+        goldReward = combatTemplate.RewardCombatGold;
+        return true;
     }
 
     private static T GetPvpProperty<T>(object pvpOpponent, Type type, string propertyName)

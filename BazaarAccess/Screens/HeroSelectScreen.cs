@@ -160,7 +160,8 @@ public class HeroSelectScreen : BaseScreen
     {
         try
         {
-            if (Data.RunConfiguration != null && Data.RunConfiguration.RunType == EPlayMode.Unranked)
+            if (ClientCache.RunConfig.HasData &&
+                ClientCache.RunConfig.Value.RunType == EPlayMode.Unranked)
             {
                 return "Casual, selected";
             }
@@ -173,7 +174,8 @@ public class HeroSelectScreen : BaseScreen
     {
         try
         {
-            if (Data.RunConfiguration != null && Data.RunConfiguration.RunType == EPlayMode.Ranked)
+            if (ClientCache.RunConfig.HasData &&
+                ClientCache.RunConfig.Value.RunType == EPlayMode.Ranked)
             {
                 string rank = Gameplay.ItemReader.GetPlayerRank();
                 if (!string.IsNullOrEmpty(rank))

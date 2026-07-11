@@ -63,7 +63,7 @@ public class ChestRewardsUI : BaseUI
                 DuplicateGems = reward.DuplicateGems,
                 RankedVouchers = reward.rankedVouchers,
                 BonusChests = reward.bonusChest?.Length ?? 0,
-                HasCollectible = reward.collectibleItem != null && !string.IsNullOrEmpty(reward.collectibleItem.itemId)
+                HasCollectible = !string.IsNullOrEmpty(reward.collectibleItemId)
             };
 
             // Try to load the collectible name
@@ -71,7 +71,7 @@ public class ChestRewardsUI : BaseUI
             {
                 try
                 {
-                    var asset = await Addressables.LoadAssetAsync<CollectibleAssetDataSO>(reward.collectibleItem.itemId).Task;
+                    var asset = await Addressables.LoadAssetAsync<CollectibleAssetDataSO>(reward.collectibleItemId).Task;
                     if (asset != null)
                     {
                         info.ItemName = asset.LocalizableName?.GetLocalizedText() ?? asset.Name ?? "Item";

@@ -1,9 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using BazaarAccess.Accessibility;
 using BazaarAccess.Core;
 using BazaarAccess.Patches;
-using BazaarAccess.UI;
+using BazaarAccess.Gameplay.CombatEncounterPreview;
+using BazaarAccess.Gameplay.ItemInspect;
 using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameShared.Domain.Core.Types;
 using BazaarGameShared.Domain.Runs;
@@ -26,19 +28,45 @@ public class GameplayScreen : IAccessibleScreen
     private readonly ActionMenuHandler _actionMenu;
     private readonly CombatInputHandler _combatHandler;
     private readonly ReplayInputHandler _replayHandler;
+    private readonly CombatEncounterPreviewNavigator _combatEncounterPreview;
+    private readonly ItemInspectNavigator _itemInspect;
+    private readonly ShopItemMenuHandler _shopItemMenu;
     private bool _isValid = true;
     private ERunState _lastState = ERunState.Choice;
 
     public GameplayScreen()
     {
         _navigator = new GameplayNavigator();
-        _actionMenu = new ActionMenuHandler(_navigator, HandleUpgradeConfirm, RefreshAndAnnounce);
+        _actionMenu = new ActionMenuHandler(_navigator, HandlePedestalAction, RefreshAndAnnounce, TryStartItemInspect);
         _combatHandler = new CombatInputHandler(_navigator);
-        _replayHandler = new ReplayInputHandler(_navigator, TriggerReplayContinue, TriggerReplayReplay, TriggerReplayRecap);
+        _replayHandler = new ReplayInputHandler(_navigator, TriggerReplayContinue, TriggerReplayReplay, TriggerReplayRecap, TriggerReplayRecapBack);
+        _combatEncounterPreview = new CombatEncounterPreviewNavigator();
+        _itemInspect = new ItemInspectNavigator();
+        _shopItemMenu = new ShopItemMenuHandler(BuyShopItem, TryStartItemInspect);
     }
 
     public void HandleInput(AccessibleKey key)
     {
+        _navigator.SyncVisualRecapState();
+
+        if (_itemInspect.IsActive)
+        {
+            _itemInspect.HandleInput(key);
+            return;
+        }
+
+        if (_combatEncounterPreview.IsActive)
+        {
+            _combatEncounterPreview.HandleInput(key);
+            return;
+        }
+
+        if (_shopItemMenu.IsActive)
+        {
+            _shopItemMenu.HandleInput(key);
+            return;
+        }
+
         // Handle action mode input (when in action mode)
         if (_actionMenu.IsActive)
         {
@@ -162,6 +190,10 @@ public class GameplayScreen : IAccessibleScreen
 
             case AccessibleKey.GoToEnemy:
                 _navigator.ReadEnemyInfo();
+                break;
+
+            case AccessibleKey.Inspect:
+                HandleInspect();
                 break;
 
             // Navegación dentro de la sección actual
@@ -316,30 +348,10 @@ public class GameplayScreen : IAccessibleScreen
             return;
         }
 
-        // Route through confirmation dialog with explicit pedestal type detection
         var currentState = StateChangePatch.GetCurrentRunState();
         if (currentState == ERunState.Pedestal)
         {
-            var pedestalInfo = PedestalManager.GetCurrentPedestalInfo();
-            Plugin.Logger.LogInfo($"HandleUpgrade: detected pedestal type={pedestalInfo.Type}");
-            if (pedestalInfo.Type == PedestalManager.PedestalType.Enchant ||
-                pedestalInfo.Type == PedestalManager.PedestalType.EnchantRandom)
-            {
-                HandleUpgradeConfirm(card, isEnchant: true);
-            }
-            else if (pedestalInfo.Type == PedestalManager.PedestalType.Upgrade)
-            {
-                HandleUpgradeConfirm(card, isEnchant: false);
-            }
-            else
-            {
-                // Detection failed - use the pedestal directly (game handles the logic)
-                Plugin.Logger.LogWarning("HandleUpgrade: detection failed, using pedestal directly");
-                if (PedestalManager.UseCurrentPedestal(card))
-                {
-                    Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
-                }
-            }
+            HandlePedestalAction(card);
         }
         else
         {
@@ -379,14 +391,17 @@ public class GameplayScreen : IAccessibleScreen
     {
         return "Left/Right: Navigate items. Up/Down: Read details. " +
                "Tab: Switch section. Space: Toggle stash. G: Go to stash. " +
-               "B: Board. V: Hero. C: Choices. F: Enemy. I: Properties. W: Wins. " +
-               "Enter: Select/Buy or Action menu on board items. E: Exit. R: Refresh. " +
+               "B: Board. V: Hero. C: Choices. F: Enemy. X: Inspect. I: Properties. W: Wins. " +
+               "Enter: Select, or open a menu on shop and board items. E: Exit. R: Refresh. " +
                "In Action menu: S sell, U upgrade, M move, Arrows reorder. " +
                "Ctrl+Arrows: Detail reading. Period/Comma: Messages.";
     }
 
     public void OnFocus()
     {
+        _itemInspect.Exit();
+        _combatEncounterPreview.Exit(announce: false);
+        _shopItemMenu.Exit(announce: false);
         _lastState = StateChangePatch.GetCurrentRunState();
         _navigator.Refresh();
 
@@ -409,6 +424,9 @@ public class GameplayScreen : IAccessibleScreen
     /// <param name="stateActuallyChanged">True si el estado realmente cambió (calculado por StateChangePatch)</param>
     public void OnStateChanged(ERunState newState, bool stateActuallyChanged = true)
     {
+        _itemInspect.Exit();
+        _combatEncounterPreview.Exit(announce: false);
+        _shopItemMenu.Exit(announce: false);
         _lastState = newState;
 
         // Durante combate, no anunciar nada aquí (OnCombatStateChanged lo hará)
@@ -581,12 +599,50 @@ public class GameplayScreen : IAccessibleScreen
         _navigator.ReadDetailedInfo();
     }
 
+    private void HandleInspect()
+    {
+        var card = _navigator.GetCurrentCard();
+        if (card is ItemCard)
+        {
+            TryStartItemInspect(card);
+            return;
+        }
+
+        if (card?.Type != ECardType.CombatEncounter)
+        {
+            TolkWrapper.Speak("Nothing to inspect");
+            return;
+        }
+
+        if (_combatEncounterPreview.TryEnter(card))
+        {
+            Plugin.Instance.StartCoroutine(_combatEncounterPreview.ShowVisualPreview());
+            Plugin.Instance.StartCoroutine(_combatEncounterPreview.MonitorVisualState());
+        }
+    }
+
+    private void TryStartItemInspect(Card card)
+    {
+        if (!_itemInspect.TryEnter(card))
+            return;
+
+        Plugin.Instance.StartCoroutine(_itemInspect.ShowVisualPreview());
+        Plugin.Instance.StartCoroutine(_itemInspect.MonitorVisualState());
+    }
+
     private void HandleCardConfirm(Card card)
     {
         switch (card.Type)
         {
             case ECardType.Item:
-                BuyItem(card);
+                if (_navigator.IsSelectionFree())
+                {
+                    BuyItem(card);
+                }
+                else
+                {
+                    EnterShopItemMenu(card as ItemCard);
+                }
                 break;
 
             case ECardType.Skill:
@@ -612,8 +668,6 @@ public class GameplayScreen : IAccessibleScreen
         var itemCard = card as ItemCard;
         if (itemCard == null) { TolkWrapper.Speak("Not an item"); return; }
 
-        string name = ItemReader.GetCardName(card);
-
         if (_navigator.IsSelectionFree())
         {
             // En Loot/Rewards, los items son gratuitos
@@ -623,14 +677,21 @@ public class GameplayScreen : IAccessibleScreen
         }
         else
         {
-            int price = ItemReader.GetBuyPrice(card);
-            var ui = new ConfirmActionUI(ConfirmActionType.Buy, name, price,
-                onConfirm: () => {
-                    ActionHelper.BuyItem(itemCard);
-                    Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
-                },
-                onCancel: () => TolkWrapper.Speak("Cancelled"));
-            AccessibilityMgr.ShowUI(ui);
+            BuyShopItem(itemCard);
+        }
+    }
+
+    private void BuyShopItem(ItemCard itemCard)
+    {
+        if (itemCard == null)
+        {
+            TolkWrapper.Speak("Not an item");
+            return;
+        }
+
+        if (ActionHelper.BuyItem(itemCard))
+        {
+            Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
         }
     }
 
@@ -684,168 +745,28 @@ public class GameplayScreen : IAccessibleScreen
         _navigator.Refresh();
     }
 
-    private void HandleSellConfirm(Card card)
+    private void EnterShopItemMenu(ItemCard itemCard)
     {
-        var itemCard = card as ItemCard;
-        if (itemCard == null) { TolkWrapper.Speak("Cannot sell this"); return; }
-
-        // Check if we're in Pedestal state - offer pedestal action instead of sell
-        var currentState = StateChangePatch.GetCurrentRunState();
-        if (currentState == ERunState.Pedestal && PedestalManager.CanUpgrade())
+        if (itemCard == null)
         {
-            bool isEnchant = PedestalManager.IsEnchantPedestal();
-            HandleUpgradeConfirm(card, isEnchant: isEnchant);
+            TolkWrapper.Speak("Not an item");
             return;
         }
 
-        if (!_navigator.CanSellInCurrentState())
-        {
-            TolkWrapper.Speak("Cannot sell right now");
-            return;
-        }
-
-        string name = ItemReader.GetCardName(card);
-        int price = ItemReader.GetSellPrice(card);
-
-        var ui = new ConfirmActionUI(ConfirmActionType.Sell, name, price,
-            onConfirm: () => {
-                ActionHelper.SellItem(itemCard);
-                RefreshAndAnnounce();
-            },
-            onCancel: () => TolkWrapper.Speak("Cancelled"));
-        AccessibilityMgr.ShowUI(ui);
+        _shopItemMenu.Enter(itemCard);
     }
 
-    /// <summary>
-    /// Shows upgrade confirmation dialog with tier information.
-    /// </summary>
-    /// <param name="card">The card to upgrade/enchant</param>
-    /// <param name="isEnchant">If known: true=enchant, false=upgrade. Null=auto-detect from pedestal.</param>
-    private void HandleUpgradeConfirm(Card card, bool? isEnchant = null)
+    private void HandlePedestalAction(Card card)
     {
-        Plugin.Logger.LogInfo($"HandleUpgradeConfirm called for card: {card?.GetType().Name ?? "null"}, isEnchant={isEnchant}");
-
-        string name = ItemReader.GetCardName(card);
-
-        // Get pedestal info
-        var pedestalInfo = PedestalManager.GetCurrentPedestalInfo();
-        Plugin.Logger.LogInfo($"HandleUpgradeConfirm: pedestalInfo.Type={pedestalInfo.Type}, name={name}");
-
-        // Determine if this is an enchant action
-        bool doEnchant;
-        if (isEnchant.HasValue)
+        if (card == null)
         {
-            doEnchant = isEnchant.Value;
-        }
-        else
-        {
-            doEnchant = pedestalInfo.Type == PedestalManager.PedestalType.Enchant ||
-                        pedestalInfo.Type == PedestalManager.PedestalType.EnchantRandom;
+            TolkWrapper.Speak("No item selected");
+            return;
         }
 
-        if (doEnchant)
+        if (PedestalManager.UseCurrentPedestal(card))
         {
-            // Enchantment altar
-            // Check if already enchanted
-            if (card is ItemCard itemCard && itemCard.Enchantment.HasValue)
-            {
-                string currentEnchant = ItemReader.GetEnchantmentName(itemCard.Enchantment.Value);
-                TolkWrapper.Speak($"{name} is already enchanted with {currentEnchant}");
-                return;
-            }
-
-            string enchantName = pedestalInfo.EnchantmentName ?? "random";
-
-            // Build message with preview
-            var messageParts = new List<string>();
-            if (pedestalInfo.Type == PedestalManager.PedestalType.EnchantRandom)
-            {
-                messageParts.Add($"Enchant {name} with a random enchantment?");
-            }
-            else
-            {
-                messageParts.Add($"Enchant {name} with {enchantName}.");
-                // Get enchantment preview
-                var preview = PedestalManager.GetEnchantPreview(card, enchantName);
-                if (preview.Count > 0)
-                {
-                    messageParts.Add("Effects: " + string.Join(", ", preview));
-                }
-            }
-            messageParts.Add("Press U to confirm, Backspace to cancel.");
-
-            string message = string.Join(" ", messageParts);
-
-            var ui = new ConfirmActionUI(ConfirmActionType.Upgrade, name, 0, message,
-                onConfirm: () => {
-                    if (PedestalManager.UseCurrentPedestal(card))
-                    {
-                        Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
-                    }
-                },
-                onCancel: () => TolkWrapper.Speak("Cancelled"));
-            AccessibilityMgr.ShowUI(ui);
-        }
-        else
-        {
-            // Upgrade altar
-            string currentTier = ItemReader.GetTierName(card);
-            var upgradeInfo = PedestalManager.GetCurrentPedestalInfo();
-
-            // Check if already at max tier
-            if (card.Tier == ETier.Legendary)
-            {
-                TolkWrapper.Speak($"{name} is already at {currentTier}, cannot upgrade further");
-                return;
-            }
-
-            // Build message with preview
-            var messageParts = new List<string>();
-
-            if (upgradeInfo.TargetTier.HasValue)
-            {
-                if (upgradeInfo.TargetTier.Value == card.Tier)
-                {
-                    messageParts.Add($"Upgrade {name} stats. Stays {currentTier}.");
-                }
-                else
-                {
-                    messageParts.Add($"Upgrade {name} from {currentTier} to {ItemReader.GetTierName(upgradeInfo.TargetTier.Value)}.");
-                }
-            }
-            else
-            {
-                string nextTier = TierHelper.GetNextName(card.Tier);
-                messageParts.Add($"Upgrade {name} from {currentTier} to {nextTier}.");
-            }
-
-            // Get post-upgrade stats
-            try
-            {
-                var preview = PedestalManager.GetUpgradePreview(card);
-                if (preview.Count > 0)
-                {
-                    messageParts.Add("After upgrade: " + string.Join(", ", preview));
-                }
-            }
-            catch (System.Exception ex)
-            {
-                Plugin.Logger.LogWarning($"GetUpgradePreview failed: {ex.Message}");
-            }
-
-            messageParts.Add("Press U to confirm, Backspace to cancel.");
-
-            string message = string.Join(" ", messageParts);
-
-            var ui = new ConfirmActionUI(ConfirmActionType.Upgrade, name, 0, message,
-                onConfirm: () => {
-                    if (PedestalManager.UpgradeItem(card))
-                    {
-                        Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
-                    }
-                },
-                onCancel: () => TolkWrapper.Speak("Cancelled"));
-            AccessibilityMgr.ShowUI(ui);
+            Plugin.Instance.StartCoroutine(DelayedRefreshAndAnnounce());
         }
     }
 
@@ -1133,6 +1054,9 @@ public class GameplayScreen : IAccessibleScreen
     /// </summary>
     public void OnCombatStateChanged(bool inCombat)
     {
+        _itemInspect.Exit();
+        _combatEncounterPreview.Exit(announce: false);
+        _shopItemMenu.Exit(announce: false);
         _navigator.SetCombatMode(inCombat);
 
         if (inCombat)
@@ -1197,7 +1121,11 @@ public class GameplayScreen : IAccessibleScreen
     /// </summary>
     public void OnReplayStateChanged(bool inReplayState)
     {
+        _itemInspect.Exit();
+        _combatEncounterPreview.Exit(announce: false);
+        _shopItemMenu.Exit(announce: false);
         _navigator.SetReplayMode(inReplayState);
+        _navigator.SyncVisualRecapState();
 
         if (inReplayState)
         {
@@ -1262,6 +1190,14 @@ public class GameplayScreen : IAccessibleScreen
             var exitMethod = replayStateType.GetMethod("Exit");
             if (exitMethod != null)
             {
+                // Recap hover tooltips can persist into the end-of-run victory/defeat screen unless we clear them first.
+                ClearAllTooltips();
+
+                if (_navigator.IsInRecapMode)
+                {
+                    HideNativeRecapView();
+                }
+
                 TolkWrapper.Speak("Continuing");
                 exitMethod.Invoke(currentState, null);
                 // NO llamar a SetReplayMode(false) aquí - OnReplayStateChanged lo hará cuando el estado cambie
@@ -1300,8 +1236,6 @@ public class GameplayScreen : IAccessibleScreen
             {
                 TolkWrapper.Speak("Replaying combat");
                 replayMethod.Invoke(currentState, null);
-                // Salir del modo recap si estábamos en él (R inicia animación)
-                _navigator.SetRecapMode(false);
             }
         }
         catch (System.Exception ex)
@@ -1331,15 +1265,136 @@ public class GameplayScreen : IAccessibleScreen
             var recapMethod = replayStateType.GetMethod("Recap");
             if (recapMethod != null)
             {
-                TolkWrapper.Speak("Recap. V hero, F enemy, G enemy board, B your board, H combat stats.");
                 recapMethod.Invoke(currentState, null);
-                // Activar modo recap - ahora G funcionará
-                _navigator.SetRecapMode(true);
+                ShowNativeRecapView();
+                Plugin.Instance.StartCoroutine(WaitForRecapVisibility(true, "Recap. V hero, F enemy, G enemy board, B your board."));
             }
         }
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"TriggerReplayRecap error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Triggers the Back action while in Recap view.
+    /// Mirrors the native Back button by closing the recap board and returning to replay controls.
+    /// </summary>
+    public void TriggerReplayRecapBack()
+    {
+        try
+        {
+            var currentState = AppState.CurrentState;
+            if (currentState == null) return;
+
+            var replayStateType = typeof(AppState).Assembly.GetType("TheBazaar.ReplayState");
+            if (replayStateType == null || !replayStateType.IsInstanceOfType(currentState))
+            {
+                _navigator.SetReplayMode(false);
+                return;
+            }
+
+            HideNativeRecapView();
+
+            var recapBackMethod = replayStateType.GetMethod("RecapBack");
+            recapBackMethod?.Invoke(currentState, null);
+            Plugin.Instance.StartCoroutine(WaitForRecapVisibility(false, "Exited recap. Enter to continue, R to replay, E to return to recap."));
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"TriggerReplayRecapBack error: {ex.Message}");
+        }
+    }
+
+    private static void ShowNativeRecapView()
+    {
+        try
+        {
+            var boardManager = Singleton<BoardManager>.Instance;
+            if (boardManager == null)
+            {
+                return;
+            }
+
+            boardManager.ToggleOpponentPortrait(isVisible: true);
+
+            var showRecapMethod = boardManager.GetType().GetMethod("ShowRecapView", BindingFlags.Instance | BindingFlags.NonPublic);
+            showRecapMethod?.Invoke(boardManager, null);
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"ShowNativeRecapView error: {ex.Message}");
+        }
+    }
+
+    private static void HideNativeRecapView()
+    {
+        try
+        {
+            var boardManager = Singleton<BoardManager>.Instance;
+            if (boardManager == null || !boardManager.IsRecapViewOpen)
+            {
+                return;
+            }
+
+            var hideRecapMethod = boardManager.GetType().GetMethod("HideRecapView", BindingFlags.Instance | BindingFlags.NonPublic);
+            hideRecapMethod?.Invoke(boardManager, null);
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"HideNativeRecapView error: {ex.Message}");
+        }
+    }
+
+    private static void ClearAllTooltips()
+    {
+        try
+        {
+            var tooltipParent = Data.TooltipParentComponent;
+            if (tooltipParent == null)
+            {
+                return;
+            }
+
+            tooltipParent.UnlockCardTooltipController();
+            tooltipParent.HideSecondaryCardTooltipController();
+            tooltipParent.HideAuxiliaryTooltipController();
+            tooltipParent.HideCardTooltipController();
+        }
+        catch (System.Exception ex)
+        {
+            Plugin.Logger.LogError($"ClearAllTooltips error: {ex.Message}");
+        }
+    }
+
+    private IEnumerator WaitForRecapVisibility(bool expectedVisible, string message)
+    {
+        const float maxWait = 2f;
+        float waited = 0f;
+
+        while (waited < maxWait && IsNativeRecapVisible() != expectedVisible)
+        {
+            yield return null;
+            waited += Time.unscaledDeltaTime > 0f ? Time.unscaledDeltaTime : 0.02f;
+        }
+
+        _navigator.SyncVisualRecapState();
+
+        if (IsNativeRecapVisible() == expectedVisible && !string.IsNullOrEmpty(message))
+        {
+            TolkWrapper.Speak(message);
+        }
+    }
+
+    private static bool IsNativeRecapVisible()
+    {
+        try
+        {
+            return Singleton<BoardManager>.Instance?.IsRecapViewOpen == true;
+        }
+        catch
+        {
+            return false;
         }
     }
 }

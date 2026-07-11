@@ -9,7 +9,7 @@ namespace BazaarAccess.Gameplay.Navigation;
 
 /// <summary>
 /// Handles all recap mode navigation (post-combat with E key):
-/// hero stats/skills, enemy stats/skills, player board, and combat stats.
+/// hero stats/skills, enemy stats/skills, and player board.
 /// Extracted from GameplayNavigator to reduce file size.
 /// </summary>
 public class RecapNavigator
@@ -21,8 +21,6 @@ public class RecapNavigator
     private RecapSection _currentSection = RecapSection.None;
     private int _enemyStatIndex = 0;
     private int _enemyHeroSkillIndex = 0;
-    private List<string> _combatStatsLines = new List<string>();
-    private int _combatStatsIndex = 0;
 
     public RecapSection CurrentSection => _currentSection;
 
@@ -241,7 +239,8 @@ public class RecapNavigator
     {
         if (_currentSection == RecapSection.EnemyStats)
         {
-            if (_enemyStatIndex >= HeroNavigator.HeroStats.Length - 1)
+            int maxIndex = _hero.GetStatCount(Data.Run?.Opponent, includeRank: false) - 1;
+            if (_enemyStatIndex >= maxIndex)
             {
                 AnnounceEnemyStat();
                 return;
@@ -308,64 +307,6 @@ public class RecapNavigator
     }
 
     // ===============================================
-    // COMBAT STATS RECAP (H key in recap mode)
-    // ===============================================
-
-    /// <summary>
-    /// Enter combat stats mode in recap (H key).
-    /// </summary>
-    public void EnterCombatStatsMode()
-    {
-        _combatStatsLines = CombatDescriber.GetCombatStatsLines();
-        _combatStatsIndex = 0;
-        _currentSection = RecapSection.CombatStats;
-
-        if (_combatStatsLines.Count > 0)
-        {
-            TolkWrapper.Speak(_combatStatsLines[0]);
-        }
-        else
-        {
-            TolkWrapper.Speak("No combat data");
-        }
-    }
-
-    /// <summary>
-    /// Navigate to previous combat stat line (Up key).
-    /// </summary>
-    public void CombatStatsPrevious()
-    {
-        if (_combatStatsLines.Count == 0) return;
-
-        if (_combatStatsIndex <= 0)
-        {
-            _combatStatsIndex = 0;
-            TolkWrapper.Speak(_combatStatsLines[0]);
-            return;
-        }
-
-        _combatStatsIndex--;
-        TolkWrapper.Speak(_combatStatsLines[_combatStatsIndex]);
-    }
-
-    /// <summary>
-    /// Navigate to next combat stat line (Down key).
-    /// </summary>
-    public void CombatStatsNext()
-    {
-        if (_combatStatsLines.Count == 0) return;
-
-        if (_combatStatsIndex >= _combatStatsLines.Count - 1)
-        {
-            TolkWrapper.Speak(_combatStatsLines[_combatStatsIndex]);
-            return;
-        }
-
-        _combatStatsIndex++;
-        TolkWrapper.Speak(_combatStatsLines[_combatStatsIndex]);
-    }
-
-    // ===============================================
     // UTILITIES
     // ===============================================
 
@@ -386,13 +327,11 @@ public class RecapNavigator
         _currentSection = RecapSection.None;
         _enemyStatIndex = 0;
         _enemyHeroSkillIndex = 0;
-        _combatStatsLines.Clear();
-        _combatStatsIndex = 0;
     }
 
     /// <summary>
     /// Announce current enemy hero stat.
-    /// Uses HeroNavigator.HeroStats array for stat types and GetStatName for display.
+    /// Uses HeroNavigator's dynamic stat mapping for combat/recap stat views.
     /// </summary>
     private void AnnounceEnemyStat()
     {
@@ -403,17 +342,7 @@ public class RecapNavigator
             return;
         }
 
-        var type = HeroNavigator.HeroStats[_enemyStatIndex];
-        string name = _hero.GetStatName(type);
-
-        if (opponent.Attributes.TryGetValue(type, out int value))
-        {
-            TolkWrapper.Speak($"{name}: {value}");
-        }
-        else
-        {
-            TolkWrapper.Speak($"{name}: none");
-        }
+        _hero.AnnounceStat(opponent, _enemyStatIndex, includeRank: false);
     }
 
     /// <summary>

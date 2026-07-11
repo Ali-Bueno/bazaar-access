@@ -43,8 +43,7 @@ public enum RecapSection
     EnemyStats,     // Enemy hero stats (F)
     EnemySkills,    // Enemy hero skills (F + Right)
     EnemyBoard,     // Enemy board (G)
-    PlayerBoard,    // Own board (B)
-    CombatStats     // Per-card combat stats (H)
+    PlayerBoard     // Own board (B)
 }
 
 /// <summary>

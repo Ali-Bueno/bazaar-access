@@ -17,6 +17,7 @@ namespace BazaarAccess.Gameplay;
 /// </summary>
 public enum ActionOption
 {
+    Details,
     Sell,
     Upgrade,
     Enchant,
@@ -32,8 +33,9 @@ public enum ActionOption
 public class ActionMenuHandler
 {
     private readonly GameplayNavigator _navigator;
-    private readonly Action<Card, bool?> _onUpgradeConfirm;
+    private readonly Action<Card> _onUsePedestalAction;
     private readonly Action _onRefreshAndAnnounce;
+    private readonly Action<Card> _onShowDetails;
 
     // Action mode state
     private bool _isInActionMode = false;
@@ -51,11 +53,16 @@ public class ActionMenuHandler
     /// </summary>
     public Card ActionCard => _actionCard;
 
-    public ActionMenuHandler(GameplayNavigator navigator, Action<Card, bool?> onUpgradeConfirm, Action onRefreshAndAnnounce)
+    public ActionMenuHandler(
+        GameplayNavigator navigator,
+        Action<Card> onUsePedestalAction,
+        Action onRefreshAndAnnounce,
+        Action<Card> onShowDetails)
     {
         _navigator = navigator;
-        _onUpgradeConfirm = onUpgradeConfirm;
+        _onUsePedestalAction = onUsePedestalAction;
         _onRefreshAndAnnounce = onRefreshAndAnnounce;
+        _onShowDetails = onShowDetails;
     }
 
     /// <summary>
@@ -77,6 +84,11 @@ public class ActionMenuHandler
         bool isInBoard = _navigator.CurrentSection == NavigationSection.Board;
         bool isInStash = _navigator.CurrentSection == NavigationSection.Stash;
         bool stashOpen = _navigator.IsStashOpen();
+
+        if (card is ItemCard)
+        {
+            _actionOptions.Add(ActionOption.Details);
+        }
 
         // Build available options
         // At pedestal, show Upgrade/Enchant first (primary action)
@@ -331,6 +343,9 @@ public class ActionMenuHandler
     {
         switch (option)
         {
+            case ActionOption.Details:
+                return "Details";
+
             case ActionOption.Sell:
                 int sellPrice = ItemReader.GetSellPrice(_actionCard);
                 return $"Sell for {sellPrice} gold (S)";
@@ -398,6 +413,13 @@ public class ActionMenuHandler
 
         switch (option)
         {
+            case ActionOption.Details:
+                if (itemCard != null)
+                {
+                    _onShowDetails?.Invoke(itemCard);
+                }
+                break;
+
             case ActionOption.Sell:
                 if (itemCard != null)
                 {
@@ -410,17 +432,16 @@ public class ActionMenuHandler
                 break;
 
             case ActionOption.Upgrade:
-                // Show confirmation dialog with preview instead of executing directly
                 if (itemCard != null)
                 {
-                    _onUpgradeConfirm(itemCard, false);
+                    _onUsePedestalAction?.Invoke(itemCard);
                 }
                 break;
 
             case ActionOption.Enchant:
                 if (itemCard != null)
                 {
-                    _onUpgradeConfirm(itemCard, true);
+                    _onUsePedestalAction?.Invoke(itemCard);
                 }
                 break;
 

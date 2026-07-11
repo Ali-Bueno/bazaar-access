@@ -164,6 +164,11 @@ internal static class DetailLineBuilder
         if (card.Type == ECardType.PvpEncounter)
             return EncounterReader.GetPvpEncounterDetailLines(card);
 
+        if (card.Type == ECardType.CombatEncounter)
+        {
+            return EncounterReader.GetCombatEncounterDetailLines(card);
+        }
+
         return BuildDetailLines(card, enemyOrder: false);
     }
 
@@ -223,6 +228,48 @@ internal static class DetailLineBuilder
         if (card == null) return lines;
 
         lines.Add(CardProperties.GetCardName(card));
+
+        if (RecapStatsReader.IsRecapViewActive())
+        {
+            if (enemyOrder)
+            {
+                lines.AddRange(RecapStatsReader.GetRecapLines(card));
+                AddDescriptionLines(lines, card);
+                AddAbilityLines(lines, card);
+
+                string recapCooldown = GetCooldownLineText(card);
+                if (recapCooldown != null) lines.Add(recapCooldown);
+
+                AddAllCombatStats(lines, card, EnemyCombatStats);
+
+                lines.Add(CardProperties.GetTierName(card));
+
+                string recapTags = CardProperties.GetTags(card);
+                if (!string.IsNullOrEmpty(recapTags)) lines.Add(recapTags);
+
+                string recapSizeText = GetSizeText(card);
+                if (recapSizeText != null) lines.Add(recapSizeText);
+            }
+            else
+            {
+                // Player board details are passed through DetailReader, which reverses lines before reading.
+                // Build recap-mode lines in reverse so the spoken order starts with name -> recap -> uses -> tier.
+                var reversedLines = new List<string>();
+
+                AddAbilityLines(reversedLines, card);
+                AddDescriptionLines(reversedLines, card);
+                reversedLines.Add(CardProperties.GetTierName(card));
+
+                var recapLines = RecapStatsReader.GetRecapLines(card);
+                recapLines.Reverse();
+                reversedLines.AddRange(recapLines);
+
+                reversedLines.Add(CardProperties.GetCardName(card));
+                return reversedLines;
+            }
+
+            return lines;
+        }
 
         if (enemyOrder)
         {

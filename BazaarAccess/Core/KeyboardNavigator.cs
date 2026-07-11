@@ -166,6 +166,10 @@ public class KeyboardNavigator : MonoBehaviour
             case KeyCode.I:
                 return AccessibleKey.Info;
 
+            // Inspect current selection
+            case KeyCode.X:
+                return AccessibleKey.Inspect;
+
             // Upgrade item (U or Shift+U)
             case KeyCode.U:
                 return AccessibleKey.Upgrade;

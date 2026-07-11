@@ -81,11 +81,11 @@ public class BattlePassScreen : BaseScreen
     {
         try
         {
-            var profile = Data.ChallengesProfile;
-            if (profile != null)
+            if (ClientCache.Challenges.HasData)
             {
-                _dailyChallenges = profile.DailyChallenges ?? Array.Empty<ChallengeProgress>();
-                _weeklyChallenges = profile.WeeklyChallenges ?? Array.Empty<ChallengeProgress>();
+                var profile = ClientCache.Challenges.Value;
+                _dailyChallenges = profile.dailyChallenges ?? Array.Empty<ChallengeProgress>();
+                _weeklyChallenges = profile.weeklyChallenges ?? Array.Empty<ChallengeProgress>();
             }
             else
             {
