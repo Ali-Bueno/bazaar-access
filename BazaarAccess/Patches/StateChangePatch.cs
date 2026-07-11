@@ -540,6 +540,11 @@ public static class StateChangePatch
             var run = Data.Run;
             if (run == null) return;
 
+            // Only announce while actually in a run. Day/hour events also fire during run teardown
+            // and after returning to the hero-select / menu screens, where announcing "Hour 1" /
+            // "Day 1" is spurious (it was misheard as "oro 1" = "gold 1").
+            if (!(AccessibilityMgr.GetCurrentScreen() is GameplayScreen)) return;
+
             int currentDay = (int)run.Day;
             int currentHour = (int)run.Hour;
 

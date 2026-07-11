@@ -2,6 +2,26 @@
 
 ---
 
+## July 11, 2026 (v1.9.2)
+
+### Bug Fixes
+- Fixed the Back key (Backspace) doing nothing on the hero select screen. It now returns to the
+  main menu directly (before, you had to arrow down to the "Back" option and press Enter). It is
+  wired to the game's own back button so it works on every return path
+- Fixed the Season Pass reading collection items (hero skins, card backs, etc.) when opening
+  chests. The collection scene is reused for chest opening, and the mod no longer takes it over in
+  chest mode, so the chest screen is read instead
+- Fixed "Hour 1" / "Day 1" being announced by mistake when returning to the hero select or menu
+  screens after a run. Day and hour progression is now only announced while actually in a run
+
+### New (from a review of the game's patch notes 13-16)
+- Delivery packages (the start-of-run package objective added in game patch 16) are now announced
+  as "Delivery package" when navigating your items, so you can tell which item is the objective
+- Free item encounters now announce that the selection is free (the item rarity was already read
+  via its tier)
+
+---
+
 ## July 11, 2026 (v1.9.1)
 
 ### Fixes

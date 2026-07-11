@@ -125,6 +125,10 @@ public class SelectionNavigator
                 string questProgress = ItemReader.GetQuestProgress(card);
                 shopName = questProgress != null ? $"{questProgress}: {shopName}" : $"Quest: {shopName}";
             }
+            else if (ItemReader.IsPackageItem(card))
+            {
+                shopName = $"Delivery package: {shopName}";
+            }
             string shopSize = card.Type != ECardType.Skill ? ItemReader.GetSizeName(card) : null;
             string shopTier = ItemReader.GetTierName(card);
 

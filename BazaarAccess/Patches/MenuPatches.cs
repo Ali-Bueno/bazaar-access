@@ -42,9 +42,41 @@ public static class CollectionUIControllerStartPatch
 {
     static void Postfix(TheBazaar.UI.CollectionUIController __instance)
     {
+        // The collection scene is reused for chest-opening (entered from the battle pass, hero
+        // select, main menu chests or purchase-chests with SetStartInCollections(false)). In that
+        // mode the collection wheel isn't shown — the chest scene is (handled by ChestSceneStartPatch).
+        // Our CollectionScreen loads its categories straight from CollectionManager regardless of the
+        // visible UI, so creating it here made the mod read collection items (skins, card backs) over
+        // the chest flow. Only take over when the player is actually browsing collections.
+        if (!IsStartingInCollections())
+        {
+            Plugin.Logger.LogInfo("CollectionUIController.Start - chest mode, leaving it to the chest screen");
+            return;
+        }
+
         Plugin.Logger.LogInfo("CollectionUIController.Start - Creating accessible collection screen");
         var screen = new CollectionScreen(__instance.transform, __instance);
         AccessibilityMgr.SetScreen(screen);
+    }
+
+    /// <summary>
+    /// Reads the game's static _startInCollections flag (set true only for the collection-browsing
+    /// entry point, false for every chest-opening path).
+    /// </summary>
+    private static bool IsStartingInCollections()
+    {
+        try
+        {
+            var field = typeof(TheBazaar.UI.CollectionUIController).GetField("_startInCollections",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            return field != null && (bool)field.GetValue(null);
+        }
+        catch (System.Exception e)
+        {
+            // Fail open: reading collections is a better fallback than staying silent.
+            Plugin.Logger.LogWarning($"IsStartingInCollections failed, assuming collections: {e.Message}");
+            return true;
+        }
     }
 }
 

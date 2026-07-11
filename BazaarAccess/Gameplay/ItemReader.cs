@@ -100,6 +100,9 @@ public static class ItemReader
     public static bool IsQuestItem(Card card)
         => QuestReader.IsQuestItem(card);
 
+    public static bool IsPackageItem(Card card)
+        => QuestReader.IsPackageItem(card);
+
     public static List<string> GetQuestLines(Card card)
         => QuestReader.GetQuestLines(card);
 

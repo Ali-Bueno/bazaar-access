@@ -21,6 +21,10 @@ public class HeroSelectScreen : BaseScreen
 
     private readonly List<HeroItemView> _heroViews = new List<HeroItemView>();
 
+    // Action that returns to the main menu. Wired to both the "Back" menu option and the
+    // Back key, so Backspace works without navigating to the option first.
+    private System.Action _backAction;
+
     public HeroSelectScreen(Transform root) : base(root)
     {
     }
@@ -240,12 +244,39 @@ public class HeroSelectScreen : BaseScreen
     }
 
     /// <summary>
-    /// Adds the back button with a fixed "Back" label.
+    /// Adds the back button option and wires the Back key to return to the main menu.
     /// The back button is a ButtonCustom that may not have visible text.
     /// </summary>
     private void AddBackButton()
     {
-        // First try standard button names
+        _backAction = ResolveBackAction();
+        if (_backAction != null)
+            Menu.AddOption(() => "Back", () => _backAction());
+    }
+
+    /// <summary>
+    /// Resolves the action that returns to the main menu. Prefers the game's own
+    /// HeroSelectView back button (whose click is wired to SwitchView("MainMenu")),
+    /// falling back to name-based searches for older/other layouts.
+    /// </summary>
+    private System.Action ResolveBackAction()
+    {
+        // Preferred: the game's hero-select back button. BackButtonController is a public
+        // property on the same GameObject as the ButtonCustom whose MouseClickEvent triggers
+        // HeroSelectView.Back(). Using it avoids resolving a stray "back" button from another
+        // view that may be present after exiting a run.
+        var heroSelectView = Object.FindObjectOfType<HeroSelectView>();
+        if (heroSelectView != null && heroSelectView.BackButtonController != null)
+        {
+            var backButton = heroSelectView.BackButtonController.GetComponent<ButtonCustom>();
+            if (backButton != null)
+            {
+                Plugin.Logger.LogInfo("HeroSelectScreen: Back wired to HeroSelectView.BackButtonController");
+                return () => backButton.OnMouseClickCustom();
+            }
+        }
+
+        // Fallback: standard button names
         string[] standardNames = { "Btn_Back", "BackButton" };
         foreach (var name in standardNames)
         {
@@ -253,14 +284,11 @@ public class HeroSelectScreen : BaseScreen
             if (!string.IsNullOrEmpty(text) && text != name && !text.ToLower().Contains("button"))
             {
                 var buttonName = name;
-                Menu.AddOption(
-                    () => GetButtonTextByName(buttonName),
-                    () => ClickButtonByName(buttonName));
-                return;
+                return () => ClickButtonByName(buttonName);
             }
         }
 
-        // Look for ButtonCustom named backButton (like in HeroSelectView)
+        // Fallback: any active ButtonCustom named "back"
         var buttonCustoms = Object.FindObjectsOfType<ButtonCustom>();
         foreach (var bc in buttonCustoms)
         {
@@ -268,15 +296,12 @@ public class HeroSelectScreen : BaseScreen
             if (goName.Contains("back") && bc.gameObject.activeInHierarchy)
             {
                 var button = bc; // Capture for closure
-                Menu.AddOption(
-                    () => "Back",
-                    () => button.OnMouseClickCustom());
-                Plugin.Logger.LogInfo($"HeroSelectScreen: Added back ButtonCustom: {bc.gameObject.name}");
-                return;
+                Plugin.Logger.LogInfo($"HeroSelectScreen: Back wired to ButtonCustom: {bc.gameObject.name}");
+                return () => button.OnMouseClickCustom();
             }
         }
 
-        // Last resort: look for any button that might be a back button by searching all buttons
+        // Last resort: any button that looks like a back/return/home button
         var allButtons = Object.FindObjectsOfType<UnityEngine.UI.Button>();
         foreach (var btn in allButtons)
         {
@@ -285,13 +310,27 @@ public class HeroSelectScreen : BaseScreen
                 && btn.gameObject.activeInHierarchy && btn.interactable)
             {
                 var button = btn;
-                Menu.AddOption(
-                    () => "Back",
-                    () => button.onClick.Invoke());
-                Plugin.Logger.LogInfo($"HeroSelectScreen: Added back button: {btn.gameObject.name}");
-                return;
+                Plugin.Logger.LogInfo($"HeroSelectScreen: Back wired to button: {btn.gameObject.name}");
+                return () => button.onClick.Invoke();
             }
         }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Intercepts the Back key to return to the main menu. The base menu has no onBack
+    /// handler, so without this Backspace would do nothing on this screen.
+    /// </summary>
+    public override void HandleInput(AccessibleKey key)
+    {
+        if (key == AccessibleKey.Back && _backAction != null)
+        {
+            _backAction();
+            return;
+        }
+
+        base.HandleInput(key);
     }
 
     private void FindHeroViews()

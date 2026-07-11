@@ -76,6 +76,9 @@ internal static class DetailLineBuilder
             parts.Add(questProgress ?? "Quest");
         }
 
+        if (QuestReader.IsPackageItem(card))
+            parts.Add("Delivery package");
+
         if (!string.IsNullOrEmpty(tempState))
             parts.Add(tempState);
 
@@ -301,6 +304,9 @@ internal static class DetailLineBuilder
                 else
                     lines.Add("Quest item");
             }
+
+            if (QuestReader.IsPackageItem(card))
+                lines.Add("Delivery package");
 
             string tags = CardProperties.GetTags(card);
             if (!string.IsNullOrEmpty(tags)) lines.Add(tags);

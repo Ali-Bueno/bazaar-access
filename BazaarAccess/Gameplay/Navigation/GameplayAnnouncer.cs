@@ -158,6 +158,16 @@ public class GameplayAnnouncer
             _ => "Unknown"
         };
 
+        // Free item encounters (patch 16.0) advertise a rarity but no price. The per-item tier
+        // is already read; flag the selection as free so the missing price reads as intentional.
+        // "rewards" (Loot) is already implicitly free, so skip the prefix there to avoid redundancy.
+        if (_nav.CurrentSection == NavigationSection.Selection
+            && SelectionNavigator.IsSelectionFree()
+            && name != "rewards")
+        {
+            name = $"Free {name}";
+        }
+
         TolkWrapper.Speak($"{name}, {count} items");
         _nav.TriggerVisualSelection();
     }

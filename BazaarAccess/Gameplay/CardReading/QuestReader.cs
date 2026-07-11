@@ -20,6 +20,16 @@ internal static class QuestReader
     }
 
     /// <summary>
+    /// True when the card is a delivery package (Farai's package objective, added in patch 16.0).
+    /// Packages carry the Package hidden tag and are handed to the player at the start of a run.
+    /// </summary>
+    public static bool IsPackageItem(Card card)
+    {
+        if (card == null) return false;
+        return card.HiddenTags != null && card.HiddenTags.Contains(EHiddenTag.Package);
+    }
+
+    /// <summary>
     /// Gets quest condition lines showing requirements, progress, and rewards.
     /// </summary>
     public static List<string> GetQuestLines(Card card)
