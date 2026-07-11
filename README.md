@@ -71,6 +71,7 @@ A BepInEx plugin that makes The Bazaar accessible for blind players using screen
 | **Ctrl+Up/Down** | Read item details line by line / Navigate hero stats |
 | **Ctrl+Left/Right** | Switch hero subsection (Stats <-> Skills) |
 | **I** | Show item properties/keywords descriptions |
+| **X** | Inspect item (full details panel), or preview a combat encounter's monster loadout |
 
 ### Game Actions & Info
 
@@ -149,6 +150,9 @@ A BepInEx plugin that makes The Bazaar accessible for blind players using screen
 * Real-time combat narration
 * Victory/defeat announcements
 * Item property descriptions (I key)
+* Item inspect panel (X key) for full item details
+* Combat encounter preview (X on a combat encounter): monster loadout, level, experience, gold
+* Rage / enrage stat reading and announcements
 * Visual feedback for sighted spectators
 * Tutorial support
 * Login/account creation accessible

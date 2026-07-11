@@ -56,6 +56,8 @@ up/down arrows, Read card text line by line and hero stats
 Alternative keys,   Ctrl+Up/Down       Read item details line by line / Navigate hero stats
   Ctrl+Left/Right    Switch hero subsection (Stats <-> Skills)
   I                  Show item properties/keywords descriptions
+  X                  Inspect item (full details panel), or preview a
+                     combat encounter's monster loadout
 
 GAME ACTIONS
   E                  Exit current state
@@ -125,6 +127,9 @@ FEATURES
 - Real-time combat narration
 - Victory/defeat announcements
 - Item property descriptions (I key)
+- Item inspect panel (X key) for full item details
+- Combat encounter preview (X on a combat encounter): monster loadout, level, exp, gold
+- Rage / enrage stat reading and announcements
 - Visual feedback for sighted spectators
 - Tutorial support
 - Login/account creation accessible
