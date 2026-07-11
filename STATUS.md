@@ -48,13 +48,13 @@
 | Screen abstractions | `Accessibility/BaseScreen.cs`, `BaseUI.cs`, `AccessibleMenu.cs`, `AccessibilityMgr.cs` | src tree |
 
 ## Next step
-Options dialog rework + aura-tooltip attribute reading verified in-game (v1.9.1, committed). Remaining pending pass: confirm the merged PR features (item inspect `x`, combat encounter preview, shop details, native recap stats, rage/enrage) and the 6 API-adaptation fixes behave at runtime.
+**v1.9.2 released publicly** (first public release since v1.8.5 — v1.9.0/1.9.1 were committed but never released). Merged PR features (item inspect `x`, combat encounter preview, shop details, native recap stats, rage/enrage) and the API-adaptation fixes are verified in gameplay. v1.9.2 also fixed: hero-select Back key (Backspace → main menu), Season Pass reading collection items in chest mode, and a stray "Hour 1" announce on the menus after a run; plus "Delivery package" objective (patch-16 Farai) and a "Free" announcement on free-item selections. No pending pass — monitor community bug reports.
 
 ## Known issues / open questions
 - Combat is intentionally key-gated (only V/F/H etc. active during a fight) — confirm no gameplay key collisions after game updates.
 - **Audit 2026-07-11** (mod code vs current game build): Skins/Collection menu and all other screens/UI verified intact. Two non-fatal breakages found from the update:
   - **Fixed** — `OptionsUI` keybind action names: game switched `KeyBindController._keybindAction` (enum) → `_action`/`_resolvedAction` (new Input System). `GetKeybindLabel` now reads the InputAction name by reflection.
   - **Fixed** — `PopupPatch.ImageTutorialPatch`/`HidePatch`: game replaced `ImageSequenceDialogController` with `TheBazaar.SequenceDialogController` (`: BasePointerDialogController : AbstractFeatureComponent`). Patch now hooks its `Show`/`Hide`, reads the `_text` field (recursive field lookup up the hierarchy), and continues via `_nodeSequenceComponent`. Matters for **new players** who hit the image tutorials.
-- The 2026-07-01 game build made several game APIs synchronous (`Data.GetStatic`, `GetMonsterTemplate`) and reshaped others (`TooltipContext`, `ChestRewardResponse`, challenge lookup). Merged PR #6/#7 targeted an earlier build; 6 compile errors were fixed locally on 2026-07-11 to match the installed build. Runtime behavior of those paths is not yet verified in-game.
+- The 2026-07-01 game build made several game APIs synchronous (`Data.GetStatic`, `GetMonsterTemplate`) and reshaped others (`TooltipContext`, `ChestRewardResponse`, challenge lookup). Merged PR #6/#7 targeted an earlier build; 6 compile errors were fixed locally on 2026-07-11 to match the installed build. Runtime behavior verified in gameplay (v1.9.2).
 
 **Detailed history:** see Progress.md and BazaarAccess/changelog.txt.
