@@ -21,7 +21,7 @@ internal static class CombatEncounterPreviewFactory
 
         try
         {
-            TMonster monster = combatEncounter.GetMonsterTemplate().GetAwaiter().GetResult();
+            TMonster monster = combatEncounter.GetMonsterTemplate();
             if (monster?.Player == null)
                 return null;
 
@@ -95,7 +95,7 @@ internal static class CombatEncounterPreviewFactory
 
             try
             {
-                var staticData = Data.GetStatic().GetAwaiter().GetResult();
+                var staticData = Data.GetStatic();
                 var template = staticData.GetCardById(instance.TemplateId);
                 if (template == null)
                     return null;

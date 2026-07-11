@@ -4,6 +4,7 @@ using HarmonyLib;
 using UnityEngine;
 using TheBazaar;
 using TheBazaar.UI;
+using System.Reflection;
 
 namespace BazaarAccess.Patches;
 
@@ -11,9 +12,11 @@ namespace BazaarAccess.Patches;
 /// Hook en OptionsDialogController para hacer accesible el menú de opciones.
 /// Solo activa la UI cuando el menú está realmente visible.
 /// </summary>
-[HarmonyPatch(typeof(OptionsDialogController), "OnEnable")]
+[HarmonyPatch]
 public static class OptionsDialogShowPatch
 {
+    static MethodBase TargetMethod() => AccessTools.Method(AccessTools.TypeByName("OptionsDialogController"), "OnEnable");
+
     private static OptionsUI _currentOptionsUI;
     private static bool _isOpen = false;
     private static float _lastCloseTime = 0f;
@@ -104,9 +107,11 @@ public static class OptionsDialogShowPatch
     public static OptionsUI GetCurrentUI() => _currentOptionsUI;
 }
 
-[HarmonyPatch(typeof(OptionsDialogController), "OnDisable")]
+[HarmonyPatch]
 public static class OptionsDialogHidePatch
 {
+    static MethodBase TargetMethod() => AccessTools.Method(AccessTools.TypeByName("OptionsDialogController"), "OnDisable");
+
     [HarmonyPostfix]
     public static void Postfix(MonoBehaviour __instance)
     {

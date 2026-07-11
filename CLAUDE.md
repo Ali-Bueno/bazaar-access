@@ -1,5 +1,10 @@
 # BazaarAccess - Claude Guide
 
+> **Shared accessibility playbook:** this mod follows the shared playbook at `D:\code\modding projects`
+> (`PRINCIPLES.md` engineering ground rules + `reference/` library — PRISM integration, audio-navigation,
+> UI specs, per-engine screen-reader transport). The file below holds the game-specific rules for The Bazaar.
+> Progress and next steps live in this repo's `STATUS.md` — open it first.
+
 A BepInEx mod making "The Bazaar" accessible to blind players via screen reader (Tolk) and full keyboard navigation.
 
 ## Tech Stack
@@ -14,7 +19,9 @@ BazaarAccess/
 ├── Accessibility/    # Framework: AccessibilityMgr, BaseScreen, BaseUI, AccessibleMenu
 ├── Core/             # TolkWrapper, KeyboardNavigator, MessageBuffer, CoroutineHelper
 ├── Gameplay/         # Main gameplay logic (see sub-modules below)
-│   ├── Combat/       # HealthTracker, CardStatsTracker, EffectFormatter
+│   ├── Combat/       # HealthTracker, EffectFormatter (CardStatsTracker removed Jul 2026 → native recap stats)
+│   ├── ItemInspect/  # ItemInspectNavigator (X = item inspect panel)
+│   ├── CombatEncounterPreview/  # Factory/Model/Navigator (X on combat encounters = monster loadout preview)
 │   ├── Navigation/   # Sub-navigators (see below)
 │   │   ├── NavigationTypes.cs      # Enums: NavigationSection, RecapSection, NavItemType, NavItem
 │   │   ├── BoardStashNavigator.cs  # Board/stash refresh, slot nav, stash toggle, capacity
@@ -84,7 +91,8 @@ Composition-based navigation used by all screens/UIs:
 | Add new popup/dialog | `UI/`, extend `BaseUI`, register in `PopupPatch.cs` |
 | Hook game events | `Patches/StateChangePatch.cs` (subscribe), `CombatEventHandler.cs`, `CardEventHandler.cs`, `ErrorEventHandler.cs` |
 | Modify item reading | `Gameplay/CardReading/` (sub-modules), `Gameplay/ItemReader.cs` (facade) |
-| Combat narration | `Gameplay/CombatDescriber.cs`, `Combat/HealthTracker.cs`, `Combat/CardStatsTracker.cs`, `Combat/EffectFormatter.cs` |
+| Combat narration | `Gameplay/CombatDescriber.cs`, `Combat/HealthTracker.cs`, `Combat/EffectFormatter.cs` |
+| Combat recap stats | `Gameplay/CardReading/RecapStatsReader.cs` (native game recap; replaced `CardStatsTracker`) |
 | Keyboard shortcuts | `Core/KeyboardNavigator.cs` (mapping), `GameplayScreen.cs` (router), `CombatInputHandler.cs`, `ReplayInputHandler.cs` |
 | Item actions | `Gameplay/ActionHelper.cs` (buy/sell/move/reorder), `PedestalManager.cs` (upgrade/enchant) |
 | Board/stash data | `Navigation/BoardStashNavigator.cs` (refresh, slots, stash toggle, capacity) |
@@ -821,3 +829,60 @@ Data.CardAndSkillLookup.GetCardController(Card cardInstance)
   - Falls back to card attribute only when health diff data is unavailable
 - `CombatActionData` fields used: `HealthBefore` (float), `HealthAfter` (float) — target's health before/after the effect
 - **Edge case**: Overkill damage may be slightly undercounted (health can't go below 0), but this is far more accurate than base stats which completely ignore all skill amplification
+
+---
+
+## Game Update (Bazaar patch, 2026-07-01 build) + PR #6/#7 Merge (Jul 11, 2026)
+
+The game auto-updated to the **2026-07-01 build** (DLLs in `TheBazaar_Data/Managed`), which broke the mod's compile. Contributions merged from PRs #6 (readme QoL) and #7 (`Neurrone/bazaar-13-fixes`) added new features but were written against an **earlier** build, so 6 compile errors remained against the installed DLLs and were fixed locally.
+
+### Re-decompiled reference
+- `bazaar code/` was **stale (Feb 2026)**. Re-decompiled all four game assemblies from the 2026-07-01 build with `ilspycmd` (already installed as a global dotnet tool). Always trust `bazaar code/` only after confirming its date matches the installed DLLs — the game updates frequently.
+
+### Game API changes in this build (the source of the 6 fixes)
+- **`Data.GetStatic()` is now synchronous** — returns `JsonGameDataManager` directly (was `Task<JsonGameDataManager>`). Remove `.Result` / `.Status` / `.GetAwaiter().GetResult()` / `await`. (`PedestalManager.cs`, `CombatEncounterPreviewFactory.cs`)
+- **`CombatEncounterCard.GetMonsterTemplate()` is now synchronous** — returns `TMonster` directly (was awaitable). (`CombatEncounterPreviewFactory.cs`)
+- **`ChallengeDataManager` removed** — no more `Services.Get<ChallengeDataManager>()` / `TryGetChallenge`. Use `Data.GetStatic().GetChallengeById(Guid)` → `TChallenge` (fields: `Localization`, `CompletionRequirement`, `XpReward`). `ChallengeProgress.Id` is a `Guid`. (`BattlePassScreen.cs`)
+- **`TooltipContext` is now a `readonly struct`** with a primary constructor `(Card instance, ITCard template, ValueContext valueContext)` — object-initializer syntax fails (fields are readonly). `TooltipBuilder.Render()` now takes **0 args** (was `Render(true)`). (`TextResolver.cs`)
+- **`ChestRewardResponse.bonusChest` (Guid[]) → `bonusChestCount` (int)**. (`ChestRewardsUI.cs`)
+
+### Second build the same day (2026-07-11) — internal types + total patch failure
+The game updated **again** on 2026-07-11 (only `TheBazaarRuntime.dll` + `Assembly-CSharp*.dll` changed). It made two patched types **`internal`** (both in the **global namespace**): `FightMenuDialog` and `OptionsDialogController`. The patched methods (`ShowDialogs`/`HideDialogs`/`OnOptionsClick`/`OnOptionsClosed`, `OnEnable`/`OnDisable`) are unchanged.
+
+**Symptom:** the mod read *nothing* in-game. Root cause chain:
+1. `typeof(FightMenuDialog)` no longer compiles (type is internal).
+2. The obvious "fix" — `[HarmonyPatch("FightMenuDialog", "ShowDialogs")]` — **compiles but fails at runtime**. Harmony's string-name attribute overload resolves the type with `Type.GetType(name)`, which only searches the *calling* assembly + mscorlib — NOT other assemblies like `TheBazaarRuntime`. It threw `Could not load type '.FightMenuDialog'`.
+3. That exception came out of `Harmony.PatchAll()`, which is **all-or-nothing**: one failing patch class aborted *every* patch → the entire mod went dark.
+
+- **Correct fix for internal / cross-assembly types**: patch via `TargetMethod()` + `AccessTools.TypeByName` (which DOES scan all loaded assemblies). Do NOT use the `[HarmonyPatch("Name", "Method")]` string overload for game types.
+  ```csharp
+  [HarmonyPatch]
+  public static class FightMenuShowPatch
+  {
+      static MethodBase TargetMethod() =>
+          AccessTools.Method(AccessTools.TypeByName("FightMenuDialog"), "ShowDialogs");
+      [HarmonyPostfix] public static void Postfix(MonoBehaviour __instance) { ... }
+  }
+  ```
+- **Resilience fix (`Plugin.cs`)**: replaced `_harmony.PatchAll()` with a loop that runs `CreateClassProcessor(type).Patch()` per type inside a try/catch. A single broken patch (from a future game update) now only disables that one hook and logs it, instead of killing the whole mod. The log line `Harmony patches applied: N patched, M failed` tells you at a glance if a game update broke a hook.
+- **Lesson**: The Bazaar can ship multiple builds in a single day. Before trusting `bazaar code/`, confirm its decompile date matches the installed DLL dates; re-decompile with `ilspycmd` when they drift. And a clean compile does NOT mean the patches resolve at runtime — check `BepInEx/LogOutput.log` for `Could not load type` / `failed` after a game update.
+
+### Options menu mixed with gameplay after opening from pause (2026-07-11)
+- **Symptom**: opening Settings from the pause menu leaked focus to the gameplay screen (arrows read gameplay while options were open).
+- **Root cause**: the new build opens options as a **separate popup** — `FightMenuDialog.OnOptionsClick()` calls `_popupManager.ShowSettings(...)` which enables `OptionsDialogController` (→ `OptionsDialogShowPatch.OnEnable` pushes `OptionsUI`). The old field `optionsDialogParent` on `FightMenuDialog` is **gone**, so the mod's old coroutine path was dead. `FightMenuOptionsClickPatch` was still **popping the FightMenuUI off the stack**; on the first open the popup loads async, so the stack briefly emptied → `AccessibilityMgr` gave focus (and `OnFocus`) to the gameplay screen. Open order also raced (async first time, synchronous when the popup is cached).
+- **Fix (`FightMenuPatch.cs`)**: `FightMenuOptionsClickPatch.Postfix` no longer removes the FightMenuUI. The `OptionsUI` simply stacks **on top** (via `OnEnable`); closing options (`OnDisable`) pops it and reveals the pause menu underneath — no empty-stack window, and the pause menu restores automatically. Removed the dead `optionsDialogParent`/`CreateOptionsUIDelayed` mechanism.
+- **Note**: This supersedes the older "Don't reset `_isOpen` when going to Options / check UI stack before creating" guidance in the **Pause Menu System** section above — the options UI is now driven by the popup's `OnEnable`/`OnDisable`, not by the click patch.
+
+### Image/text tutorials (new players) re-hooked (2026-07-11)
+- The build removed `ImageSequenceDialogController`. The replacement is **`TheBazaar.SequenceDialogController`** (`: BasePointerDialogController : AbstractFeatureComponent`), the text/image tutorial popup. `SequenceArrowDialogController` is a separate pointer-only MonoBehaviour that just delegates to it — no text of its own, so hooking `SequenceDialogController` covers the readable content.
+- **Fix (`PopupPatch.cs` `ImageTutorialPatch`/`ImageTutorialHidePatch`)**: `Prepare()` now resolves `TheBazaar.SequenceDialogController` via `AccessTools.TypeByName` and patches its `Show`/`Hide`. The tutorial text comes from the `_text` field (set localized in `SequenceDialogController.Show()`); continue is `((INodeSequence)_nodeSequenceComponent).Completed()`. `_text` lives on `BasePointerDialogController` and `_nodeSequenceComponent` on `AbstractFeatureComponent`, so use `GetFieldRecursive` — `Type.GetField(NonPublic|Instance)` does NOT return non-public fields inherited from base classes.
+- **Analyzer gotcha**: the BepInEx Harmony analyzer treats a helper parameter named `type` inside a `[HarmonyPatch]` class as a patch parameter and warns `Harmony003` on reassigning it. Name loop/helper vars anything but the reserved Harmony names.
+
+### New feature areas from the PRs (do not re-architect without reading them)
+- `Gameplay/ItemInspect/ItemInspectNavigator.cs` — item inspect panel (right-click); press **X** on an item or use the context menu.
+- `Gameplay/CombatEncounterPreview/` (`Factory`, `Model`, `Navigator`) — press **X** on a combat encounter to preview the monster loadout; also reads monster level/exp/gold.
+- `Gameplay/ShopItemMenuHandler.cs` — shop item "Details" menu entry; **buy confirmation removed** (item inspect replaces it).
+- `Gameplay/CardReading/RecapStatsReader.cs` — uses the game's **native recap statistics**; the custom `Gameplay/Combat/CardStatsTracker.cs` was **deleted**.
+- `UI/ConfirmActionUI.cs` **deleted** — upgrade/enchant/buy/sell confirm menus removed; upgrade & enchant previews (which were unreliable) removed in favor of the item inspect panel.
+- Confirmation menus that remain now cycle with **Up/Down** (was Left/Right) for consistency.
+- Rage/enrage: hero + opponent rage stat is readable; gaining/losing enrage is announced.

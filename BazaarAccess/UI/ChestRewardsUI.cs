@@ -62,7 +62,7 @@ public class ChestRewardsUI : BaseUI
                 Gems = reward.gems,
                 DuplicateGems = reward.DuplicateGems,
                 RankedVouchers = reward.rankedVouchers,
-                BonusChests = reward.bonusChest?.Length ?? 0,
+                BonusChests = reward.bonusChestCount,
                 HasCollectible = !string.IsNullOrEmpty(reward.collectibleItemId)
             };
 

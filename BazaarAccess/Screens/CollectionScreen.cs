@@ -4,8 +4,10 @@ using System.Reflection;
 using BazaarAccess.Accessibility;
 using BazaarAccess.Core;
 using BazaarGameShared;
+using BazaarGameShared.Domain.Core.Types;
 using TheBazaar;
 using TheBazaar.AppFramework;
+using TheBazaar.Assets.Scripts.ScriptableObjectsScripts;
 using TheBazaar.UI;
 using UnityEngine;
 
@@ -294,10 +296,24 @@ public class CollectionScreen : BaseScreen
     {
         try
         {
-            // Ensure current hero is set before equipping
-            SetCurrentHeroForCollections();
             TolkWrapper.Speak($"Equipping {item.Name}");
-            await _collectionManager.EquipCollectible(item);
+
+            // A skin belongs to a specific hero (SkinAssetDataSO.hero). Equip it to THAT
+            // hero, not to Data.SelectedHero (the last hero picked in hero-select), or the
+            // game plays the wrong hero's audio/loadout. Use the explicit-hero overload.
+            if (TryGetSkinHero(item, out var skinHero))
+            {
+                _collectionManager.SetCurrentHero(skinHero);
+                Plugin.Logger.LogInfo($"CollectionScreen: Equipping {item.Name} to its hero {skinHero}");
+                await _collectionManager.EquipCollectible(item, skinHero);
+            }
+            else
+            {
+                // Non-skin collectibles: keep the selected-hero context.
+                SetCurrentHeroForCollections();
+                await _collectionManager.EquipCollectible(item);
+            }
+
             TolkWrapper.Speak($"{item.Name} equipped");
         }
         catch (Exception e)
@@ -305,6 +321,30 @@ public class CollectionScreen : BaseScreen
             Plugin.Logger.LogError($"Failed to equip item: {e.Message}");
             TolkWrapper.Speak("Failed to equip item");
         }
+    }
+
+    // BazaarSaleItem.AssetData is internal; read it by reflection to get the skin's hero.
+    private static readonly FieldInfo _assetDataField =
+        typeof(BazaarSaleItem).GetField("AssetData", BindingFlags.NonPublic | BindingFlags.Instance);
+
+    private bool TryGetSkinHero(BazaarSaleItem item, out EHero hero)
+    {
+        hero = default;
+        if (item.CollectionType != BazaarInventoryTypes.ECollectionType.HeroSkins)
+            return false;
+        try
+        {
+            if (_assetDataField?.GetValue(item) is SkinAssetDataSO skin)
+            {
+                hero = skin.hero;
+                return true;
+            }
+        }
+        catch (Exception e)
+        {
+            Plugin.Logger.LogWarning($"CollectionScreen: could not read skin hero: {e.Message}");
+        }
+        return false;
     }
 
     private void GoBack()

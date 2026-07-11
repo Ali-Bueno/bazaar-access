@@ -146,8 +146,8 @@ public class BattlePassScreen : BaseScreen
     {
         try
         {
-            var challengeManager = Services.Get<ChallengeDataManager>();
-            if (challengeManager != null && challengeManager.TryGetChallenge(challenge.Id.ToString(), out var data))
+            var data = Data.GetStatic()?.GetChallengeById(challenge.Id);
+            if (data != null)
             {
                 string title = data.Localization?.Title?.GetLocalizedText() ?? "Challenge";
                 string desc = data.Localization?.Description?.GetLocalizedText() ?? "";
@@ -191,8 +191,8 @@ public class BattlePassScreen : BaseScreen
 
         try
         {
-            var challengeManager = Services.Get<ChallengeDataManager>();
-            if (challengeManager != null && challengeManager.TryGetChallenge(challenge.Id.ToString(), out var data))
+            var data = Data.GetStatic()?.GetChallengeById(challenge.Id);
+            if (data != null)
             {
                 // Check if completed but not claimed
                 bool isComplete = challenge.Progress >= data.CompletionRequirement;

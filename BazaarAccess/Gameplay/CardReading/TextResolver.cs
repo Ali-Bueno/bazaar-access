@@ -134,15 +134,10 @@ internal static class TextResolver
             if (run != null)
             {
                 var valueContext = new ValueContext(run, card, null);
-                var tooltipContext = new TooltipContext
-                {
-                    Instance = card,
-                    Template = card.Template,
-                    ValueContext = valueContext
-                };
+                var tooltipContext = new TooltipContext(card, card.Template, valueContext);
 
                 var builder = TooltipBuilder.Create(tooltipContext, localizedText);
-                resolved = builder.Render(true);
+                resolved = builder.Render();
             }
         }
         catch (Exception ex)

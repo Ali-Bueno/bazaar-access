@@ -220,18 +220,27 @@ public class OptionsUI : BaseUI
 
     private string GetKeybindLabel(MonoBehaviour keybindController)
     {
-        // Obtener el nombre de la acción
+        // Obtener el nombre de la acción.
+        // El build actual usa el nuevo Input System: KeyBindController ya no expone un
+        // enum `_keybindAction`, sino `_action` (InputActionReference) y `_resolvedAction`
+        // (InputAction, resuelto en OnEnable). Leemos el nombre por reflexión para no
+        // depender del ensamblado del Input System.
         string actionName = "Keybind";
-        var actionField = keybindController.GetType().GetField("_keybindAction",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var ctrlType = keybindController.GetType();
+        var actionValue =
+            ctrlType.GetField("_resolvedAction", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(keybindController)
+            ?? ctrlType.GetField("_action", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(keybindController);
 
-        if (actionField != null)
+        if (actionValue != null)
         {
-            var actionValue = actionField.GetValue(keybindController);
-            if (actionValue != null)
+            var rawName = actionValue.GetType().GetProperty("name")?.GetValue(actionValue) as string;
+            if (!string.IsNullOrEmpty(rawName))
             {
-                // Convertir enum a nombre legible
-                actionName = ConvertActionToReadableName(actionValue.ToString());
+                // El nombre puede venir como "Map/Action"; quedarnos con la última parte.
+                int slash = rawName.LastIndexOf('/');
+                if (slash >= 0 && slash < rawName.Length - 1)
+                    rawName = rawName.Substring(slash + 1);
+                actionName = ConvertActionToReadableName(rawName);
             }
         }
 

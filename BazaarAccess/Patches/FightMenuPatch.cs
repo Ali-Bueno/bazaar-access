@@ -9,9 +9,11 @@ namespace BazaarAccess.Patches;
 /// <summary>
 /// Hook en FightMenuDialog para hacer accesible el menú de pausa durante el gameplay.
 /// </summary>
-[HarmonyPatch(typeof(FightMenuDialog), "ShowDialogs")]
+[HarmonyPatch]
 public static class FightMenuShowPatch
 {
+    static MethodBase TargetMethod() => AccessTools.Method(AccessTools.TypeByName("FightMenuDialog"), "ShowDialogs");
+
     private static FightMenuUI _currentUI;
     private static bool _isOpen = false;
     private static float _lastCloseTime = 0f;
@@ -68,9 +70,11 @@ public static class FightMenuShowPatch
     public static FightMenuUI GetCurrentUI() => _currentUI;
 }
 
-[HarmonyPatch(typeof(FightMenuDialog), "HideDialogs")]
+[HarmonyPatch]
 public static class FightMenuHidePatch
 {
+    static MethodBase TargetMethod() => AccessTools.Method(AccessTools.TypeByName("FightMenuDialog"), "HideDialogs");
+
     [HarmonyPostfix]
     public static void Postfix()
     {
@@ -101,57 +105,24 @@ public static class FightMenuHidePatch
 /// <summary>
 /// Hook para cuando se abre Options desde el menú de pausa.
 /// </summary>
-[HarmonyPatch(typeof(FightMenuDialog), "OnOptionsClick")]
+[HarmonyPatch]
 public static class FightMenuOptionsClickPatch
 {
+    static MethodBase TargetMethod() => AccessTools.Method(AccessTools.TypeByName("FightMenuDialog"), "OnOptionsClick");
+
     [HarmonyPostfix]
-    public static void Postfix(MonoBehaviour __instance)
+    public static void Postfix()
     {
         Plugin.Logger.LogInfo("OnOptionsClick: Abriendo settings");
 
-        // Cerrar el FightMenuUI pero NO resetear _isOpen para evitar que se cree otra
-        var fightMenuUI = FightMenuShowPatch.GetCurrentUI();
-        if (fightMenuUI != null)
-        {
-            AccessibilityMgr.HideUI(fightMenuUI);
-            // NO llamar SetClosed() - mantenemos _isOpen = true
-        }
-
-        // Buscar el optionsDialogParent y crear OptionsUI
-        var optionsField = __instance.GetType().GetField("optionsDialogParent",
-            BindingFlags.NonPublic | BindingFlags.Instance);
-
-        if (optionsField != null)
-        {
-            var optionsController = optionsField.GetValue(__instance) as MonoBehaviour;
-            if (optionsController != null)
-            {
-                Plugin.Instance.StartCoroutine(CreateOptionsUIDelayed(optionsController.transform));
-            }
-        }
-    }
-
-    private static System.Collections.IEnumerator CreateOptionsUIDelayed(Transform root)
-    {
-        yield return null;
-        yield return null;
-
-        // Si hay una OptionsUI vieja, limpiarla
-        var oldUI = OptionsDialogShowPatch.GetCurrentUI();
-        if (oldUI != null)
-        {
-            Plugin.Logger.LogInfo("Limpiando OptionsUI anterior");
-            AccessibilityMgr.HideUI(oldUI);
-            OptionsDialogShowPatch.SetClosed();
-        }
-
-        if (root != null && root.gameObject.activeInHierarchy)
-        {
-            var optionsUI = new OptionsUI(root);
-            OptionsDialogShowPatch.RegisterUI(optionsUI);
-            AccessibilityMgr.ShowUI(optionsUI);
-            Plugin.Logger.LogInfo("OptionsUI abierta desde menú de pausa");
-        }
+        // El juego abre las opciones como un popup aparte
+        // (_popupManager.ShowSettings -> OptionsDialogController.OnEnable), que
+        // OptionsDialogShowPatch apila encima como OptionsUI.
+        //
+        // NO sacamos la FightMenuUI del stack: al dejarla debajo evitamos que el stack
+        // quede vacío (y que la pantalla de gameplay reciba el foco y se mezcle con las
+        // opciones) durante la transición, y conseguimos que al cerrar las opciones se
+        // restaure automáticamente el menú de pausa que hay debajo.
     }
 }
 
@@ -159,9 +130,11 @@ public static class FightMenuOptionsClickPatch
 /// Hook para cuando se cierra Options.
 /// Escape cierra todo el sistema de pausa, así que solo limpiamos OptionsUI.
 /// </summary>
-[HarmonyPatch(typeof(FightMenuDialog), "OnOptionsClosed")]
+[HarmonyPatch]
 public static class FightMenuOptionsClosedPatch
 {
+    static MethodBase TargetMethod() => AccessTools.Method(AccessTools.TypeByName("FightMenuDialog"), "OnOptionsClosed");
+
     [HarmonyPostfix]
     public static void Postfix(MonoBehaviour __instance)
     {

@@ -108,7 +108,11 @@ public static class PopupHidePatch
 // to avoid duplicate announcements
 
 /// <summary>
-/// Hook en ImageSequenceDialogController (tutoriales con imágenes).
+/// Hook en SequenceDialogController (tutoriales con texto/imagen).
+/// El build actual reemplazó ImageSequenceDialogController por SequenceDialogController
+/// (namespace TheBazaar): SequenceDialogController -> BasePointerDialogController ->
+/// AbstractFeatureComponent. El texto vive en el campo _text (ya localizado en Show()) y
+/// _nodeSequenceComponent (en AbstractFeatureComponent) permite continuar el tutorial.
 /// </summary>
 [HarmonyPatch]
 public static class ImageTutorialPatch
@@ -116,22 +120,33 @@ public static class ImageTutorialPatch
     private static MethodBase _targetMethod;
     private static IAccessibleUI _currentUI;
 
+    // Busca un campo no-público recorriendo la jerarquía (GetField no devuelve
+    // campos heredados de clases base).
+    internal static FieldInfo GetFieldRecursive(Type declaringType, string name)
+    {
+        for (var t = declaringType; t != null; t = t.BaseType)
+        {
+            var f = t.GetField(name, BindingFlags.NonPublic | BindingFlags.Instance);
+            if (f != null) return f;
+        }
+        return null;
+    }
+
     static bool Prepare()
     {
         try
         {
-            // ImageSequenceDialogController está en el namespace global
-            var type = typeof(PopupBase).Assembly.GetType("ImageSequenceDialogController");
+            var type = AccessTools.TypeByName("TheBazaar.SequenceDialogController");
             if (type != null)
             {
-                _targetMethod = type.GetMethod("Show", BindingFlags.NonPublic | BindingFlags.Instance);
+                _targetMethod = AccessTools.Method(type, "Show");
                 if (_targetMethod != null)
                 {
-                    Plugin.Logger.LogInfo("ImageTutorialPatch: Found ImageSequenceDialogController.Show");
+                    Plugin.Logger.LogInfo("ImageTutorialPatch: Found SequenceDialogController.Show");
                     return true;
                 }
             }
-            Plugin.Logger.LogWarning("ImageTutorialPatch: Could not find ImageSequenceDialogController.Show - skipping patch");
+            Plugin.Logger.LogWarning("ImageTutorialPatch: Could not find SequenceDialogController.Show - skipping patch");
         }
         catch (Exception ex)
         {
@@ -149,20 +164,25 @@ public static class ImageTutorialPatch
             var monoBehaviour = __instance as MonoBehaviour;
             if (monoBehaviour == null) return;
 
-            // Obtener NodeSequenceComponent
-            var sequenceField = __instance.GetType().GetField("_nodeSequenceComponent",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            var nodeSequence = sequenceField?.GetValue(__instance) as NodeSequenceComponent;
+            // NodeSequenceComponent (heredado de AbstractFeatureComponent) para continuar
+            var nodeSequence = GetFieldRecursive(__instance.GetType(), "_nodeSequenceComponent")
+                ?.GetValue(__instance) as NodeSequenceComponent;
 
-            // Buscar texto
-            string text = "";
-            var tmpTexts = monoBehaviour.GetComponentsInChildren<TMP_Text>(true);
-            foreach (var tmp in tmpTexts)
+            // Texto: preferir el campo _text (ya localizado en SequenceDialogController.Show)
+            string text = GetFieldRecursive(__instance.GetType(), "_text")?.GetValue(__instance) as string;
+            text = TextHelper.CleanText(text ?? "");
+
+            // Fallback: escanear los TMP_Text hijos
+            if (string.IsNullOrWhiteSpace(text))
             {
-                if (!string.IsNullOrWhiteSpace(tmp.text))
+                var tmpTexts = monoBehaviour.GetComponentsInChildren<TMP_Text>(true);
+                foreach (var tmp in tmpTexts)
                 {
-                    text = TextHelper.CleanText(tmp.text);
-                    break;
+                    if (!string.IsNullOrWhiteSpace(tmp.text))
+                    {
+                        text = TextHelper.CleanText(tmp.text);
+                        break;
+                    }
                 }
             }
 
@@ -200,7 +220,7 @@ public static class ImageTutorialPatch
 }
 
 /// <summary>
-/// Hook para detectar cuando se oculta ImageSequenceDialogController.
+/// Hook para detectar cuando se oculta SequenceDialogController.
 /// </summary>
 [HarmonyPatch]
 public static class ImageTutorialHidePatch
@@ -211,10 +231,10 @@ public static class ImageTutorialHidePatch
     {
         try
         {
-            var type = typeof(PopupBase).Assembly.GetType("ImageSequenceDialogController");
+            var type = AccessTools.TypeByName("TheBazaar.SequenceDialogController");
             if (type != null)
             {
-                _targetMethod = type.GetMethod("Hide", BindingFlags.NonPublic | BindingFlags.Instance);
+                _targetMethod = AccessTools.Method(type, "Hide");
                 if (_targetMethod != null)
                 {
                     return true;

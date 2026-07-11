@@ -365,9 +365,7 @@ public static class PedestalManager
                 return info;
             }
 
-            var staticTask = Data.GetStatic();
-            Plugin.Logger.LogInfo($"DetectViaDataApi: GetStatic task status={staticTask.Status}");
-            var staticData = staticTask.Result;
+            var staticData = Data.GetStatic();
             if (staticData == null)
             {
                 Plugin.Logger.LogWarning("DetectViaDataApi: static data manager is null");

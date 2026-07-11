@@ -2,6 +2,47 @@
 
 ---
 
+## July 11, 2026 (v1.9.0)
+
+Big thanks to community contributors **Neurrone** (bazaar-13-fixes) and **mohammad-aloufi**
+(readme improvements) for the new features in this release.
+
+### New Features (contributed by Neurrone)
+- Item inspect panel: press X on any item (or use the context menu) to open the game's full inspect view
+- Combat encounter preview: press X on a combat encounter to preview the monster's loadout
+- Combat encounters now read the monster's level, experience, and gold
+- Rage support: the rage stat is now readable on both your hero and the opponent
+- Enrage announcements: you and the enemy gaining or losing enrage are now announced
+- Shop items now have a "Details" menu entry; buying no longer requires a separate confirmation
+- The focused hero skill is now announced when entering the skills list (fixes single-skill lists not being read)
+
+### Changes
+- Combat recap now uses the game's native recap statistics instead of the mod's custom tracker (more accurate)
+- Upgrade and enchant previews (which were unreliable) were removed in favor of the item inspect panel
+- Buy / sell / upgrade / enchant confirmation menus now cycle with Up / Down (was Left / Right) for consistency with every other screen
+- Battle pass challenges are now read from the client cache; rank and play-mode use the new game cache API
+- Chest rewards handle the updated collectible IDs
+
+### Game Update Compatibility (2026-07 game builds)
+- Updated the mod to compile and run against the latest game builds, which made several game APIs
+  synchronous and reshaped others (static data access, monster templates, tooltip context,
+  challenge lookup, and chest reward data)
+- Fixed the mod not reading anything at all after the latest game update, which made the pause
+  menu and options dialog types internal and caused every patch to fail to load
+- Patching is now resilient: if a future game update breaks one hook, only that hook is disabled
+  instead of the whole mod going silent
+- Fixed the options menu leaking focus to the gameplay screen when opened from the pause menu
+- Fixed keybind entries in the options menu not reading the action name (new Input System)
+- Re-hooked image/text tutorial dialogs (SequenceDialogController) so new players' tutorials are read
+- Fixed equipping a hero skin in the Collection menu playing the wrong hero's audio/loadout
+  (now equips to the skin's own hero instead of the last-selected hero)
+
+### Known remaining
+- The options dialog is now a single tabbed window (Audio/Video/Gameplay/Keybindings/Accessibility);
+  reworking the accessible options menu to expose those tabs (keybindings, language) is in progress
+
+---
+
 ## March 3, 2026 (v1.8.5)
 
 ### Bug Fixes

@@ -3,6 +3,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using System.Reflection;
 
 namespace BazaarAccess;
 
@@ -36,18 +37,27 @@ public class Plugin : BaseUnityPlugin
         // Create keyboard navigator
         KeyboardNavigator.Create(gameObject);
 
-        // Apply Harmony patches
+        // Apply Harmony patches. Patch each class individually so that a single failing
+        // patch (e.g. a game type removed/renamed by an update) only disables that one hook
+        // instead of aborting the whole mod like PatchAll() does.
         _harmony = new Harmony(MyPluginInfo.PLUGIN_GUID);
-        try
+        int patched = 0, failed = 0;
+        foreach (var type in Assembly.GetExecutingAssembly().GetTypes())
         {
-            _harmony.PatchAll();
-            Logger.LogInfo("Harmony patches applied successfully");
+            try
+            {
+                var processor = _harmony.CreateClassProcessor(type);
+                var result = processor.Patch();
+                if (result != null && result.Count > 0)
+                    patched++;
+            }
+            catch (System.Exception ex)
+            {
+                failed++;
+                Logger.LogError($"Failed to apply patch class {type.FullName}: {ex.Message}");
+            }
         }
-        catch (System.Exception ex)
-        {
-            Logger.LogError($"Error applying Harmony patches: {ex.Message}");
-            Logger.LogError(ex.StackTrace);
-        }
+        Logger.LogInfo($"Harmony patches applied: {patched} class(es) patched, {failed} failed");
 
         Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} loaded");
     }
