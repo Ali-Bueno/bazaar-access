@@ -38,9 +38,9 @@ combat.summary.health_vs = Salud: {0} contra {1}
 combat.summary.unavailable = Resumen no disponible.
 
 # --- Etiquetas comunes ---
-combat.enemy_name = Enemigo
+combat.enemy_name = Oponente
 combat.you_label = Tú
-combat.enemy_item_name = {0} enemigo
+combat.enemy_item_name = {0} del oponente
 combat.item_fallback_name = Objeto
 
 # --- Modo individual / texto por efecto (compartido con los resúmenes por oleada cuando encaja) ---
@@ -113,8 +113,8 @@ combat.wave.repairs.other = {0} reparaciones
 # --- Salud (HealthTracker) ---
 combat.health.critical = ¡Salud crítica!
 combat.health.low = ¡Salud baja!
-combat.health.enemy_critical = ¡Enemigo en estado crítico!
-combat.health.enemy_low = ¡Enemigo con salud baja!
+combat.health.enemy_critical = Oponente en estado crítico
+combat.health.enemy_low = Oponente con salud baja
 combat.health_with_shield = {0}: {1} de salud, {2} de escudo
 combat.health_only = {0}: {1} de salud
 combat.health_value_with_shield = {0} con {1} de escudo
@@ -243,12 +243,12 @@ nav.board.your_board.other = Tu tablero, {0} objetos
 nav.board.empty_showing_stash = Tablero vacío, mostrando el alijo
 nav.board.no_items = No hay objetos en el tablero
 
-# --- Navegación del enemigo (EnemyNavigator.cs) ---
-nav.enemy.none = Sin enemigo
-nav.enemy.label = Enemigo
+# --- Navegación del oponente (EnemyNavigator.cs) ---
+nav.enemy.none = Sin oponente
+nav.enemy.label = Oponente
 nav.enemy.opponent_named = Rival: {0}
 nav.enemy.of_max = de {0}
-nav.enemy.read_error = No se puede leer la información del enemigo
+nav.enemy.read_error = No se puede leer la información del oponente
 nav.enemy.replay_in_progress = Repetición en curso. Pulsa E para el resumen y ver el tablero del rival sin interrupciones.
 nav.enemy.no_items = El rival no tiene objetos
 nav.enemy.default_name = Rival
@@ -256,8 +256,8 @@ nav.enemy.cannot_access_board = No se puede acceder al tablero del rival
 nav.enemy.items_label = Objetos
 nav.enemy.skills_label = Habilidades
 nav.enemy.items_with_count = Objetos, {0}
-nav.enemy.stats_label = Estadísticas del enemigo
-nav.enemy.no_data = Sin datos del enemigo
+nav.enemy.stats_label = Estadísticas del oponente
+nav.enemy.no_data = Sin datos del oponente
 # Plantilla posesiva: la frase entera es la clave para poder reescribirla del todo
 # (el "'s" del inglés no existe en la mayoría de idiomas).
 nav.enemy.board.one = Tablero de {0}, {1} objeto
@@ -404,8 +404,8 @@ action.no.item.selected = No hay ningún objeto seleccionado
 action.not.at.pedestal = No estás en un altar
 action.no.property.info = No hay información de propiedades disponible
 action.properties.list = Propiedades de {0}: {1}
-action.help.text = Izquierda/Derecha: navegar objetos. Arriba/Abajo: leer detalles. Tab: cambiar de sección. Espacio: abrir o cerrar el alijo. G: ir al alijo. B: tablero. V: héroe. C: opciones. F: enemigo. X: inspeccionar. I: propiedades. W: victorias. Enter: seleccionar, o abrir un menú en objetos de la tienda y del tablero. E: salir. R: renovar. En el menú de acciones: S vender, U mejorar, M mover, flechas reordenar. Ctrl+flechas: lectura de detalles. Punto/coma: mensajes.
-action.exited.enemy.view = Has salido de la vista del enemigo
+action.help.text = Izquierda/Derecha: navegar objetos. Arriba/Abajo: leer detalles. Tab: cambiar de sección. Espacio: abrir o cerrar el alijo. G: ir al alijo. B: tablero. V: héroe. C: opciones. F: oponente. X: inspeccionar. I: propiedades. W: victorias. Enter: seleccionar, o abrir un menú en objetos de la tienda y del tablero. E: salir. R: renovar. En el menú de acciones: S vender, U mejorar, M mover, flechas reordenar. Ctrl+flechas: lectura de detalles. Punto/coma: mensajes.
+action.exited.enemy.view = Has salido de la vista del oponente
 action.nothing.selected = No hay nada seleccionado
 action.nothing.to.inspect = No hay nada que inspeccionar
 action.cannot.select.this = Esto no se puede seleccionar
@@ -423,7 +423,7 @@ action.stash.opened.empty = Alijo abierto, vacío. Pulsa Espacio para cerrarlo.
 action.combat.ended = Combate terminado. Enter para continuar.
 action.continuing = Continuando
 action.replaying.combat = Repitiendo el combate
-action.recap.entered = Resumen. V héroe, F enemigo, G tablero del enemigo, B tu tablero.
+action.recap.entered = Resumen. V héroe, F oponente, G tablero del oponente, B tu tablero.
 action.recap.exited = Has salido del resumen. Enter para continuar, R para repetir, E para volver al resumen.
 action.done = Hecho
 
@@ -460,8 +460,8 @@ action.cancel = Cancelar
 
 # --- Navegación en combate (CombatInputHandler.cs) ---
 action.exited.board.view = Has salido de la vista del tablero
-action.exited.enemy.board.view = Has salido de la vista del tablero enemigo
-action.exited.enemy.stats.view = Has salido de las estadísticas del enemigo
+action.exited.enemy.board.view = Has salido de la vista del tablero del oponente
+action.exited.enemy.stats.view = Has salido de las estadísticas del oponente
 action.exited.hero.stats.view = Has salido de las estadísticas del héroe
 
 # --- Navegación de repetición y resumen (ReplayInputHandler.cs) ---
@@ -483,7 +483,7 @@ action.label.enchantment = Encantamiento
 action.combo.box = Cuadro combinado {0}: {1}. Usa Inicio, Fin o las flechas arriba y abajo para cambiarlo.
 
 # --- Vista previa de encuentro de combate (CombatEncounterPreviewFactory.cs, CombatEncounterPreviewNavigator.cs) ---
-action.default.enemy.name = Enemigo
+action.default.enemy.name = Oponente
 action.loadout = Equipamiento de {0}
 action.exited.preview = Has salido de la vista previa
 action.no.skills = Sin habilidades
@@ -775,7 +775,7 @@ patch.combat.victory_wins.other = ¡Victoria! {0} victorias
 patch.combat.victory = ¡Victoria!
 patch.combat.defeat_prestige = ¡Derrota! Te queda {0} de prestigio
 patch.combat.defeat = ¡Derrota!
-patch.combat.enemy_fallback = Enemigo
+patch.combat.enemy_fallback = Oponente
 
 # --- EndOfRunPatch.cs (etiquetas que el mod añade al texto del juego, ya localizado) ---
 patch.endofrun.achievement_named = Logro {0}: {1}
@@ -899,7 +899,7 @@ card.stat.cooldownFull = {0} {1} segundos
 # Añadido dentro de una frase más larga: ", Enfriamiento 5.0s" ({0} = etiqueta, {1} = valor)
 card.stat.cooldownShort = , {0} {1} s
 
-# Valor y unidad a secas, sin etiqueta (descripción compacta del enemigo): "5.0s"
+# Valor y unidad a secas, sin etiqueta (descripción compacta del oponente): "5.0s"
 card.stat.secondsBare = {0} s
 
 # Añadido en línea para el tamaño del objeto: ", Tamaño 2" ({0} = número de huecos)
