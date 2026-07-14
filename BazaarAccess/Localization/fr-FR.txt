@@ -40,7 +40,7 @@ combat.summary.unavailable = Résumé indisponible.
 # --- Libellés communs ---
 combat.enemy_name = Ennemi
 combat.you_label = Vous
-combat.enemy_item_name = {0} ennemi
+combat.enemy_item_name = {0} de l'adversaire
 combat.item_fallback_name = Objet
 
 # --- Mode individuel / texte par effet (partagé avec les résumés de vague quand le libellé correspond) ---

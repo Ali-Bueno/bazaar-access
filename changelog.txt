@@ -2,6 +2,20 @@
 
 ---
 
+## July 14, 2026 (v1.10.1)
+
+### Translation fixes
+- Fixed enemy item names not agreeing in gender in the languages that need it. The mod said
+  "Espada enemigo" / "Épée ennemi" / "Nemico Spada"; it now says "Espada del oponente" /
+  "Épée de l'adversaire" / "Spada dell'avversario" (and the same in German and Portuguese), which
+  reads correctly whatever the item is called
+- Spanish now uses one word for the rival ("oponente") instead of mixing two
+
+Remember: if a phrase sounds wrong in your language, you can fix it yourself in
+"BepInEx/plugins/BazaarAccess-lang" - it applies on the next launch, no rebuild needed.
+
+---
+
 ## July 14, 2026 (v1.10.0)
 
 ### The mod now speaks your language

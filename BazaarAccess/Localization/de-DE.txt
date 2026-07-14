@@ -40,7 +40,7 @@ combat.summary.unavailable = Zusammenfassung nicht verfügbar.
 # --- Common labels ---
 combat.enemy_name = Gegner
 combat.you_label = Du
-combat.enemy_item_name = Gegner-{0}
+combat.enemy_item_name = {0} des Gegners
 combat.item_fallback_name = Gegenstand
 
 # --- Individual mode / per-effect text (shared by wave summaries where the phrasing matches) ---

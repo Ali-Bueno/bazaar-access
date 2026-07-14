@@ -40,7 +40,7 @@ combat.summary.unavailable = Resumo indisponível.
 # --- Rótulos comuns ---
 combat.enemy_name = Inimigo
 combat.you_label = Você
-combat.enemy_item_name = Inimigo {0}
+combat.enemy_item_name = {0} do oponente
 combat.item_fallback_name = Item
 
 # --- Modo individual / texto por efeito (também usado em resumos de onda quando a frase coincide) ---
