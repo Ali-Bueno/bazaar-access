@@ -14,7 +14,7 @@ namespace BazaarAccess.Screens;
 /// </summary>
 public class ChestSceneScreen : BaseScreen
 {
-    public override string ScreenName => "Chests";
+    public override string ScreenName => Loc.T("screen.chestscene.name");
 
     private ChestSceneController _controller;
     private int _currentChestIndex = 0;
@@ -38,7 +38,7 @@ public class ChestSceneScreen : BaseScreen
 
         // Home button
         Menu.AddOption(
-            () => "Back",
+            () => Loc.T("screen.chestscene.back"),
             () => GoBack());
 
         // Current chest type with navigation - Enter opens chest
@@ -80,7 +80,7 @@ public class ChestSceneScreen : BaseScreen
                 {
                     SeasonId = inv.seasonId,
                     Quantity = inv.Quantity,
-                    SeasonName = inv.seasonName ?? $"Season {inv.seasonId} Chest"
+                    SeasonName = inv.seasonName ?? Loc.T("screen.chestscene.season_fallback", inv.seasonId)
                 };
                 _chests.Add(info);
             }
@@ -96,13 +96,13 @@ public class ChestSceneScreen : BaseScreen
         RefreshChestData();
 
         if (_chests.Count == 0)
-            return "No chests available";
+            return Loc.T("screen.chestscene.no_chests");
 
         if (_currentChestIndex >= _chests.Count)
             _currentChestIndex = 0;
 
         var chest = _chests[_currentChestIndex];
-        return $"{chest.SeasonName}: {chest.Quantity}";
+        return Loc.T("screen.chestscene.chest_summary", chest.SeasonName, chest.Quantity);
     }
 
     private void NavigateChestType(int direction)
@@ -160,17 +160,17 @@ public class ChestSceneScreen : BaseScreen
 
     private string GetMultiOpenText()
     {
-        if (_controller == null) return "Open 10";
+        if (_controller == null) return Loc.T("screen.chestscene.open_n", 10);
 
         int required = _controller.numChestsRequiredForMultiOpen;
-        return $"Open {required} at once";
+        return Loc.T("screen.chestscene.open_multi", required);
     }
 
     private async void ClickMultiOpen()
     {
         if (!CanMultiOpen())
         {
-            TolkWrapper.Speak("Not enough chests for multi-open");
+            TolkWrapper.Speak(Loc.T("screen.chestscene.not_enough_multi"));
             return;
         }
 
@@ -179,7 +179,7 @@ public class ChestSceneScreen : BaseScreen
             int numChests = _controller.numChestsRequiredForMultiOpen;
             var chest = _chests[_currentChestIndex];
 
-            TolkWrapper.Speak($"Opening {numChests} {chest.SeasonName} chests");
+            TolkWrapper.Speak(Loc.T("screen.chestscene.opening_multi", numChests, chest.SeasonName));
 
             // Change to MultiSelect state which spawns the chests
             _controller.ChangeState(ChestSceneController.States.MultiSelect);
@@ -207,7 +207,7 @@ public class ChestSceneScreen : BaseScreen
         catch (Exception e)
         {
             Plugin.Logger.LogError($"Error in multi-open: {e.Message}");
-            TolkWrapper.Speak("Error opening chests");
+            TolkWrapper.Speak(Loc.T("screen.chestscene.error_opening_multi"));
         }
     }
 
@@ -236,12 +236,12 @@ public class ChestSceneScreen : BaseScreen
         {
             _controller.ChangeState(ChestSceneController.States.Select);
             RefreshChestData();
-            TolkWrapper.Speak($"Chests. {GetCurrentChestText()}");
+            TolkWrapper.Speak($"{ScreenName}. {GetCurrentChestText()}");
         }
         catch (Exception e)
         {
             Plugin.Logger.LogError($"Error returning to selection: {e.Message}");
-            TolkWrapper.Speak("Chests");
+            TolkWrapper.Speak(ScreenName);
         }
     }
 
@@ -265,7 +265,7 @@ public class ChestSceneScreen : BaseScreen
 
         if (_chests.Count == 0)
         {
-            TolkWrapper.Speak("No chests available");
+            TolkWrapper.Speak(Loc.T("screen.chestscene.no_chests"));
             return;
         }
 
@@ -276,7 +276,7 @@ public class ChestSceneScreen : BaseScreen
 
         try
         {
-            TolkWrapper.Speak($"Opening {chest.SeasonName}");
+            TolkWrapper.Speak(Loc.T("screen.chestscene.opening_single", chest.SeasonName));
 
             // Open the chest on the server
             bool success = await _controller.playerChestInventory.OpenChests(chest.SeasonId, 1);
@@ -291,13 +291,13 @@ public class ChestSceneScreen : BaseScreen
             }
             else
             {
-                TolkWrapper.Speak("Failed to open chest");
+                TolkWrapper.Speak(Loc.T("screen.chestscene.open_failed"));
             }
         }
         catch (Exception e)
         {
             Plugin.Logger.LogError($"Error opening chest: {e.Message}");
-            TolkWrapper.Speak("Error opening chest");
+            TolkWrapper.Speak(Loc.T("screen.chestscene.open_error"));
         }
     }
 

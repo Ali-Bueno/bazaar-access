@@ -102,12 +102,12 @@ public class ChestRewardsUI : BaseUI
     {
         return rarity switch
         {
-            BazaarInventoryTypes.EChestRarity.Common => "Common",
-            BazaarInventoryTypes.EChestRarity.Uncommon => "Uncommon",
-            BazaarInventoryTypes.EChestRarity.Rare => "Rare",
-            BazaarInventoryTypes.EChestRarity.Epic => "Epic",
-            BazaarInventoryTypes.EChestRarity.Legendary => "Legendary",
-            _ => "Unknown"
+            BazaarInventoryTypes.EChestRarity.Common => Loc.T("ui.chest.rarity.common"),
+            BazaarInventoryTypes.EChestRarity.Uncommon => Loc.T("ui.chest.rarity.uncommon"),
+            BazaarInventoryTypes.EChestRarity.Rare => Loc.T("ui.chest.rarity.rare"),
+            BazaarInventoryTypes.EChestRarity.Epic => Loc.T("ui.chest.rarity.epic"),
+            BazaarInventoryTypes.EChestRarity.Legendary => Loc.T("ui.chest.rarity.legendary"),
+            _ => Loc.T("ui.chest.rarity.unknown")
         };
     }
 
@@ -115,15 +115,15 @@ public class ChestRewardsUI : BaseUI
     {
         return type switch
         {
-            BazaarInventoryTypes.ECollectionType.HeroSkins => "Hero Skin",
-            BazaarInventoryTypes.ECollectionType.Boards => "Board",
-            BazaarInventoryTypes.ECollectionType.CardSkins => "Card Skin",
-            BazaarInventoryTypes.ECollectionType.Carpets => "Carpet",
-            BazaarInventoryTypes.ECollectionType.CardBacks => "Card Back",
-            BazaarInventoryTypes.ECollectionType.Stash => "Stash",
-            BazaarInventoryTypes.ECollectionType.Bank => "Bank",
-            BazaarInventoryTypes.ECollectionType.Toys => "Toy",
-            BazaarInventoryTypes.ECollectionType.Album => "Album",
+            BazaarInventoryTypes.ECollectionType.HeroSkins => Loc.T("ui.chest.collection_type.hero_skin"),
+            BazaarInventoryTypes.ECollectionType.Boards => Loc.T("ui.chest.collection_type.board"),
+            BazaarInventoryTypes.ECollectionType.CardSkins => Loc.T("ui.chest.collection_type.card_skin"),
+            BazaarInventoryTypes.ECollectionType.Carpets => Loc.T("ui.chest.collection_type.carpet"),
+            BazaarInventoryTypes.ECollectionType.CardBacks => Loc.T("ui.chest.collection_type.card_back"),
+            BazaarInventoryTypes.ECollectionType.Stash => Loc.T("ui.chest.collection_type.stash"),
+            BazaarInventoryTypes.ECollectionType.Bank => Loc.T("ui.chest.collection_type.bank"),
+            BazaarInventoryTypes.ECollectionType.Toys => Loc.T("ui.chest.collection_type.toy"),
+            BazaarInventoryTypes.ECollectionType.Album => Loc.T("ui.chest.collection_type.album"),
             _ => ""
         };
     }
@@ -133,7 +133,7 @@ public class ChestRewardsUI : BaseUI
         // If still loading, wait for LoadRewardNamesAsync to call AnnounceAllRewards
         if (_isLoading)
         {
-            TolkWrapper.Speak("Loading rewards...");
+            TolkWrapper.Speak(Loc.T("ui.chest.loading"));
             return;
         }
 
@@ -144,7 +144,7 @@ public class ChestRewardsUI : BaseUI
     {
         if (_rewardInfos.Count == 0)
         {
-            TolkWrapper.Speak("No rewards. Press Enter to continue.");
+            TolkWrapper.Speak($"{Loc.T("ui.chest.no_rewards")} {Loc.T("ui.continue_prompt")}");
             return;
         }
 
@@ -153,12 +153,12 @@ public class ChestRewardsUI : BaseUI
 
         if (_rewardInfos.Count == 1)
         {
-            parts.Add("You received");
+            parts.Add(Loc.T("ui.chest.you_received"));
             parts.Add(GetRewardDescription(_rewardInfos[0]));
         }
         else
         {
-            parts.Add($"You received {_rewardInfos.Count} rewards");
+            parts.Add(Loc.Plural("ui.chest.received_count", _rewardInfos.Count, _rewardInfos.Count));
 
             // Summarize by rarity
             var rarityCounts = new Dictionary<string, int>();
@@ -182,20 +182,20 @@ public class ChestRewardsUI : BaseUI
             // Add rarity summary
             foreach (var kvp in rarityCounts)
             {
-                parts.Add($"{kvp.Value} {kvp.Key}");
+                parts.Add(Loc.T("ui.chest.rarity_count", kvp.Value, kvp.Key));
             }
 
             if (totalGems > 0)
-                parts.Add($"{totalGems} gems total");
+                parts.Add(Loc.Plural("ui.chest.gems_total", totalGems, totalGems));
 
             if (totalVouchers > 0)
-                parts.Add($"{totalVouchers} ranked vouchers");
+                parts.Add(Loc.Plural("ui.chest.vouchers", totalVouchers, totalVouchers));
 
             if (totalBonusChests > 0)
-                parts.Add($"{totalBonusChests} bonus chests");
+                parts.Add(Loc.Plural("ui.chest.bonus_chests", totalBonusChests, totalBonusChests));
         }
 
-        parts.Add("Use arrows to browse, Enter to continue");
+        parts.Add(Loc.T("ui.chest.browse_instructions"));
 
         TolkWrapper.Speak(string.Join(". ", parts));
     }
@@ -212,37 +212,37 @@ public class ChestRewardsUI : BaseUI
             {
                 // Full description with name
                 if (!string.IsNullOrEmpty(info.CollectionType))
-                    itemDesc = $"{info.Rarity} {info.CollectionType}: {info.ItemName}";
+                    itemDesc = Loc.T("ui.chest.reward_typed", info.Rarity, info.CollectionType, info.ItemName);
                 else
-                    itemDesc = $"{info.Rarity}: {info.ItemName}";
+                    itemDesc = Loc.T("ui.chest.reward_named", info.Rarity, info.ItemName);
             }
             else
             {
                 // Fallback without name
-                itemDesc = $"{info.Rarity} item";
+                itemDesc = Loc.T("ui.chest.reward_item", info.Rarity);
             }
 
             if (info.IsDuplicate)
-                itemDesc += " (duplicate)";
+                itemDesc = Loc.T("ui.chest.duplicate", itemDesc);
 
             parts.Add(itemDesc);
         }
 
         // Currencies
         if (info.Gems > 0)
-            parts.Add($"{info.Gems} gems");
+            parts.Add(Loc.Plural("ui.chest.gems", info.Gems, info.Gems));
 
         if (info.DuplicateGems > 0)
-            parts.Add($"{info.DuplicateGems} bonus gems");
+            parts.Add(Loc.Plural("ui.chest.bonus_gems", info.DuplicateGems, info.DuplicateGems));
 
         if (info.RankedVouchers > 0)
-            parts.Add($"{info.RankedVouchers} ranked vouchers");
+            parts.Add(Loc.Plural("ui.chest.vouchers", info.RankedVouchers, info.RankedVouchers));
 
         if (info.BonusChests > 0)
-            parts.Add($"{info.BonusChests} bonus chest{(info.BonusChests > 1 ? "s" : "")}");
+            parts.Add(Loc.Plural("ui.chest.bonus_chests", info.BonusChests, info.BonusChests));
 
         if (parts.Count == 0)
-            return "Empty reward";
+            return Loc.T("ui.chest.empty_reward");
 
         return string.Join(", ", parts);
     }

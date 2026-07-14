@@ -37,18 +37,18 @@ public class TextFieldOption
     public string GetDisplayText()
     {
         if (_inputField == null)
-            return $"{_label}: unavailable";
+            return Loc.T("patch.textfield.unavailable", _label);
 
         string value = _inputField.text ?? "";
 
         if (string.IsNullOrEmpty(value))
-            return $"{_label}: empty";
+            return Loc.T("patch.textfield.empty", _label);
 
         // Para campos de contraseña, indicar caracteres sin revelar contenido
         if (_inputField.contentType == TMP_InputField.ContentType.Password)
-            return $"{_label}: {value.Length} characters entered";
+            return Loc.Plural("patch.textfield.chars_entered", value.Length, _label, value.Length);
 
-        return $"{_label}: {value}";
+        return Loc.T("patch.textfield.value", _label, value);
     }
 
     /// <summary>
@@ -65,13 +65,13 @@ public class TextFieldOption
             // Enfocar el input field para que Unity maneje el texto
             _inputField.Select();
             _inputField.ActivateInputField();
-            TolkWrapper.Speak("editing");
+            TolkWrapper.Speak(Loc.T("patch.textfield.editing"));
         }
         else
         {
             // Desenfocar el input field
             _inputField.DeactivateInputField();
-            TolkWrapper.Speak("done");
+            TolkWrapper.Speak(Loc.T("patch.textfield.done"));
         }
 
         OnEditModeChanged?.Invoke(_isEditing);
@@ -89,7 +89,7 @@ public class TextFieldOption
         {
             _inputField.DeactivateInputField();
         }
-        TolkWrapper.Speak("done");
+        TolkWrapper.Speak(Loc.T("patch.textfield.done"));
         OnEditModeChanged?.Invoke(false);
     }
 
@@ -103,7 +103,7 @@ public class TextFieldOption
         _isEditing = true;
         _inputField.Select();
         _inputField.ActivateInputField();
-        TolkWrapper.Speak("editing");
+        TolkWrapper.Speak(Loc.T("patch.textfield.editing"));
         OnEditModeChanged?.Invoke(true);
     }
 }

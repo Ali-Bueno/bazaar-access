@@ -28,10 +28,13 @@ public class Plugin : BaseUnityPlugin
             "True = batched wave announcements with auto health. False = individual per-card announcements."
         );
 
+        // Load the mod's texts before anything can speak.
+        Loc.Initialize();
+
         // Initialize Tolk with error handling
         if (TolkWrapper.Initialize())
         {
-            TolkWrapper.Speak("Bazaar Access loaded");
+            TolkWrapper.Speak(Loc.T("mod.loaded"));
         }
 
         // Create keyboard navigator
@@ -66,6 +69,7 @@ public class Plugin : BaseUnityPlugin
     {
         KeyboardNavigator.Destroy();
         _harmony?.UnpatchSelf();
+        Loc.Shutdown();
         TolkWrapper.Shutdown();
     }
 }

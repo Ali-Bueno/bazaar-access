@@ -1,4 +1,5 @@
 using BazaarAccess.Accessibility;
+using BazaarAccess.Core;
 using UnityEngine;
 
 namespace BazaarAccess.Screens;
@@ -8,7 +9,7 @@ namespace BazaarAccess.Screens;
 /// </summary>
 public class MainMenuScreen : BaseScreen
 {
-    public override string ScreenName => "Main Menu";
+    public override string ScreenName => Loc.T("screen.mainmenu.name");
 
     public MainMenuScreen(Transform root) : base(root)
     {

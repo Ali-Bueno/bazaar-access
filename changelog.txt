@@ -2,6 +2,32 @@
 
 ---
 
+## July 14, 2026 (v1.10.0)
+
+### The mod now speaks your language
+- The mod's own text (announcements, menus, messages) is now translated into the 9 languages The
+  Bazaar supports: English, Spanish, German, French, Italian, Portuguese (Brazil), Turkish, Korean
+  and Simplified Chinese. It follows the language you picked in the game, and it switches on the
+  fly when you change it in the options - no restart needed
+- Mechanic words (Shield, Burn, Bronze, Weapon...) are taken from the game itself, so the mod says
+  exactly the same word the card does, in your language
+- Translations live in editable text files in "BepInEx/plugins/BazaarAccess-lang". If a phrase
+  sounds wrong in your language, you can fix it there and the change applies on the next launch -
+  no need to rebuild anything. Corrections are welcome
+- Only English and Spanish have been checked by a human. The other seven are machine translations
+  that follow the game's own vocabulary: please report anything that sounds wrong
+
+### Bug Fixes
+- Fixed cards whose text became unreadable after the game replaced words with icons. Cards like
+  Unibou read "this gains 5" with no clue what the 5 was; they now read "this gains 5 Shield".
+  The word is taken from the game's own icon table, so it comes out in your language and matches
+  what a sighted player sees. This affected a large number of cards
+- Fixed time values (haste, slow, freeze, charge) being read as raw milliseconds in some card
+  texts ("gains 2000" instead of "gains 2")
+- Fixed counts always using the plural: it said "1 items", it now says "1 item"
+
+---
+
 ## July 11, 2026 (v1.9.2)
 
 ### Bug Fixes

@@ -115,7 +115,7 @@ public class ConfirmationDialogUI : IAccessibleUI
     {
         if (_currentIndex < 0 || _currentIndex >= _buttons.Count)
         {
-            TolkWrapper.Speak("No button selected");
+            TolkWrapper.Speak(Loc.T("ui.confirm.no_button"));
             return;
         }
 
@@ -151,7 +151,7 @@ public class ConfirmationDialogUI : IAccessibleUI
 
     public string GetHelp()
     {
-        return "Left/Right: Navigate buttons. Enter: Select. Escape: Cancel.";
+        return Loc.T("ui.confirm.help");
     }
 
     public void OnFocus()
@@ -166,7 +166,7 @@ public class ConfirmationDialogUI : IAccessibleUI
         }
         else
         {
-            TolkWrapper.Speak("No buttons found");
+            TolkWrapper.Speak(Loc.T("ui.confirm.no_buttons"));
         }
     }
 

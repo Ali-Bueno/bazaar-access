@@ -13,7 +13,7 @@ public class CreateAccountUserPasswordUI : LoginBaseUI
 {
     private readonly object _view;
 
-    public override string UIName => "Create Account - Username and Password";
+    public override string UIName => Loc.T("ui.login.create_account_userpass_title");
 
     public CreateAccountUserPasswordUI(Transform root, object view) : base(root)
     {
@@ -25,15 +25,15 @@ public class CreateAccountUserPasswordUI : LoginBaseUI
     {
         // Username field with validation status
         var usernameField = GetInputField(_view, "username");
-        AddTextFieldWithValidation("Username", usernameField, "_usernameValid", "available", "not available");
+        AddTextFieldWithValidation(Loc.T("ui.login.username_label"), usernameField, "_usernameValid", Loc.T("ui.login.available"), Loc.T("ui.login.not_available"));
 
         // Password field with validation status
         var passwordField = GetInputField(_view, "password");
-        AddTextFieldWithPasswordValidation("Password", passwordField);
+        AddTextFieldWithPasswordValidation(Loc.T("ui.login.password_label"), passwordField);
 
         // Confirm Password field
         var confirmPasswordField = GetInputField(_view, "confirmPassword");
-        AddTextFieldWithValidation("Confirm Password", confirmPasswordField, "_confirmPasswordValid", "matches", "empty or mismatch");
+        AddTextFieldWithValidation(Loc.T("ui.login.confirm_password_label"), confirmPasswordField, "_confirmPasswordValid", Loc.T("ui.login.matches"), Loc.T("ui.login.empty_or_mismatch"));
 
         // Validation status summary (read-only)
         Menu.AddOption(
@@ -42,7 +42,7 @@ public class CreateAccountUserPasswordUI : LoginBaseUI
         );
 
         // Continue button
-        AddBazaarButton(_view, "continueButton", "Continue");
+        AddBazaarButton(_view, "continueButton", Loc.T("ui.continue"));
     }
 
     private void AddTextFieldWithValidation(string label, TMPro.TMP_InputField inputField, string validFieldName, string validText, string invalidText)
@@ -89,12 +89,12 @@ public class CreateAccountUserPasswordUI : LoginBaseUI
         bool numbersValid = GetBoolField("_passwordNumbersValid");
 
         if (lengthValid && charsValid && numbersValid)
-            return "valid";
+            return Loc.T("ui.login.valid");
 
         var issues = new System.Collections.Generic.List<string>();
-        if (!lengthValid) issues.Add("too short");
-        if (!charsValid) issues.Add("needs letter");
-        if (!numbersValid) issues.Add("needs number");
+        if (!lengthValid) issues.Add(Loc.T("ui.login.pwd_too_short"));
+        if (!charsValid) issues.Add(Loc.T("ui.login.pwd_needs_letter"));
+        if (!numbersValid) issues.Add(Loc.T("ui.login.pwd_needs_number"));
 
         return string.Join(", ", issues);
     }
@@ -111,16 +111,16 @@ public class CreateAccountUserPasswordUI : LoginBaseUI
         int total = 5;
         var issues = new System.Collections.Generic.List<string>();
 
-        if (usernameValid) passed++; else issues.Add("username");
-        if (lengthValid) passed++; else issues.Add("password length");
-        if (charsValid) passed++; else issues.Add("password letters");
-        if (numbersValid) passed++; else issues.Add("password numbers");
-        if (confirmValid) passed++; else issues.Add("confirm password");
+        if (usernameValid) passed++; else issues.Add(Loc.T("ui.login.issue_username"));
+        if (lengthValid) passed++; else issues.Add(Loc.T("ui.login.issue_pwd_length"));
+        if (charsValid) passed++; else issues.Add(Loc.T("ui.login.issue_pwd_letters"));
+        if (numbersValid) passed++; else issues.Add(Loc.T("ui.login.issue_pwd_numbers"));
+        if (confirmValid) passed++; else issues.Add(Loc.T("ui.login.issue_confirm_password"));
 
         if (passed == total)
-            return "All requirements met. Ready to continue.";
+            return Loc.T("ui.login.requirements_met");
 
-        return $"Requirements: {passed} of {total}. Missing: {string.Join(", ", issues)}";
+        return Loc.T("ui.login.requirements_summary", passed, total, string.Join(", ", issues));
     }
 
     private bool GetBoolField(string fieldName)

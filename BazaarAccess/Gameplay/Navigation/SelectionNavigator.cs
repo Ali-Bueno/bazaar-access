@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using BazaarAccess.Core;
 using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameShared.Domain.Core.Types;
 using BazaarGameShared.Domain.Runs;
@@ -98,14 +99,14 @@ public class SelectionNavigator
     public string GetSelectionTypeName(ERunState state)
     {
         var cards = _selectionItems.Where(i => i.Type == NavItemType.Card).ToList();
-        if (cards.Count == 0) return "options";
+        if (cards.Count == 0) return Loc.T("nav.type.options");
 
-        if (state == ERunState.Loot) return "rewards";
+        if (state == ERunState.Loot) return Loc.T("nav.type.rewards");
 
         var firstCard = cards[0].Card;
-        if (IsEncounterCard(firstCard)) return "encounters";
-        if (firstCard.Type == ECardType.Skill) return "skills";
-        return "items";
+        if (IsEncounterCard(firstCard)) return Loc.T("nav.type.encounters");
+        if (firstCard.Type == ECardType.Skill) return Loc.T("nav.type.skills");
+        return Loc.T("nav.type.items");
     }
 
     /// <summary>
@@ -123,11 +124,13 @@ public class SelectionNavigator
             if (ItemReader.IsQuestItem(card))
             {
                 string questProgress = ItemReader.GetQuestProgress(card);
-                shopName = questProgress != null ? $"{questProgress}: {shopName}" : $"Quest: {shopName}";
+                shopName = questProgress != null
+                    ? Loc.T("nav.selection.quest_progress", questProgress, shopName)
+                    : Loc.T("nav.selection.quest_prefix", shopName);
             }
             else if (ItemReader.IsPackageItem(card))
             {
-                shopName = $"Delivery package: {shopName}";
+                shopName = Loc.T("nav.selection.package_prefix", shopName);
             }
             string shopSize = card.Type != ECardType.Skill ? ItemReader.GetSizeName(card) : null;
             string shopTier = ItemReader.GetTierName(card);
@@ -147,14 +150,16 @@ public class SelectionNavigator
             int price = ItemReader.GetBuyPrice(card);
             if (price > 0)
             {
+                string priceText = Loc.T("nav.price_gold", price);
+
                 if (card.Type == ECardType.Skill)
-                    return !string.IsNullOrEmpty(shopTier) ? $"{shopName}, {shopTier.ToLower()}, {price} gold" : $"{shopName}, {price} gold";
+                    return !string.IsNullOrEmpty(shopTier) ? $"{shopName}, {shopTier.ToLower()}, {priceText}" : $"{shopName}, {priceText}";
 
                 if (!string.IsNullOrEmpty(shopSize) && !string.IsNullOrEmpty(shopTier))
-                    return $"{shopName}, {shopSize}, {shopTier.ToLower()}, {price} gold";
+                    return $"{shopName}, {shopSize}, {shopTier.ToLower()}, {priceText}";
                 if (!string.IsNullOrEmpty(shopSize))
-                    return $"{shopName}, {shopSize}, {price} gold";
-                return $"{shopName}, {price} gold";
+                    return $"{shopName}, {shopSize}, {priceText}";
+                return $"{shopName}, {priceText}";
             }
             return shopName;
         }

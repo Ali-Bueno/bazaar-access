@@ -37,7 +37,7 @@ public static class ActionHelper
         if (state == null)
         {
             Plugin.Logger.LogWarning("BuyItem: AppState.CurrentState is null");
-            if (!silent) TolkWrapper.Speak("Cannot buy now");
+            if (!silent) TolkWrapper.Speak(Loc.T("action.cannot.buy.now"));
             return false;
         }
 
@@ -52,15 +52,15 @@ public static class ActionHelper
             {
                 if (isFree)
                 {
-                    TolkWrapper.Speak($"Acquired {name}");
+                    TolkWrapper.Speak(Loc.T("action.acquired", name));
                 }
                 else
                 {
                     int price = ItemReader.GetBuyPrice(card);
                     if (price > 0)
-                        TolkWrapper.Speak($"Bought {name} for {price} gold");
+                        TolkWrapper.Speak(Loc.T("action.bought", name, price));
                     else
-                        TolkWrapper.Speak($"Acquired {name}");
+                        TolkWrapper.Speak(Loc.T("action.acquired", name));
                 }
             }
 
@@ -70,7 +70,7 @@ public static class ActionHelper
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"BuyItem failed: {ex.Message}");
-            if (!silent) TolkWrapper.Speak("Purchase failed");
+            if (!silent) TolkWrapper.Speak(Loc.T("action.purchase.failed"));
             return false;
         }
     }
@@ -92,7 +92,7 @@ public static class ActionHelper
         if (state == null)
         {
             Plugin.Logger.LogWarning("SellItem: AppState.CurrentState is null");
-            TolkWrapper.Speak("Cannot sell now");
+            TolkWrapper.Speak(Loc.T("action.cannot.sell.now"));
             return false;
         }
 
@@ -103,7 +103,7 @@ public static class ActionHelper
 
             state.SellCardCommand(card);
 
-            TolkWrapper.Speak($"Sold {name} for {price} gold");
+            TolkWrapper.Speak(Loc.T("action.sold", name, price));
 
             Plugin.Logger.LogInfo($"SellItem: {name} for {price}");
             return true;
@@ -111,7 +111,7 @@ public static class ActionHelper
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"SellItem failed: {ex.Message}");
-            TolkWrapper.Speak("Sale failed");
+            TolkWrapper.Speak(Loc.T("action.sale.failed"));
             return false;
         }
     }
@@ -134,14 +134,14 @@ public static class ActionHelper
         if (state == null)
         {
             Plugin.Logger.LogWarning("MoveItem: AppState.CurrentState is null");
-            TolkWrapper.Speak("Cannot move now");
+            TolkWrapper.Speak(Loc.T("action.cannot.move.now"));
             return false;
         }
 
         // Verificar si se puede mover en el estado actual
         if (!state.CanHandleOperation(StateOps.MoveItem))
         {
-            TolkWrapper.Speak("Cannot move items now");
+            TolkWrapper.Speak(Loc.T("action.cannot.move.items.now"));
             return false;
         }
 
@@ -151,7 +151,7 @@ public static class ActionHelper
             var player = Data.Run?.Player;
             if (player == null)
             {
-                TolkWrapper.Speak("Player data not available");
+                TolkWrapper.Speak(Loc.T("action.player.data.unavailable"));
                 return false;
             }
 
@@ -161,14 +161,14 @@ public static class ActionHelper
 
             if (targetContainer == null)
             {
-                TolkWrapper.Speak("Cannot access destination");
+                TolkWrapper.Speak(Loc.T("action.cannot.access.destination"));
                 return false;
             }
 
             if (!targetContainer.HasSpaceForCard(card))
             {
                 string destination = toStash ? "stash" : "board";
-                TolkWrapper.Speak($"No space in {destination}");
+                TolkWrapper.Speak(toStash ? Loc.T("action.no.space.stash") : Loc.T("action.no.space.board"));
                 Plugin.Logger.LogInfo($"MoveItem: No space for {card.Size} size card in {destination}");
                 return false;
             }
@@ -188,8 +188,7 @@ public static class ActionHelper
             state.MoveCardCommand(card, desiredSockets, section);
 
             string name = ItemReader.GetCardName(card);
-            string dest = toStash ? "Stash" : "Board";
-            TolkWrapper.Speak($"Moved {name} to {dest}");
+            TolkWrapper.Speak(toStash ? Loc.T("action.moved.to.stash", name) : Loc.T("action.moved.to.board", name));
 
             Plugin.Logger.LogInfo($"MoveItem: {name} to {section}");
             return true;
@@ -197,7 +196,7 @@ public static class ActionHelper
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"MoveItem failed: {ex.Message}");
-            TolkWrapper.Speak("Move failed");
+            TolkWrapper.Speak(Loc.T("action.move.failed"));
             return false;
         }
     }
@@ -245,7 +244,7 @@ public static class ActionHelper
         if (state == null)
         {
             Plugin.Logger.LogWarning("SelectSkill: AppState.CurrentState is null");
-            TolkWrapper.Speak("Cannot select now");
+            TolkWrapper.Speak(Loc.T("action.cannot.select.now"));
             return false;
         }
 
@@ -254,7 +253,7 @@ public static class ActionHelper
             state.SelectSkillCommand(card);
 
             string name = ItemReader.GetCardName(card);
-            TolkWrapper.Speak($"Selected {name}");
+            TolkWrapper.Speak(Loc.T("action.selected", name));
 
             Plugin.Logger.LogInfo($"SelectSkill: {name}");
             return true;
@@ -262,7 +261,7 @@ public static class ActionHelper
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"SelectSkill failed: {ex.Message}");
-            TolkWrapper.Speak("Selection failed");
+            TolkWrapper.Speak(Loc.T("action.selection.failed"));
             return false;
         }
     }
@@ -282,7 +281,7 @@ public static class ActionHelper
         if (state == null)
         {
             Plugin.Logger.LogWarning("SelectEncounter: AppState.CurrentState is null");
-            TolkWrapper.Speak("Cannot select now");
+            TolkWrapper.Speak(Loc.T("action.cannot.select.now"));
             return false;
         }
 
@@ -291,7 +290,7 @@ public static class ActionHelper
             state.SelectEncounterCommand(card.InstanceId);
 
             string name = ItemReader.GetCardName(card);
-            TolkWrapper.Speak($"Selected {name}");
+            TolkWrapper.Speak(Loc.T("action.selected", name));
 
             Plugin.Logger.LogInfo($"SelectEncounter: {card.InstanceId}");
             return true;
@@ -299,7 +298,7 @@ public static class ActionHelper
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"SelectEncounter failed: {ex.Message}");
-            TolkWrapper.Speak("Selection failed");
+            TolkWrapper.Speak(Loc.T("action.selection.failed"));
             return false;
         }
     }
@@ -336,12 +335,12 @@ public static class ActionHelper
             // El item no puede ir más allá del borde
             if (newSlot < 0)
             {
-                if (!silent) TolkWrapper.Speak("At left edge");
+                if (!silent) TolkWrapper.Speak(Loc.T("action.edge.left"));
                 return false;
             }
             if (newSlot + cardSize > 10)
             {
-                if (!silent) TolkWrapper.Speak("At right edge");
+                if (!silent) TolkWrapper.Speak(Loc.T("action.edge.right"));
                 return false;
             }
 
@@ -360,7 +359,7 @@ public static class ActionHelper
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"ReorderItem failed: {ex.Message}");
-            if (!silent) TolkWrapper.Speak("Move failed");
+            if (!silent) TolkWrapper.Speak(Loc.T("action.move.failed"));
             return false;
         }
     }
@@ -393,12 +392,12 @@ public static class ActionHelper
 
             if (newSlot < 0)
             {
-                if (!silent) TolkWrapper.Speak("At start");
+                if (!silent) TolkWrapper.Speak(Loc.T("action.stash.at.start"));
                 return false;
             }
             if (newSlot >= stashSize)
             {
-                if (!silent) TolkWrapper.Speak("At end");
+                if (!silent) TolkWrapper.Speak(Loc.T("action.stash.at.end"));
                 return false;
             }
 
@@ -413,7 +412,7 @@ public static class ActionHelper
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"ReorderStashItem failed: {ex.Message}");
-            if (!silent) TolkWrapper.Speak("Move failed");
+            if (!silent) TolkWrapper.Speak(Loc.T("action.move.failed"));
             return false;
         }
     }

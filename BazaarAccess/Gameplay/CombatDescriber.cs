@@ -67,7 +67,7 @@ public static class CombatDescriber
         if (Plugin.UseBatchedCombatMode == null) return;
 
         Plugin.UseBatchedCombatMode.Value = !Plugin.UseBatchedCombatMode.Value;
-        string modeName = UseBatchedMode ? "Combat viewer set to batched action mode" : "Combat viewer set to Individual action mode";
+        string modeName = UseBatchedMode ? Loc.T("combat.mode.batched") : Loc.T("combat.mode.individual");
         TolkWrapper.Speak(modeName, interrupt: true);
 
         // Handle mid-combat switch
@@ -200,7 +200,7 @@ public static class CombatDescriber
     /// </summary>
     public static string GetCombatSummary()
     {
-        if (!_active) return "Not in combat.";
+        if (!_active) return Loc.T("combat.summary.not_in_combat");
 
         try
         {
@@ -223,19 +223,19 @@ public static class CombatDescriber
             var parts = new List<string>();
 
             // Damage totals
-            parts.Add($"You dealt {_totalPlayerDamageDealt}, took {_totalPlayerDamageTaken}");
+            parts.Add(Loc.T("combat.summary.dealt_took", _totalPlayerDamageDealt, _totalPlayerDamageTaken));
 
             // Health comparison
             string playerHealthStr = playerShield > 0 ? $"{playerHealth}+{playerShield}" : $"{playerHealth}";
             string enemyHealthStr = enemyShield > 0 ? $"{enemyHealth}+{enemyShield}" : $"{enemyHealth}";
-            parts.Add($"Health: {playerHealthStr} vs {enemyHealthStr}");
+            parts.Add(Loc.T("combat.summary.health_vs", playerHealthStr, enemyHealthStr));
 
             return string.Join(". ", parts);
         }
         catch (Exception ex)
         {
             Plugin.Logger.LogError($"GetCombatSummary error: {ex.Message}");
-            return "Summary unavailable.";
+            return Loc.T("combat.summary.unavailable");
         }
     }
 
@@ -272,7 +272,7 @@ public static class CombatDescriber
     /// </summary>
     private static string GetEnemyName()
     {
-        return "Enemy";
+        return Loc.T("combat.enemy_name");
     }
 
     /// <summary>
@@ -364,26 +364,26 @@ public static class CombatDescriber
                 break;
 
             case ActionType.PlayerBurnApply:
-                wave.StatusEffects.Add("burn");
+                wave.StatusEffects.Add(GameVocabulary.Attribute(ECardAttributeType.BurnApplyAmount) ?? "burn");
                 break;
 
             case ActionType.PlayerPoisonApply:
-                wave.StatusEffects.Add("poison");
+                wave.StatusEffects.Add(GameVocabulary.Attribute(ECardAttributeType.PoisonApplyAmount) ?? "poison");
                 break;
 
             case ActionType.CardSlow:
-                wave.StatusEffects.Add("slow");
+                wave.StatusEffects.Add(GameVocabulary.Attribute(ECardAttributeType.SlowAmount) ?? "slow");
                 break;
 
             case ActionType.CardFreeze:
                 if (!isPlayerItem)
                 {
                     // Enemy freeze - special "Frozen!" alert
-                    TolkWrapper.Speak("Frozen!", interrupt: true);
+                    TolkWrapper.Speak(Loc.T("combat.frozen_alert"), interrupt: true);
                 }
                 else
                 {
-                    wave.StatusEffects.Add("freeze");
+                    wave.StatusEffects.Add(GameVocabulary.Attribute(ECardAttributeType.FreezeAmount) ?? "freeze");
                 }
                 break;
 
@@ -424,7 +424,7 @@ public static class CombatDescriber
                 break;
 
             case ActionType.PlayerGoldSteal:
-                wave.StatusEffects.Add(amount > 0 ? $"stole {amount} gold" : "gold stolen");
+                wave.StatusEffects.Add(amount > 0 ? Loc.T("combat.stole_gold", amount) : Loc.T("combat.gold_stolen"));
                 break;
 
             case ActionType.PlayerMaxHealthIncrease:
@@ -436,11 +436,11 @@ public static class CombatDescriber
                 break;
 
             case ActionType.CardHaste:
-                wave.StatusEffects.Add("haste");
+                wave.StatusEffects.Add(GameVocabulary.Attribute(ECardAttributeType.HasteAmount) ?? "haste");
                 break;
 
             case ActionType.CardCharge:
-                wave.StatusEffects.Add("charge");
+                wave.StatusEffects.Add(GameVocabulary.Attribute(ECardAttributeType.ChargeAmount) ?? "charge");
                 break;
 
             case ActionType.CardDestroy:
@@ -449,13 +449,13 @@ public static class CombatDescriber
                 {
                     string destroyedName = ItemReader.GetCardName(destroyedCard);
                     if (!string.IsNullOrEmpty(destroyedName))
-                        wave.StatusEffects.Add($"destroyed {destroyedName}");
+                        wave.StatusEffects.Add(Loc.T("combat.destroyed_named", destroyedName));
                     else
-                        wave.StatusEffects.Add("destroyed");
+                        wave.StatusEffects.Add(Loc.T("combat.destroyed"));
                 }
                 else
                 {
-                    wave.StatusEffects.Add("destroyed");
+                    wave.StatusEffects.Add(Loc.T("combat.destroyed"));
                 }
                 break;
 
@@ -465,18 +465,18 @@ public static class CombatDescriber
                 {
                     string disabledName = ItemReader.GetCardName(disabledCard);
                     if (!string.IsNullOrEmpty(disabledName))
-                        wave.StatusEffects.Add($"disabled {disabledName}");
+                        wave.StatusEffects.Add(Loc.T("combat.disabled_named", disabledName));
                     else
-                        wave.StatusEffects.Add("disabled");
+                        wave.StatusEffects.Add(Loc.T("combat.disabled"));
                 }
                 else
                 {
-                    wave.StatusEffects.Add("disabled");
+                    wave.StatusEffects.Add(Loc.T("combat.disabled"));
                 }
                 break;
 
             case ActionType.CardTransform:
-                wave.StatusEffects.Add("transformed");
+                wave.StatusEffects.Add(Loc.T("combat.transformed"));
                 break;
 
             case ActionType.CardUpgrade:
@@ -484,19 +484,19 @@ public static class CombatDescriber
                 break;
 
             case ActionType.CardQuestComplete:
-                wave.StatusEffects.Add("quest complete");
+                wave.StatusEffects.Add(Loc.T("combat.quest_complete"));
                 break;
 
             case ActionType.FlyingStart:
-                wave.StatusEffects.Add("flying");
+                wave.StatusEffects.Add(Loc.T("combat.flying"));
                 break;
 
             case ActionType.FlyingStop:
-                wave.StatusEffects.Add("landed");
+                wave.StatusEffects.Add(Loc.T("combat.landed"));
                 break;
 
             case ActionType.FlyingToggle:
-                wave.StatusEffects.Add("flying toggled");
+                wave.StatusEffects.Add(Loc.T("combat.flying_toggled"));
                 break;
         }
 
@@ -585,7 +585,7 @@ public static class CombatDescriber
         // Player side
         if (_playerWave.HasActivity)
         {
-            string playerPart = FormatWaveSide("You", _playerWave);
+            string playerPart = FormatWaveSide(Loc.T("combat.you_label"), _playerWave);
             if (!string.IsNullOrEmpty(playerPart))
                 parts.Add(playerPart);
         }
@@ -625,26 +625,26 @@ public static class CombatDescriber
             {
                 // Prominent critical hit announcement
                 damageText = !string.IsNullOrEmpty(topItem)
-                    ? $"critical hit! {wave.TotalDamage} damage ({topItem})"
-                    : $"critical hit! {wave.TotalDamage} damage";
+                    ? Loc.T("combat.wave.crit_damage_item", wave.TotalDamage, topItem)
+                    : Loc.T("combat.wave.crit_damage", wave.TotalDamage);
             }
             else
             {
                 damageText = !string.IsNullOrEmpty(topItem)
-                    ? $"{wave.TotalDamage} damage ({topItem})"
-                    : $"{wave.TotalDamage} damage";
+                    ? Loc.T("combat.wave.damage_item", wave.TotalDamage, topItem)
+                    : Loc.T("combat.damage_amount", wave.TotalDamage);
             }
             elements.Add(damageText);
         }
 
         if (wave.TotalHeal > 0)
         {
-            elements.Add($"{wave.TotalHeal} heal");
+            elements.Add(Loc.T("combat.heal_amount", wave.TotalHeal));
         }
 
         if (wave.TotalShield > 0)
         {
-            elements.Add($"{wave.TotalShield} shield");
+            elements.Add(Loc.T("combat.shield_amount", wave.TotalShield));
         }
 
         // Status effects
@@ -660,11 +660,11 @@ public static class CombatDescriber
             if (wave.ReloadsByItem.Count == 1)
             {
                 var item = wave.ReloadsByItem.First();
-                elements.Add($"{item.Key} reloaded {item.Value}");
+                elements.Add(Loc.T("combat.wave.reload_item", item.Key, item.Value));
             }
             else
             {
-                elements.Add($"{totalReloads} reloads");
+                elements.Add(Loc.Plural("combat.wave.reloads", totalReloads, totalReloads));
             }
         }
 
@@ -673,15 +673,15 @@ public static class CombatDescriber
         {
             if (wave.TotalBuffs > 0 && wave.TotalDebuffs > 0)
             {
-                elements.Add($"{wave.TotalBuffs} buffs, {wave.TotalDebuffs} debuffs");
+                elements.Add($"{Loc.Plural("combat.wave.buffs", wave.TotalBuffs, wave.TotalBuffs)}, {Loc.Plural("combat.wave.debuffs", wave.TotalDebuffs, wave.TotalDebuffs)}");
             }
             else if (wave.TotalBuffs > 0)
             {
-                elements.Add(wave.TotalBuffs == 1 ? "1 buff" : $"{wave.TotalBuffs} buffs");
+                elements.Add(Loc.Plural("combat.wave.buffs", wave.TotalBuffs, wave.TotalBuffs));
             }
             else
             {
-                elements.Add(wave.TotalDebuffs == 1 ? "1 debuff" : $"{wave.TotalDebuffs} debuffs");
+                elements.Add(Loc.Plural("combat.wave.debuffs", wave.TotalDebuffs, wave.TotalDebuffs));
             }
         }
 
@@ -690,22 +690,18 @@ public static class CombatDescriber
         {
             if (wave.RepairedItems.Count == 1)
             {
-                elements.Add($"repaired {wave.RepairedItems[0]}");
-            }
-            else if (wave.RepairedItems.Count > 1)
-            {
-                elements.Add($"{wave.TotalRepairs} repairs");
+                elements.Add(Loc.T("combat.repaired_named", wave.RepairedItems[0]));
             }
             else
             {
-                elements.Add(wave.TotalRepairs == 1 ? "1 repair" : $"{wave.TotalRepairs} repairs");
+                elements.Add(Loc.Plural("combat.wave.repairs", wave.TotalRepairs, wave.TotalRepairs));
             }
         }
 
         if (elements.Count == 0)
             return null;
 
-        string result = $"{owner}: {string.Join(", ", elements)}";
+        string result = Loc.T("combat.wave_side", owner, string.Join(", ", elements));
 
         return result;
     }

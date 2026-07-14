@@ -41,7 +41,7 @@ internal sealed class CombatEncounterPreviewNavigator
         var model = CombatEncounterPreviewFactory.Create(card);
         if (model == null)
         {
-            TolkWrapper.Speak("Nothing to inspect");
+            TolkWrapper.Speak(Loc.T("action.nothing.to.inspect"));
             return false;
         }
 
@@ -54,7 +54,7 @@ internal sealed class CombatEncounterPreviewNavigator
         _itemIndex = 0;
         _detailReader.Clear();
 
-        TolkWrapper.Speak($"{_model.EnemyName} loadout");
+        TolkWrapper.Speak(Loc.T("action.loadout", _model.EnemyName));
         return true;
     }
 
@@ -79,7 +79,7 @@ internal sealed class CombatEncounterPreviewNavigator
         _detailReader.Clear();
 
         if (announce)
-            TolkWrapper.Speak("Exited preview");
+            TolkWrapper.Speak(Loc.T("action.exited.preview"));
     }
 
     public IEnumerator ShowVisualPreview()
@@ -253,19 +253,19 @@ internal sealed class CombatEncounterPreviewNavigator
                 return;
 
             case AccessibleKey.Up:
-                TolkWrapper.Speak("Start of list");
+                TolkWrapper.Speak(Loc.T("action.start.of.list"));
                 SyncVisualFocus();
                 return;
 
             case AccessibleKey.Down:
-                TolkWrapper.Speak("End of list");
+                TolkWrapper.Speak(Loc.T("action.end.of.list"));
                 SyncVisualFocus();
                 return;
 
             case AccessibleKey.Right:
                 if (_model.Skills.Count == 0)
                 {
-                    TolkWrapper.Speak("No skills");
+                    TolkWrapper.Speak(Loc.T("action.no.skills"));
                     return;
                 }
 
@@ -302,13 +302,13 @@ internal sealed class CombatEncounterPreviewNavigator
             case AccessibleKey.Up:
                 if (_model.Skills.Count == 0)
                 {
-                    TolkWrapper.Speak("No skills");
+                    TolkWrapper.Speak(Loc.T("action.no.skills"));
                     return;
                 }
 
                 if (_skillIndex <= 0)
                 {
-                    TolkWrapper.Speak("Start of list");
+                    TolkWrapper.Speak(Loc.T("action.start.of.list"));
                     SyncVisualFocus();
                     return;
                 }
@@ -322,13 +322,13 @@ internal sealed class CombatEncounterPreviewNavigator
             case AccessibleKey.Down:
                 if (_model.Skills.Count == 0)
                 {
-                    TolkWrapper.Speak("No skills");
+                    TolkWrapper.Speak(Loc.T("action.no.skills"));
                     return;
                 }
 
                 if (_skillIndex >= _model.Skills.Count - 1)
                 {
-                    TolkWrapper.Speak("End of list");
+                    TolkWrapper.Speak(Loc.T("action.end.of.list"));
                     SyncVisualFocus();
                     return;
                 }
@@ -343,7 +343,7 @@ internal sealed class CombatEncounterPreviewNavigator
                 Card skill = GetCurrentSkill();
                 if (skill == null)
                 {
-                    TolkWrapper.Speak("No skill");
+                    TolkWrapper.Speak(Loc.T("action.no.skill"));
                     return;
                 }
 
@@ -377,7 +377,7 @@ internal sealed class CombatEncounterPreviewNavigator
                 Card item = GetCurrentItem();
                 if (item == null)
                 {
-                    TolkWrapper.Speak("No item");
+                    TolkWrapper.Speak(Loc.T("action.no.item"));
                     return;
                 }
 
@@ -390,7 +390,7 @@ internal sealed class CombatEncounterPreviewNavigator
     {
         if (_model.Items.Count == 0)
         {
-            TolkWrapper.Speak("No items");
+            TolkWrapper.Speak(Loc.T("action.no.items"));
             return;
         }
 
@@ -399,13 +399,13 @@ internal sealed class CombatEncounterPreviewNavigator
         int nextIndex = _itemIndex + delta;
         if (nextIndex < 0)
         {
-            TolkWrapper.Speak("Start of list");
+            TolkWrapper.Speak(Loc.T("action.start.of.list"));
             SyncVisualFocus();
             return;
         }
         else if (nextIndex >= _model.Items.Count)
         {
-            TolkWrapper.Speak("End of list");
+            TolkWrapper.Speak(Loc.T("action.end.of.list"));
             SyncVisualFocus();
             return;
         }
@@ -420,52 +420,52 @@ internal sealed class CombatEncounterPreviewNavigator
         Card item = GetCurrentItem();
         if (item == null)
         {
-            TolkWrapper.Speak("No item");
+            TolkWrapper.Speak(Loc.T("action.no.item"));
             return;
         }
 
         _detailReader.Init(item, c => ItemReader.GetEnemyDetailLines(c));
         if (!_detailReader.HasLines)
         {
-            TolkWrapper.Speak("No details");
+            TolkWrapper.Speak(Loc.T("action.no.details"));
             return;
         }
 
         string line = up ? _detailReader.LineUp() : _detailReader.LineDown();
-        TolkWrapper.Speak(line ?? "No details");
+        TolkWrapper.Speak(line ?? Loc.T("action.no.details"));
         SyncVisualFocus();
     }
 
     private void AnnounceStats()
     {
-        TolkWrapper.Speak($"Health: {_model.Health}");
+        TolkWrapper.Speak(Loc.T("action.health", _model.Health));
     }
 
     private void AnnounceStatsSection()
     {
-        TolkWrapper.Speak($"Stats. Health: {_model.Health}");
+        TolkWrapper.Speak(Loc.T("action.stats.health", _model.Health));
     }
 
     private void AnnounceSkillsSection()
     {
         if (_model.Skills.Count == 0)
         {
-            TolkWrapper.Speak("Skills (0)");
+            TolkWrapper.Speak(Loc.T("action.skills.zero"));
             return;
         }
 
-        TolkWrapper.Speak($"Skills ({_model.Skills.Count}). {GetCurrentSkillAnnouncement()}");
+        TolkWrapper.Speak(Loc.T("action.skills.count", _model.Skills.Count, GetCurrentSkillAnnouncement()));
     }
 
     private void AnnounceBoardSection()
     {
         if (_model.Items.Count == 0)
         {
-            TolkWrapper.Speak("Board. No items");
+            TolkWrapper.Speak(Loc.T("action.board.no.items"));
             return;
         }
 
-        TolkWrapper.Speak($"Board. {GetCurrentItemAnnouncement()}");
+        TolkWrapper.Speak(Loc.T("action.board.current", GetCurrentItemAnnouncement()));
     }
 
     private void AnnounceCurrentSkill()
@@ -473,7 +473,7 @@ internal sealed class CombatEncounterPreviewNavigator
         Card skill = GetCurrentSkill();
         if (skill == null)
         {
-            TolkWrapper.Speak("No skill");
+            TolkWrapper.Speak(Loc.T("action.no.skill"));
             return;
         }
 
@@ -485,7 +485,7 @@ internal sealed class CombatEncounterPreviewNavigator
         Card item = GetCurrentItem();
         if (item == null)
         {
-            TolkWrapper.Speak("No item");
+            TolkWrapper.Speak(Loc.T("action.no.item"));
             return;
         }
 
@@ -512,18 +512,18 @@ internal sealed class CombatEncounterPreviewNavigator
     {
         Card skill = GetCurrentSkill();
         if (skill == null)
-            return "No skill";
+            return Loc.T("action.no.skill");
 
         string name = ItemReader.GetCardName(skill);
         string description = ItemReader.GetFullDescription(skill);
-        return !string.IsNullOrEmpty(description) ? $"{name}: {description}" : name;
+        return !string.IsNullOrEmpty(description) ? Loc.T("action.skill.with.description", name, description) : name;
     }
 
     private string GetCurrentItemAnnouncement()
     {
         Card item = GetCurrentItem();
         if (item == null)
-            return "No item";
+            return Loc.T("action.no.item");
 
         return ItemReader.GetEnemyCompactDescription(item);
     }

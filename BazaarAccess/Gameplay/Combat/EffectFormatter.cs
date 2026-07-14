@@ -33,41 +33,41 @@ public static class EffectFormatter
     public static string FormatEffectAnnouncement(string itemName, bool isPlayerItem, ActionType actionType, int amount, bool isCrit, CombatActionData data = null)
     {
         // Prefix with "Enemy" for opponent items
-        string prefix = isPlayerItem ? "" : "Enemy ";
-        string name = string.IsNullOrEmpty(itemName) ? "Item" : itemName;
+        string name = string.IsNullOrEmpty(itemName) ? Loc.T("combat.item_fallback_name") : itemName;
+        string fullName = isPlayerItem ? name : Loc.T("combat.enemy_item_name", name);
 
         // Handle critical hits prominently for damage
         if (isCrit && actionType == ActionType.PlayerDamage && amount > 0)
         {
-            return $"Critical hit! {prefix}{name}: {amount} damage";
+            return Loc.T("combat.crit_hit_damage", fullName, amount);
         }
 
         string effectText = actionType switch
         {
-            ActionType.PlayerDamage => amount > 0 ? $"{amount} damage" : "damage",
-            ActionType.PlayerHeal => amount > 0 ? $"{amount} heal" : "heal",
-            ActionType.PlayerShieldApply => amount > 0 ? $"{amount} shield" : "shield",
-            ActionType.PlayerBurnApply => amount > 0 ? $"{amount} burn" : "burn applied",
-            ActionType.PlayerPoisonApply => amount > 0 ? $"{amount} poison" : "poison applied",
-            ActionType.PlayerRegenApply => amount > 0 ? $"{amount} regen" : "regen applied",
-            ActionType.PlayerGoldSteal => amount > 0 ? $"stole {amount} gold" : "gold stolen",
-            ActionType.PlayerMaxHealthIncrease => amount > 0 ? $"max health +{amount}" : "max health increased",
-            ActionType.PlayerMaxHealthDecrease => amount > 0 ? $"max health -{amount}" : "max health decreased",
-            ActionType.CardSlow => "slowed",
-            ActionType.CardFreeze => isPlayerItem ? "freeze applied" : null, // Enemy freeze uses special "Frozen!" alert
-            ActionType.CardHaste => "hasted",
-            ActionType.CardCharge => "charged",
-            ActionType.CardReload => amount > 0 ? $"reloaded {amount} ammo" : "reloaded",
+            ActionType.PlayerDamage => amount > 0 ? Loc.T("combat.damage_amount", amount) : Loc.T("combat.damage"),
+            ActionType.PlayerHeal => amount > 0 ? Loc.T("combat.heal_amount", amount) : Loc.T("combat.heal"),
+            ActionType.PlayerShieldApply => amount > 0 ? Loc.T("combat.shield_amount", amount) : Loc.T("combat.shield"),
+            ActionType.PlayerBurnApply => amount > 0 ? Loc.T("combat.burn_amount", amount) : Loc.T("combat.burn_applied"),
+            ActionType.PlayerPoisonApply => amount > 0 ? Loc.T("combat.poison_amount", amount) : Loc.T("combat.poison_applied"),
+            ActionType.PlayerRegenApply => amount > 0 ? Loc.T("combat.regen_amount", amount) : Loc.T("combat.regen_applied"),
+            ActionType.PlayerGoldSteal => amount > 0 ? Loc.T("combat.stole_gold", amount) : Loc.T("combat.gold_stolen"),
+            ActionType.PlayerMaxHealthIncrease => amount > 0 ? Loc.T("combat.max_health_increase", amount) : Loc.T("combat.max_health_increased"),
+            ActionType.PlayerMaxHealthDecrease => amount > 0 ? Loc.T("combat.max_health_decrease", amount) : Loc.T("combat.max_health_decreased"),
+            ActionType.CardSlow => Loc.T("combat.slowed"),
+            ActionType.CardFreeze => isPlayerItem ? Loc.T("combat.freeze_applied") : null, // Enemy freeze uses special "Frozen!" alert
+            ActionType.CardHaste => Loc.T("combat.hasted"),
+            ActionType.CardCharge => Loc.T("combat.charged"),
+            ActionType.CardReload => amount > 0 ? Loc.T("combat.reloaded_ammo", amount) : Loc.T("combat.reloaded"),
             ActionType.CardModifyAttribute => FormatModifyAttributeText(data, amount),
             ActionType.CardRepair => FormatRepairText(data),
             ActionType.CardDestroy => FormatDestroyText(data),
             ActionType.CardDisable => FormatDisableText(data),
-            ActionType.CardTransform => "transformed",
-            ActionType.CardUpgrade => "upgraded",
-            ActionType.CardQuestComplete => "quest complete",
-            ActionType.FlyingStart => "started flying",
-            ActionType.FlyingStop => "stopped flying",
-            ActionType.FlyingToggle => "toggled flying",
+            ActionType.CardTransform => Loc.T("combat.transformed"),
+            ActionType.CardUpgrade => Loc.T("combat.upgraded"),
+            ActionType.CardQuestComplete => Loc.T("combat.quest_complete"),
+            ActionType.FlyingStart => Loc.T("combat.started_flying"),
+            ActionType.FlyingStop => Loc.T("combat.stopped_flying"),
+            ActionType.FlyingToggle => Loc.T("combat.toggled_flying"),
             _ => null
         };
 
@@ -76,13 +76,13 @@ public static class EffectFormatter
             // Special case: enemy freeze - announce "Frozen!" instead
             if (actionType == ActionType.CardFreeze && !isPlayerItem)
             {
-                TolkWrapper.Speak("Frozen!", interrupt: true);
+                TolkWrapper.Speak(Loc.T("combat.frozen_alert"), interrupt: true);
                 return null;
             }
             return null;
         }
 
-        return $"{prefix}{name}: {effectText}";
+        return Loc.T("combat.item_effect", fullName, effectText);
     }
 
     /// <summary>
@@ -90,17 +90,17 @@ public static class EffectFormatter
     /// </summary>
     public static string FormatDestroyText(CombatActionData data)
     {
-        if (data == null) return "destroyed";
+        if (data == null) return Loc.T("combat.destroyed");
 
         var targetCard = data.TargetCard;
         if (targetCard != null)
         {
             string targetName = ItemReader.GetCardName(targetCard);
             if (!string.IsNullOrEmpty(targetName))
-                return $"destroyed {targetName}";
+                return Loc.T("combat.destroyed_named", targetName);
         }
 
-        return "destroyed";
+        return Loc.T("combat.destroyed");
     }
 
     /// <summary>
@@ -108,17 +108,17 @@ public static class EffectFormatter
     /// </summary>
     public static string FormatDisableText(CombatActionData data)
     {
-        if (data == null) return "disabled";
+        if (data == null) return Loc.T("combat.disabled");
 
         var targetCard = data.TargetCard;
         if (targetCard != null)
         {
             string targetName = ItemReader.GetCardName(targetCard);
             if (!string.IsNullOrEmpty(targetName))
-                return $"disabled {targetName}";
+                return Loc.T("combat.disabled_named", targetName);
         }
 
-        return "disabled";
+        return Loc.T("combat.disabled");
     }
 
     /// <summary>
@@ -126,17 +126,17 @@ public static class EffectFormatter
     /// </summary>
     public static string FormatRepairText(CombatActionData data)
     {
-        if (data == null) return "repaired";
+        if (data == null) return Loc.T("combat.repaired");
 
         var targetCard = data.TargetCard;
         if (targetCard != null)
         {
             string targetName = ItemReader.GetCardName(targetCard);
             if (!string.IsNullOrEmpty(targetName))
-                return $"repaired {targetName}";
+                return Loc.T("combat.repaired_named", targetName);
         }
 
-        return "repaired";
+        return Loc.T("combat.repaired");
     }
 
     /// <summary>
@@ -146,7 +146,7 @@ public static class EffectFormatter
     {
         if (data == null)
         {
-            return fallbackAmount != 0 ? $"modified by {fallbackAmount}" : "modified";
+            return fallbackAmount != 0 ? Loc.T("combat.modified_by", fallbackAmount) : Loc.T("combat.modified");
         }
 
         var info = GetModifyAttributeInfo(data);
@@ -156,29 +156,32 @@ public static class EffectFormatter
 
         if (!string.IsNullOrEmpty(info.AttrName))
         {
-            string changeDir = info.Amount > 0 ? "increased" : (info.Amount < 0 ? "decreased" : "changed");
-            if (info.Amount != 0)
+            if (info.Amount > 0)
             {
-                parts.Add($"{info.AttrName} {changeDir} by {Math.Abs(info.Amount)}");
+                parts.Add(Loc.T("combat.attr_increased_by", info.AttrName, Math.Abs(info.Amount)));
+            }
+            else if (info.Amount < 0)
+            {
+                parts.Add(Loc.T("combat.attr_decreased_by", info.AttrName, Math.Abs(info.Amount)));
             }
             else
             {
-                parts.Add($"{info.AttrName} {changeDir}");
+                parts.Add(Loc.T("combat.attr_changed", info.AttrName));
             }
         }
         else if (info.Amount != 0 || fallbackAmount != 0)
         {
             int finalAmount = info.Amount != 0 ? info.Amount : fallbackAmount;
-            parts.Add($"modified by {finalAmount}");
+            parts.Add(Loc.T("combat.modified_by", finalAmount));
         }
         else
         {
-            parts.Add("modified");
+            parts.Add(Loc.T("combat.modified"));
         }
 
         if (!string.IsNullOrEmpty(info.TargetName))
         {
-            parts.Add($"on {info.TargetName}");
+            parts.Add(Loc.T("combat.on_target", info.TargetName));
         }
 
         return string.Join(" ", parts);
@@ -234,11 +237,15 @@ public static class EffectFormatter
     }
 
     /// <summary>
-    /// Converts attribute type enum names to friendly names.
+    /// Converts attribute type enum names to friendly names. Tries the game's own vocabulary
+    /// first; only falls back to the hand-written switch when the game has no word for it.
     /// </summary>
     public static string GetFriendlyAttributeName(string attrType)
     {
         if (string.IsNullOrEmpty(attrType)) return null;
+
+        string gameWord = GameVocabulary.Keyword(attrType);
+        if (gameWord != attrType) return gameWord;
 
         return attrType switch
         {

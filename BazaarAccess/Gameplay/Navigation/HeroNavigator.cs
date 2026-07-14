@@ -104,7 +104,7 @@ public class HeroNavigator
     {
         if (_skills.Count == 0)
         {
-            TolkWrapper.Speak("No skills equipped");
+            TolkWrapper.Speak(Loc.T("nav.hero.no_skills_equipped"));
             return;
         }
 
@@ -126,16 +126,16 @@ public class HeroNavigator
         if (_subsection == HeroSubsection.Stats)
         {
             int count = GetStatCount();
-            string msg = $"Hero stats, {count} stats";
+            string msg = Loc.Plural("nav.hero.stats_count", count, count);
             string rank = ItemReader.GetPlayerRank();
             if (!string.IsNullOrEmpty(rank) && ItemReader.IsRankedMode())
-                msg += $". Rank: {rank}";
+                msg += ". " + Loc.T("vocab.hero.rank", rank);
             TolkWrapper.Speak(msg);
         }
         else
         {
             string skillAnnouncement = GetCurrentSkillAnnouncement();
-            TolkWrapper.Speak($"Hero skills, {_skills.Count} skills. {skillAnnouncement}");
+            TolkWrapper.Speak(Loc.Plural("nav.hero.skills_intro", _skills.Count, _skills.Count, skillAnnouncement));
             OnSkillVisualSelect?.Invoke(_skillIndex);
         }
     }
@@ -179,15 +179,15 @@ public class HeroNavigator
     private string GetCurrentSkillAnnouncement()
     {
         if (_skillIndex < 0 || _skillIndex >= _skills.Count)
-            return "No skill";
+            return Loc.T("nav.no_skill");
 
         var skill = _skills[_skillIndex];
         if (skill == null)
-            return "Empty slot";
+            return Loc.T("nav.empty_slot");
 
         string name = ItemReader.GetCardName(skill);
         string desc = ItemReader.GetFullDescription(skill);
-        return !string.IsNullOrEmpty(desc) ? $"{name}: {desc}" : name;
+        return !string.IsNullOrEmpty(desc) ? Loc.T("nav.name_with_desc", name, desc) : name;
     }
 
     /// <summary>
@@ -214,7 +214,7 @@ public class HeroNavigator
             int maxIndex = GetStatCount() - 1;
             if (_statIndex >= maxIndex)
             {
-                TolkWrapper.Speak("End of list");
+                TolkWrapper.Speak(Loc.T("nav.end_of_list"));
                 return;
             }
             _statIndex++;
@@ -225,7 +225,7 @@ public class HeroNavigator
             if (_skills.Count == 0) return;
             if (_skillIndex >= _skills.Count - 1)
             {
-                TolkWrapper.Speak("End of list");
+                TolkWrapper.Speak(Loc.T("nav.end_of_list"));
                 return;
             }
             _skillIndex++;
@@ -242,7 +242,7 @@ public class HeroNavigator
         {
             if (_statIndex <= 0)
             {
-                TolkWrapper.Speak("Start of list");
+                TolkWrapper.Speak(Loc.T("nav.start_of_list"));
                 return;
             }
             _statIndex--;
@@ -253,7 +253,7 @@ public class HeroNavigator
             if (_skills.Count == 0) return;
             if (_skillIndex <= 0)
             {
-                TolkWrapper.Speak("Start of list");
+                TolkWrapper.Speak(Loc.T("nav.start_of_list"));
                 return;
             }
             _skillIndex--;
@@ -278,30 +278,30 @@ public class HeroNavigator
     public void ReadAllStats()
     {
         var player = Data.Run?.Player;
-        if (player == null) { TolkWrapper.Speak("No hero data"); return; }
+        if (player == null) { TolkWrapper.Speak(Loc.T("nav.hero.no_data")); return; }
 
         var parts = new List<string>();
 
         var health = player.GetAttributeValue(EPlayerAttributeType.Health);
         var maxHealth = player.GetAttributeValue(EPlayerAttributeType.HealthMax);
         if (health.HasValue && maxHealth.HasValue)
-            parts.Add($"Health {health.Value} of {maxHealth.Value}");
+            parts.Add(Loc.T("vocab.hero.summary.health", health.Value, maxHealth.Value));
 
         var gold = player.GetAttributeValue(EPlayerAttributeType.Gold);
-        if (gold.HasValue) parts.Add($"Gold {gold.Value}");
+        if (gold.HasValue) parts.Add(Loc.T("vocab.hero.summary.gold", gold.Value));
 
         var level = player.GetAttributeValue(EPlayerAttributeType.Level);
-        if (level.HasValue) parts.Add($"Level {level.Value}");
+        if (level.HasValue) parts.Add(Loc.T("vocab.hero.summary.level", level.Value));
 
         if (SupportsRage(player))
         {
             int rageMax = player.GetAttributeValue(EPlayerAttributeType.RageMax) ?? 0;
             int rage = player.GetAttributeValue(EPlayerAttributeType.Rage) ?? 0;
-            parts.Add($"Rage {rage} / {rageMax}");
+            parts.Add(Loc.T("vocab.hero.summary.rage", rage, rageMax));
         }
 
         var shield = player.GetAttributeValue(EPlayerAttributeType.Shield);
-        if (shield.HasValue && shield.Value > 0) parts.Add($"Shield {shield.Value}");
+        if (shield.HasValue && shield.Value > 0) parts.Add(Loc.T("vocab.hero.summary.shield", shield.Value));
 
         TolkWrapper.Speak(string.Join(", ", parts));
     }
@@ -321,7 +321,7 @@ public class HeroNavigator
 
     public void AnnounceStat(Player player, int statIndex, bool includeRank, string rankText = null)
     {
-        if (player == null) { TolkWrapper.Speak("No hero data"); return; }
+        if (player == null) { TolkWrapper.Speak(Loc.T("nav.hero.no_data")); return; }
 
         bool isRageStat;
         bool isRankStat;
@@ -329,7 +329,7 @@ public class HeroNavigator
 
         if (isRankStat)
         {
-            TolkWrapper.Speak(!string.IsNullOrEmpty(rankText) ? $"Rank: {rankText}" : "Rank: unranked");
+            TolkWrapper.Speak(!string.IsNullOrEmpty(rankText) ? Loc.T("vocab.hero.rank", rankText) : Loc.T("vocab.hero.rank_unranked"));
             return;
         }
 
@@ -337,7 +337,7 @@ public class HeroNavigator
         {
             int rage = player.GetAttributeValue(EPlayerAttributeType.Rage) ?? 0;
             int rageMax = player.GetAttributeValue(EPlayerAttributeType.RageMax) ?? 0;
-            TolkWrapper.Speak($"Rage: {rage} / {rageMax}");
+            TolkWrapper.Speak(Loc.T("vocab.hero.rage_colon", rage, rageMax));
             return;
         }
 
@@ -345,7 +345,7 @@ public class HeroNavigator
         var value = player.GetAttributeValue(type);
         string name = GetStatName(type);
 
-        TolkWrapper.Speak(value.HasValue ? $"{name}: {value.Value}" : $"{name}: none");
+        TolkWrapper.Speak(value.HasValue ? Loc.T("nav.hero.stat_value", name, value.Value) : Loc.T("nav.hero.stat_none", name));
     }
 
     private static int GetBaseStatIndex(Player player, int statIndex, bool includeRank, out bool isRageStat, out bool isRankStat)
@@ -381,18 +381,18 @@ public class HeroNavigator
     /// </summary>
     public string GetStatName(EPlayerAttributeType type) => type switch
     {
-        EPlayerAttributeType.Health => "Health",
-        EPlayerAttributeType.HealthMax => "Max Health",
-        EPlayerAttributeType.Gold => "Gold",
-        EPlayerAttributeType.Level => "Level",
-        EPlayerAttributeType.Experience => "Experience",
-        EPlayerAttributeType.Prestige => "Prestige",
-        EPlayerAttributeType.Shield => "Shield",
-        EPlayerAttributeType.Poison => "Poison",
-        EPlayerAttributeType.Burn => "Burn",
-        EPlayerAttributeType.HealthRegen => "Regeneration",
-        EPlayerAttributeType.CritChance => "Crit Chance",
-        EPlayerAttributeType.Income => "Income",
+        EPlayerAttributeType.Health => Loc.T("vocab.hero.health"),
+        EPlayerAttributeType.HealthMax => Loc.T("vocab.hero.maxhealth"),
+        EPlayerAttributeType.Gold => Loc.T("vocab.hero.gold"),
+        EPlayerAttributeType.Level => Loc.T("vocab.hero.level"),
+        EPlayerAttributeType.Experience => Loc.T("vocab.hero.experience"),
+        EPlayerAttributeType.Prestige => Loc.T("vocab.hero.prestige"),
+        EPlayerAttributeType.Shield => Loc.T("vocab.hero.shield"),
+        EPlayerAttributeType.Poison => Loc.T("vocab.hero.poison"),
+        EPlayerAttributeType.Burn => Loc.T("vocab.hero.burn"),
+        EPlayerAttributeType.HealthRegen => Loc.T("vocab.hero.regeneration"),
+        EPlayerAttributeType.CritChance => Loc.T("vocab.hero.critchance"),
+        EPlayerAttributeType.Income => Loc.T("vocab.hero.income"),
         _ => type.ToString()
     };
 

@@ -138,7 +138,7 @@ public class ActionMenuHandler
 
         if (_actionOptions.Count == 0)
         {
-            TolkWrapper.Speak("No actions available");
+            TolkWrapper.Speak(Loc.T("action.menu.no.actions"));
             return;
         }
 
@@ -146,8 +146,8 @@ public class ActionMenuHandler
 
         // Announce action mode with first option
         string cardName = ItemReader.GetCardName(card);
-        TolkWrapper.Speak($"{cardName}. {GetActionOptionText(_actionOptions[0])}. " +
-                          $"{_actionOptions.Count} actions. Backspace to cancel.");
+        TolkWrapper.Speak(Loc.Plural("action.menu.count", _actionOptions.Count,
+            cardName, GetActionOptionText(_actionOptions[0]), _actionOptions.Count));
     }
 
     /// <summary>
@@ -157,7 +157,7 @@ public class ActionMenuHandler
     {
         _isInActionMode = false;
         _actionCard = null;
-        TolkWrapper.Speak("Exited");
+        TolkWrapper.Speak(Loc.T("action.exited"));
     }
 
     /// <summary>
@@ -168,7 +168,7 @@ public class ActionMenuHandler
         if (_actionCard == null)
         {
             _isInActionMode = false;
-            TolkWrapper.Speak("Action cancelled");
+            TolkWrapper.Speak(Loc.T("action.cancelled"));
             return;
         }
 
@@ -211,7 +211,7 @@ public class ActionMenuHandler
                 }
                 else
                 {
-                    TolkWrapper.Speak("Cannot sell");
+                    TolkWrapper.Speak(Loc.T("action.cannot.sell"));
                 }
                 break;
 
@@ -231,7 +231,7 @@ public class ActionMenuHandler
                 }
                 else
                 {
-                    TolkWrapper.Speak("Cannot upgrade or enchant here");
+                    TolkWrapper.Speak(Loc.T("action.cannot.upgrade.enchant.here"));
                 }
                 break;
 
@@ -247,7 +247,7 @@ public class ActionMenuHandler
                 }
                 else
                 {
-                    TolkWrapper.Speak("Cannot move");
+                    TolkWrapper.Speak(Loc.T("action.cannot.move"));
                 }
                 break;
 
@@ -272,7 +272,7 @@ public class ActionMenuHandler
                 }
                 else
                 {
-                    TolkWrapper.Speak("Cannot reorder");
+                    TolkWrapper.Speak(Loc.T("action.cannot.reorder"));
                 }
                 break;
 
@@ -296,7 +296,7 @@ public class ActionMenuHandler
                 }
                 else
                 {
-                    TolkWrapper.Speak("Cannot reorder");
+                    TolkWrapper.Speak(Loc.T("action.cannot.reorder"));
                 }
                 break;
 
@@ -308,7 +308,7 @@ public class ActionMenuHandler
                 }
                 else
                 {
-                    TolkWrapper.Speak("Cannot reorder");
+                    TolkWrapper.Speak(Loc.T("action.cannot.reorder"));
                 }
                 break;
 
@@ -319,7 +319,7 @@ public class ActionMenuHandler
                 }
                 else
                 {
-                    TolkWrapper.Speak("Cannot reorder");
+                    TolkWrapper.Speak(Loc.T("action.cannot.reorder"));
                 }
                 break;
 
@@ -327,7 +327,7 @@ public class ActionMenuHandler
             case AccessibleKey.Back:
                 _isInActionMode = false;
                 _actionCard = null;
-                TolkWrapper.Speak("Exited");
+                TolkWrapper.Speak(Loc.T("action.exited"));
                 break;
 
             // All other keys are ignored (stay in action mode)
@@ -344,11 +344,11 @@ public class ActionMenuHandler
         switch (option)
         {
             case ActionOption.Details:
-                return "Details";
+                return Loc.T("action.details");
 
             case ActionOption.Sell:
                 int sellPrice = ItemReader.GetSellPrice(_actionCard);
-                return $"Sell for {sellPrice} gold (S)";
+                return Loc.T("action.sell", sellPrice);
 
             case ActionOption.Upgrade:
                 var upgradeInfo = PedestalManager.GetCurrentPedestalInfo();
@@ -359,30 +359,30 @@ public class ActionMenuHandler
                     if (upgradeInfo.TargetTier.Value == _actionCard.Tier)
                     {
                         // Same tier - just improving stats
-                        return $"Upgrade {currentTier} stats (U)";
+                        return Loc.T("action.upgrade.stats", currentTier);
                     }
                     else
                     {
-                        return $"Upgrade to {ItemReader.GetTierName(upgradeInfo.TargetTier.Value)} (U)";
+                        return Loc.T("action.upgrade.to", ItemReader.GetTierName(upgradeInfo.TargetTier.Value));
                     }
                 }
                 // Fallback to assuming next tier
                 string nextTier = TierHelper.GetNextName(_actionCard.Tier);
-                return $"Upgrade to {nextTier} (U)";
+                return Loc.T("action.upgrade.to", nextTier);
 
             case ActionOption.Enchant:
                 var pedestalInfo = PedestalManager.GetCurrentPedestalInfo();
                 string enchantName = pedestalInfo.EnchantmentName ?? "random";
-                return $"Enchant with {enchantName} (U)";
+                return Loc.T("action.enchant.with", enchantName);
 
             case ActionOption.UsePedestal:
-                return "Use pedestal (U)";
+                return Loc.T("action.use.pedestal");
 
             case ActionOption.MoveToStash:
-                return "Move to stash (M)";
+                return Loc.T("action.move.to.stash");
 
             case ActionOption.MoveToBoard:
-                return "Move to board (M)";
+                return Loc.T("action.move.to.board");
 
             default:
                 return option.ToString();
@@ -399,7 +399,7 @@ public class ActionMenuHandler
         string optionText = GetActionOptionText(_actionOptions[_actionIndex]);
         int position = _actionIndex + 1;
         int total = _actionOptions.Count;
-        TolkWrapper.Speak($"{optionText}, {position} of {total}");
+        TolkWrapper.Speak(Loc.T("action.option.position", optionText, position, total));
     }
 
     /// <summary>
@@ -426,7 +426,7 @@ public class ActionMenuHandler
                     string name = ItemReader.GetCardName(itemCard);
                     int price = ItemReader.GetSellPrice(itemCard);
                     ActionHelper.SellItem(itemCard);
-                    TolkWrapper.Speak($"Sold {name} for {price} gold");
+                    TolkWrapper.Speak(Loc.T("action.sold", name, price));
                     _onRefreshAndAnnounce();
                 }
                 break;
@@ -459,7 +459,7 @@ public class ActionMenuHandler
                 if (itemCard != null)
                 {
                     ActionHelper.MoveItem(itemCard, true);
-                    TolkWrapper.Speak("Moved to stash");
+                    TolkWrapper.Speak(Loc.T("action.moved.stash.short"));
                     _onRefreshAndAnnounce();
                 }
                 break;
@@ -468,7 +468,7 @@ public class ActionMenuHandler
                 if (itemCard != null)
                 {
                     ActionHelper.MoveItem(itemCard, false);
-                    TolkWrapper.Speak("Moved to board");
+                    TolkWrapper.Speak(Loc.T("action.moved.board.short"));
                     _onRefreshAndAnnounce();
                 }
                 break;
@@ -492,11 +492,11 @@ public class ActionMenuHandler
             if (rightItem != null)
             {
                 string rightName = ItemReader.GetCardName(rightItem);
-                TolkWrapper.Speak($"Left edge, before {rightName}");
+                TolkWrapper.Speak(Loc.T("action.reorder.left.edge.before", rightName));
             }
             else
             {
-                TolkWrapper.Speak("Left edge");
+                TolkWrapper.Speak(Loc.T("action.reorder.left.edge"));
             }
         }
         else if (slot >= rightEdge)
@@ -506,11 +506,11 @@ public class ActionMenuHandler
             if (leftItem != null)
             {
                 string leftName = ItemReader.GetCardName(leftItem);
-                TolkWrapper.Speak($"Right edge, after {leftName}");
+                TolkWrapper.Speak(Loc.T("action.reorder.right.edge.after", leftName));
             }
             else
             {
-                TolkWrapper.Speak("Right edge");
+                TolkWrapper.Speak(Loc.T("action.reorder.right.edge"));
             }
         }
         else
@@ -523,21 +523,21 @@ public class ActionMenuHandler
             {
                 string leftName = ItemReader.GetCardName(leftItem);
                 string rightName = ItemReader.GetCardName(rightItem);
-                TolkWrapper.Speak($"Between {leftName} and {rightName}");
+                TolkWrapper.Speak(Loc.T("action.reorder.between", leftName, rightName));
             }
             else if (leftItem != null)
             {
                 string leftName = ItemReader.GetCardName(leftItem);
-                TolkWrapper.Speak($"After {leftName}");
+                TolkWrapper.Speak(Loc.T("action.reorder.after", leftName));
             }
             else if (rightItem != null)
             {
                 string rightName = ItemReader.GetCardName(rightItem);
-                TolkWrapper.Speak($"Before {rightName}");
+                TolkWrapper.Speak(Loc.T("action.reorder.before", rightName));
             }
             else
             {
-                TolkWrapper.Speak($"Position {slot + 1}");
+                TolkWrapper.Speak(Loc.T("action.reorder.position", slot + 1));
             }
         }
     }
@@ -550,14 +550,14 @@ public class ActionMenuHandler
     {
         if (card == null)
         {
-            TolkWrapper.Speak("Cannot move this");
+            TolkWrapper.Speak(Loc.T("action.cannot.move.this"));
             return;
         }
 
         int currentSlot = _navigator.GetCurrentBoardSlot();
         if (currentSlot < 0)
         {
-            TolkWrapper.Speak("Cannot determine position");
+            TolkWrapper.Speak(Loc.T("action.cannot.determine.position"));
             return;
         }
 
@@ -577,8 +577,7 @@ public class ActionMenuHandler
 
         if (targetSlot == currentSlot)
         {
-            string edge = direction < 0 ? "left" : "right";
-            TolkWrapper.Speak($"Already at {edge} edge");
+            TolkWrapper.Speak(direction < 0 ? Loc.T("action.already.at.left.edge") : Loc.T("action.already.at.right.edge"));
             return;
         }
 
@@ -599,8 +598,7 @@ public class ActionMenuHandler
         // Store the item's InstanceId for reliable tracking after moves
         var itemId = card.InstanceId;
 
-        string edge = stepDirection < 0 ? "left" : "right";
-        TolkWrapper.Speak($"Moving to {edge} edge");
+        TolkWrapper.Speak(stepDirection < 0 ? Loc.T("action.moving.to.left.edge") : Loc.T("action.moving.to.right.edge"));
 
         // Move step by step with small delays
         while (currentSlot != targetSlot)

@@ -19,7 +19,7 @@ namespace BazaarAccess.Screens;
 /// </summary>
 public class CollectionScreen : BaseScreen
 {
-    public override string ScreenName => "Collection";
+    public override string ScreenName => Loc.T("screen.collection.name");
 
     private Transform _root;
     private CollectionManager _collectionManager;
@@ -117,12 +117,12 @@ public class CollectionScreen : BaseScreen
     {
         return type switch
         {
-            BazaarInventoryTypes.ECollectionType.HeroSkins => "Hero Skins",
-            BazaarInventoryTypes.ECollectionType.Boards => "Boards",
-            BazaarInventoryTypes.ECollectionType.CardSkins => "Card Skins",
-            BazaarInventoryTypes.ECollectionType.Carpets => "Carpets",
-            BazaarInventoryTypes.ECollectionType.CardBacks => "Card Backs",
-            BazaarInventoryTypes.ECollectionType.Album => "Albums",
+            BazaarInventoryTypes.ECollectionType.HeroSkins => Loc.T("screen.collection.category.heroskins"),
+            BazaarInventoryTypes.ECollectionType.Boards => Loc.T("screen.collection.category.boards"),
+            BazaarInventoryTypes.ECollectionType.CardSkins => Loc.T("screen.collection.category.cardskins"),
+            BazaarInventoryTypes.ECollectionType.Carpets => Loc.T("screen.collection.category.carpets"),
+            BazaarInventoryTypes.ECollectionType.CardBacks => Loc.T("screen.collection.category.cardbacks"),
+            BazaarInventoryTypes.ECollectionType.Album => Loc.T("screen.collection.category.albums"),
             _ => type.ToString()
         };
     }
@@ -140,7 +140,7 @@ public class CollectionScreen : BaseScreen
         if (!string.IsNullOrEmpty(item.Name))
             parts.Add(item.Name);
         else
-            parts.Add("Unknown");
+            parts.Add(Loc.T("screen.collection.item_unknown"));
 
         // Rarity
         if (item.Rarity.Name != null)
@@ -148,7 +148,7 @@ public class CollectionScreen : BaseScreen
 
         // Equipped status
         if (_collectionManager != null && _collectionManager.IsCollectibleOfIDEquipped(item))
-            parts.Add("equipped");
+            parts.Add(Loc.T("screen.collection.equipped"));
 
         return string.Join(", ", parts);
     }
@@ -164,7 +164,7 @@ public class CollectionScreen : BaseScreen
         string categoryName = GetCurrentCategoryName();
         int itemCount = _currentItems.Length;
 
-        string message = $"{categoryName}, {itemCount} items";
+        string message = Loc.Plural("screen.collection.category_summary", itemCount, categoryName, itemCount);
 
         if (itemCount > 0 && _inItemNavigation)
         {
@@ -178,14 +178,14 @@ public class CollectionScreen : BaseScreen
     {
         string categoryName = GetCurrentCategoryName();
         int itemCount = _currentItems.Length;
-        TolkWrapper.Speak($"{categoryName}, {itemCount} items");
+        TolkWrapper.Speak(Loc.Plural("screen.collection.category_summary", itemCount, categoryName, itemCount));
     }
 
     private void AnnounceCurrentItem()
     {
         if (_currentItems.Length == 0)
         {
-            TolkWrapper.Speak("No items");
+            TolkWrapper.Speak(Loc.T("screen.collection.no_items"));
             return;
         }
 
@@ -245,7 +245,7 @@ public class CollectionScreen : BaseScreen
     {
         if (_currentItems.Length == 0)
         {
-            TolkWrapper.Speak("No items in this category");
+            TolkWrapper.Speak(Loc.T("screen.collection.no_items_category"));
             return;
         }
 
@@ -264,7 +264,7 @@ public class CollectionScreen : BaseScreen
     {
         if (_currentItems.Length == 0)
         {
-            TolkWrapper.Speak("No item to select");
+            TolkWrapper.Speak(Loc.T("screen.collection.no_item_select"));
             return;
         }
 
@@ -281,7 +281,7 @@ public class CollectionScreen : BaseScreen
         // Check if already equipped
         if (_collectionManager != null && _collectionManager.IsCollectibleOfIDEquipped(item))
         {
-            TolkWrapper.Speak($"{item.Name} is already equipped");
+            TolkWrapper.Speak(Loc.T("screen.collection.already_equipped", item.Name));
             return;
         }
 
@@ -296,7 +296,7 @@ public class CollectionScreen : BaseScreen
     {
         try
         {
-            TolkWrapper.Speak($"Equipping {item.Name}");
+            TolkWrapper.Speak(Loc.T("screen.collection.equipping", item.Name));
 
             // A skin belongs to a specific hero (SkinAssetDataSO.hero). Equip it to THAT
             // hero, not to Data.SelectedHero (the last hero picked in hero-select), or the
@@ -314,12 +314,12 @@ public class CollectionScreen : BaseScreen
                 await _collectionManager.EquipCollectible(item);
             }
 
-            TolkWrapper.Speak($"{item.Name} equipped");
+            TolkWrapper.Speak(Loc.T("screen.collection.equipped_done", item.Name));
         }
         catch (Exception e)
         {
             Plugin.Logger.LogError($"Failed to equip item: {e.Message}");
-            TolkWrapper.Speak("Failed to equip item");
+            TolkWrapper.Speak(Loc.T("screen.collection.equip_failed"));
         }
     }
 

@@ -47,7 +47,7 @@ public class TutorialUI : IAccessibleUI
                 if (_isFullScreen && _hasPrevButton && _currentOption == 1)
                 {
                     ClickButton(_prevButton);
-                    TolkWrapper.Speak("Previous");
+                    TolkWrapper.Speak(Loc.T("ui.previous"));
                 }
                 else
                 {
@@ -61,11 +61,11 @@ public class TutorialUI : IAccessibleUI
             case AccessibleKey.Help:
                 if (_isFullScreen && _hasPrevButton)
                 {
-                    TolkWrapper.Speak("Tutorial active. Use arrows to navigate game. Press Enter to continue tutorial. Period or comma to re-read.");
+                    TolkWrapper.Speak(Loc.T("ui.tutorial2.help_full_nav"));
                 }
                 else
                 {
-                    TolkWrapper.Speak("Tutorial active. Use arrows to navigate game. Press Enter to continue tutorial. Period or comma to re-read messages.");
+                    TolkWrapper.Speak(Loc.T("ui.tutorial2.help_full_basic"));
                 }
                 break;
 
@@ -102,26 +102,26 @@ public class TutorialUI : IAccessibleUI
     {
         if (_isFullScreen && _hasPrevButton)
         {
-            return "Tutorial. Arrows: Previous/Next. Enter: Continue. Period/Comma: Re-read.";
+            return Loc.T("ui.tutorial2.help_short_nav");
         }
-        return "Tutorial. Enter: Continue. Period/Comma: Re-read messages.";
+        return Loc.T("ui.tutorial2.help_short_basic");
     }
 
     public void OnFocus()
     {
         // Añadir el texto del tutorial al buffer para poder releerlo con . y ,
-        MessageBuffer.Add($"Tutorial: {_text}");
+        MessageBuffer.Add(Loc.T("ui.tutorial2.buffer_prefix", _text));
 
         // Anunciar el texto del tutorial
         string announcement = _text;
 
         if (_isFullScreen && _hasPrevButton)
         {
-            announcement += ". Use arrows to select Previous or Next, then Enter.";
+            announcement += ". " + Loc.T("ui.tutorial2.nav_hint");
         }
         else
         {
-            announcement += ". Press Enter to continue.";
+            announcement += ". " + Loc.T("ui.continue_prompt");
         }
 
         TolkWrapper.Speak(announcement);

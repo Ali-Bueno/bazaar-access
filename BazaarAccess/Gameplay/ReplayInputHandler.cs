@@ -173,7 +173,7 @@ public class ReplayInputHandler
                 break;
 
             case AccessibleKey.GoToStash:
-                TolkWrapper.Speak("Press E for Recap first, then G for opponent board.");
+                TolkWrapper.Speak(Loc.T("action.replay.press.e.first"));
                 break;
 
             case AccessibleKey.WinsInfo:
@@ -181,7 +181,7 @@ public class ReplayInputHandler
                 break;
 
             case AccessibleKey.Back:
-                TolkWrapper.Speak("Post-combat. Enter to continue, R to replay, E for recap.");
+                TolkWrapper.Speak(Loc.T("action.replay.post.combat.help"));
                 break;
 
             default:

@@ -346,10 +346,10 @@ public class AccessibleMenu
     /// </summary>
     public string GetHelp()
     {
-        string help = "Use up and down to navigate. Enter to select.";
+        string help = Loc.T("patch.menu.help_base");
         if (_onBack != null)
         {
-            help += " Escape to go back.";
+            help += " " + Loc.T("patch.menu.help_back_suffix");
         }
         return help;
     }

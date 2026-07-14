@@ -235,7 +235,7 @@ public abstract class LoginBaseUI : BaseUI
                 string text = GetBazaarButtonText(button);
                 if (string.IsNullOrEmpty(text)) text = fallbackText;
                 if (!IsBazaarButtonInteractable(button))
-                    text += " (disabled)";
+                    text += " " + Loc.T("ui.disabled_suffix");
                 return text;
             },
             () =>
@@ -243,7 +243,7 @@ public abstract class LoginBaseUI : BaseUI
                 if (IsBazaarButtonInteractable(button))
                     ClickBazaarButton(button);
                 else
-                    TolkWrapper.Speak("Button is disabled");
+                    TolkWrapper.Speak(Loc.T("ui.button_disabled"));
             }
         );
     }
@@ -262,7 +262,7 @@ public abstract class LoginBaseUI : BaseUI
                 var tmpText = button.GetComponentInChildren<TMP_Text>();
                 string text = tmpText?.text ?? fallbackText;
                 if (!button.interactable)
-                    text += " (disabled)";
+                    text += " " + Loc.T("ui.disabled_suffix");
                 return text;
             },
             () =>
@@ -270,7 +270,7 @@ public abstract class LoginBaseUI : BaseUI
                 if (button.interactable)
                     button.onClick.Invoke();
                 else
-                    TolkWrapper.Speak("Button is disabled");
+                    TolkWrapper.Speak(Loc.T("ui.button_disabled"));
             }
         );
     }
@@ -284,7 +284,7 @@ public abstract class LoginBaseUI : BaseUI
         if (toggle == null) return;
 
         Menu.AddOption(
-            () => $"{label}: {(toggle.isOn ? "on" : "off")}",
+            () => $"{label}: {(toggle.isOn ? Loc.T("ui.on") : Loc.T("ui.off"))}",
             () => ToggleAndAnnounce(toggle),
             null,
             (dir) => ToggleAndAnnounce(toggle)
@@ -294,7 +294,7 @@ public abstract class LoginBaseUI : BaseUI
     private void ToggleAndAnnounce(Toggle toggle)
     {
         toggle.isOn = !toggle.isOn;
-        TolkWrapper.Speak(toggle.isOn ? "on" : "off");
+        TolkWrapper.Speak(toggle.isOn ? Loc.T("ui.on") : Loc.T("ui.off"));
     }
 
     private void OnEditModeChanged(bool isEditing)
@@ -319,7 +319,7 @@ public abstract class LoginBaseUI : BaseUI
     /// </summary>
     protected string FindLabelForInput(TMP_InputField inputField)
     {
-        if (inputField == null) return "Field";
+        if (inputField == null) return Loc.T("ui.field_default_label");
 
         // Intentar placeholder text
         if (inputField.placeholder is TMP_Text placeholder &&
@@ -345,6 +345,6 @@ public abstract class LoginBaseUI : BaseUI
             }
         }
 
-        return "Field";
+        return Loc.T("ui.field_default_label");
     }
 }

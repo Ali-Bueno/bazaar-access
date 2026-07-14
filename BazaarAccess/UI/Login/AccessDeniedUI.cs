@@ -9,7 +9,7 @@ public class AccessDeniedUI : LoginBaseUI
 {
     private readonly object _view;
 
-    public override string UIName => "Access Denied";
+    public override string UIName => Loc.T("ui.login.access_denied_title");
 
     public AccessDeniedUI(Transform root, object view) : base(root)
     {
@@ -31,7 +31,7 @@ public class AccessDeniedUI : LoginBaseUI
             );
         }
 
-        AddBazaarButton(_view, "continueButton", "Continue");
+        AddBazaarButton(_view, "continueButton", Loc.T("ui.continue"));
     }
 
     protected override void OnBack()

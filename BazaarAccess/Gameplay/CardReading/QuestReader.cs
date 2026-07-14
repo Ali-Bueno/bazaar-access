@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using BazaarAccess.Core;
 using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameShared.Domain.Cards.Item;
 using BazaarGameShared.Domain.Cards.Quests;
@@ -57,17 +58,17 @@ internal static class QuestReader
                     int current = card.GetAttributeValue(entry.AttributeType) ?? 0;
                     int target = entry.Target;
                     bool isComplete = current >= target;
-                    string status = isComplete ? "Complete" : $"{current}/{target}";
+                    string status = isComplete ? Loc.T("card.quest.complete") : Loc.T("card.quest.fraction", current, target);
 
                     lines.Add(!string.IsNullOrEmpty(questDesc)
-                        ? $"Quest: {questDesc} ({status})"
-                        : $"Quest: {status}");
+                        ? Loc.T("card.quest.withDesc", questDesc, status)
+                        : Loc.T("card.quest.statusOnly", status));
 
                     // Get quest reward description
                     string rewardDesc = GetQuestRewardDescription(entry, card);
                     if (!string.IsNullOrEmpty(rewardDesc))
                     {
-                        lines.Add($"Reward: {rewardDesc}");
+                        lines.Add(Loc.T("card.quest.reward", rewardDesc));
                     }
                 }
             }
@@ -101,7 +102,7 @@ internal static class QuestReader
                     if (entry == null) continue;
                     int current = card.GetAttributeValue(entry.AttributeType) ?? 0;
                     int target = entry.Target;
-                    return current >= target ? "Quest complete" : $"Quest {current}/{target}";
+                    return current >= target ? Loc.T("card.quest.completeShort") : Loc.T("card.quest.progress", current, target);
                 }
             }
         }

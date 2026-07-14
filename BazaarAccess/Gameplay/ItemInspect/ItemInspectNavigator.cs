@@ -76,7 +76,7 @@ internal sealed class ItemInspectNavigator
         _detailReader.Clear();
 
         if (announce)
-            TolkWrapper.Speak("Exited item inspect");
+            TolkWrapper.Speak(Loc.T("action.exited.item.inspect"));
     }
 
     public IEnumerator ShowVisualPreview()
@@ -142,7 +142,7 @@ internal sealed class ItemInspectNavigator
                 _isActive = true;
                 _currentSection = GetDefaultSection();
                 _detailReader.Clear();
-                TolkWrapper.Speak("Item inspect");
+                TolkWrapper.Speak(Loc.T("action.item.inspect.entered"));
                 ReadCurrentSection();
                 yield break;
             }
@@ -254,13 +254,13 @@ internal sealed class ItemInspectNavigator
         int nextIndex = currentIndex + delta;
         if (nextIndex < 0)
         {
-            TolkWrapper.Speak("Start of list");
+            TolkWrapper.Speak(Loc.T("action.start.of.list"));
             return;
         }
 
         if (nextIndex >= visibleSections.Count)
         {
-            TolkWrapper.Speak("End of list");
+            TolkWrapper.Speak(Loc.T("action.end.of.list"));
             return;
         }
 
@@ -353,10 +353,10 @@ internal sealed class ItemInspectNavigator
                 return GetLegendSpeech();
 
             case ItemInspectSection.Tier:
-                return GetComboBoxSpeech("Tier", GetTierDropdown());
+                return GetComboBoxSpeech(Loc.T("action.label.tier"), GetTierDropdown());
 
             case ItemInspectSection.Enchantment:
-                return GetComboBoxSpeech("Enchantment", GetEnchantmentDropdown());
+                return GetComboBoxSpeech(Loc.T("action.label.enchantment"), GetEnchantmentDropdown());
 
             case ItemInspectSection.Stats:
             {
@@ -364,17 +364,17 @@ internal sealed class ItemInspectNavigator
                 Card previewCard = GetPreviewCard();
                 if (previewCard == null)
                 {
-                    return "No item";
+                    return Loc.T("action.no.item");
                 }
 
                 return ItemReader.GetShortDescription(previewCard);
             }
 
             case ItemInspectSection.Reset:
-                return "Reset";
+                return Loc.T("action.reset");
 
             case ItemInspectSection.Exit:
-                return "Exit";
+                return Loc.T("action.exit");
         }
 
         return string.Empty;
@@ -392,7 +392,7 @@ internal sealed class ItemInspectNavigator
         string legendText = GetLegendText();
         return string.IsNullOrWhiteSpace(legendText)
             ? string.Empty
-            : $"Legend. {legendText}";
+            : Loc.T("action.legend.prefix", legendText);
     }
 
     private void SpeakStatsDetail(bool up)
@@ -400,19 +400,19 @@ internal sealed class ItemInspectNavigator
         Card previewCard = GetPreviewCard();
         if (previewCard == null)
         {
-            TolkWrapper.Speak("No item");
+            TolkWrapper.Speak(Loc.T("action.no.item"));
             return;
         }
 
         _detailReader.Init(previewCard, ItemReader.GetDetailLines);
         if (!_detailReader.HasLines)
         {
-            TolkWrapper.Speak("No details");
+            TolkWrapper.Speak(Loc.T("action.no.details"));
             return;
         }
 
         string line = up ? _detailReader.LineUp() : _detailReader.LineDown();
-        TolkWrapper.Speak(line ?? "No details");
+        TolkWrapper.Speak(line ?? Loc.T("action.no.details"));
     }
 
     private void AdjustDropdown(TMP_Dropdown dropdown, int direction)
@@ -461,7 +461,7 @@ internal sealed class ItemInspectNavigator
 
         _detailReader.Clear();
         button.OnMouseClickCustom();
-        TolkWrapper.Speak("Reset");
+        TolkWrapper.Speak(Loc.T("action.reset"));
     }
 
     private void RequestClose()
@@ -748,7 +748,7 @@ internal sealed class ItemInspectNavigator
     private static string GetComboBoxSpeech(string label, TMP_Dropdown dropdown)
     {
         string value = GetDropdownCurrentText(dropdown);
-        return $"{label} combo box: {value}. Use home, end, up or down arrows to change.";
+        return Loc.T("action.combo.box", label, value);
     }
 
     private void SubscribeTooltipEvents()

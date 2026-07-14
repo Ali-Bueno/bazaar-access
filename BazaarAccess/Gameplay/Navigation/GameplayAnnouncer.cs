@@ -81,49 +81,49 @@ public class GameplayAnnouncer
         switch (runState)
         {
             case ERunState.Choice:
-                announcement = "Shop";
+                announcement = Loc.T("nav.state.shop");
                 break;
             case ERunState.Encounter:
-                announcement = "Encounters";
+                announcement = Loc.T("nav.state.encounters");
                 break;
             case ERunState.Loot:
-                announcement = "Loot";
+                announcement = Loc.T("nav.state.loot");
                 break;
             case ERunState.LevelUp:
                 int level = Data.Run?.Player?.GetAttributeValue(EPlayerAttributeType.Level) ?? 0;
                 int skillCount = _nav.GetSelectionCardCount();
                 announcement = skillCount > 0
-                    ? $"Level up to {level}! Choose a skill, {skillCount} available"
-                    : $"Level up to {level}!";
+                    ? Loc.Plural("nav.state.levelup_choose", skillCount, level, skillCount)
+                    : Loc.T("nav.state.levelup", level);
                 break;
             case ERunState.Pedestal:
                 var pedInfo = PedestalManager.GetCurrentPedestalInfo();
                 if (pedInfo.Type == PedestalManager.PedestalType.Enchant ||
                     pedInfo.Type == PedestalManager.PedestalType.EnchantRandom)
                 {
-                    string enchName = pedInfo.EnchantmentName ?? "random";
-                    announcement = $"Enchant altar, {enchName}";
+                    string enchName = pedInfo.EnchantmentName ?? Loc.T("nav.state.random_enchant");
+                    announcement = Loc.T("nav.state.enchant_altar", enchName);
                 }
                 else if (pedInfo.Type == PedestalManager.PedestalType.Upgrade)
                 {
-                    announcement = "Upgrade altar";
+                    announcement = Loc.T("nav.state.upgrade_altar");
                 }
                 else
                 {
-                    announcement = "Altar";
+                    announcement = Loc.T("nav.state.altar");
                 }
                 break;
             case ERunState.Combat:
-                announcement = "Combat";
+                announcement = Loc.T("nav.state.combat");
                 break;
             case ERunState.PVPCombat:
-                announcement = "PvP";
+                announcement = Loc.T("nav.state.pvp");
                 break;
             case ERunState.EndRunVictory:
-                announcement = "Victory";
+                announcement = Loc.T("nav.state.victory");
                 break;
             case ERunState.EndRunDefeat:
-                announcement = "Defeat";
+                announcement = Loc.T("nav.state.defeat");
                 break;
             default:
                 announcement = _nav.GetStateDescription();
@@ -152,23 +152,24 @@ public class GameplayAnnouncer
         string name = _nav.CurrentSection switch
         {
             NavigationSection.Selection => _nav.GetSelectionTypeName(),
-            NavigationSection.Board => "Board",
-            NavigationSection.Stash => "Stash",
-            NavigationSection.Skills => "Skills",
-            _ => "Unknown"
+            NavigationSection.Board => Loc.T("nav.section.board"),
+            NavigationSection.Stash => Loc.T("nav.section.stash"),
+            NavigationSection.Skills => Loc.T("nav.section.skills"),
+            _ => Loc.T("nav.unknown")
         };
 
         // Free item encounters (patch 16.0) advertise a rarity but no price. The per-item tier
         // is already read; flag the selection as free so the missing price reads as intentional.
-        // "rewards" (Loot) is already implicitly free, so skip the prefix there to avoid redundancy.
+        // Loot rewards are already implicitly free, so skip the prefix there to avoid redundancy.
+        // (Compares the run state directly rather than the now-localized "rewards" display name.)
         if (_nav.CurrentSection == NavigationSection.Selection
             && SelectionNavigator.IsSelectionFree()
-            && name != "rewards")
+            && _nav.GetCurrentState() != ERunState.Loot)
         {
-            name = $"Free {name}";
+            name = Loc.T("nav.section.free_prefix", name);
         }
 
-        TolkWrapper.Speak($"{name}, {count} items");
+        TolkWrapper.Speak(Loc.Plural("nav.section.count", count, name, count));
         _nav.TriggerVisualSelection();
     }
 
@@ -185,7 +186,7 @@ public class GameplayAnnouncer
             var navItem = _nav.GetCurrentNavItem();
             if (navItem == null)
             {
-                TolkWrapper.Speak("Empty");
+                TolkWrapper.Speak(Loc.T("nav.empty"));
                 return;
             }
 
@@ -193,16 +194,16 @@ public class GameplayAnnouncer
             switch (navItem.Type)
             {
                 case NavItemType.Exit:
-                    desc = "Exit";
+                    desc = Loc.T("nav.action.exit");
                     break;
                 case NavItemType.Reroll:
-                    desc = $"Refresh, {navItem.RerollCost} gold";
+                    desc = Loc.T("nav.action.reroll_cost", navItem.RerollCost);
                     break;
                 case NavItemType.Card:
                     desc = SelectionNavigator.GetCardDescription(navItem.Card, NavigationSection.Selection, SelectionNavigator.IsSelectionFree());
                     break;
                 default:
-                    desc = "Unknown";
+                    desc = Loc.T("nav.unknown");
                     break;
             }
 
@@ -213,7 +214,7 @@ public class GameplayAnnouncer
         var card = _nav.GetCurrentCard();
         if (card == null)
         {
-            TolkWrapper.Speak("Empty");
+            TolkWrapper.Speak(Loc.T("nav.empty"));
             return;
         }
 
@@ -234,18 +235,18 @@ public class GameplayAnnouncer
             var navItem = _nav.GetCurrentNavItem();
             if (navItem == null)
             {
-                TolkWrapper.Speak("Nothing selected");
+                TolkWrapper.Speak(Loc.T("nav.nothing_selected"));
                 return;
             }
 
             switch (navItem.Type)
             {
                 case NavItemType.Exit:
-                    TolkWrapper.Speak("Exit. Leave the current state and continue.");
+                    TolkWrapper.Speak(Loc.T("nav.action.exit_detail"));
                     return;
                 case NavItemType.Reroll:
                     int gold = Data.Run?.Player?.GetAttributeValue(EPlayerAttributeType.Gold) ?? 0;
-                    TolkWrapper.Speak($"Refresh. Get new items for {navItem.RerollCost} gold. You have {gold} gold.");
+                    TolkWrapper.Speak(Loc.T("nav.action.reroll_detail", navItem.RerollCost, gold));
                     return;
                 case NavItemType.Card:
                     var card = navItem.Card;
@@ -260,7 +261,7 @@ public class GameplayAnnouncer
         var currentCard = _nav.GetCurrentCard();
         if (currentCard == null)
         {
-            TolkWrapper.Speak("Nothing selected");
+            TolkWrapper.Speak(Loc.T("nav.nothing_selected"));
             return;
         }
 
@@ -272,28 +273,22 @@ public class GameplayAnnouncer
 
     public void AnnounceWins()
     {
-        var wins = Data.Run?.Victories ?? 0;
-        TolkWrapper.Speak($"{wins} wins");
+        int wins = (int)(Data.Run?.Victories ?? 0);
+        TolkWrapper.Speak(Loc.Plural("nav.wins", wins, wins));
     }
 
     public string GetCurrentItemSizeInfo()
     {
         var card = _nav.GetCurrentCard();
-        if (card == null) return "No item selected";
+        if (card == null) return Loc.T("nav.no_item_selected");
 
         var template = card.Template;
-        if (template == null) return "No size info";
+        if (template == null) return Loc.T("nav.item.no_size_info");
 
         int size = (int)template.Size;
-        string sizeName = template.Size switch
-        {
-            ECardSize.Small => "Small",
-            ECardSize.Medium => "Medium",
-            ECardSize.Large => "Large",
-            _ => "Unknown"
-        };
+        string sizeName = ItemReader.GetSizeName(template.Size);
 
-        return $"{ItemReader.GetCardName(card)}: Size {size} ({sizeName})";
+        return Loc.T("nav.item.size_info", ItemReader.GetCardName(card), size, sizeName);
     }
 
     public bool WillAutoExit()
@@ -343,20 +338,20 @@ public class GameplayAnnouncer
     {
         if (!CanExit())
         {
-            TolkWrapper.Speak("Cannot exit now");
+            TolkWrapper.Speak(Loc.T("nav.action.cannot_exit"));
             return false;
         }
 
         try
         {
             AppState.CurrentState.ExitStateCommand();
-            TolkWrapper.Speak("Exiting");
+            TolkWrapper.Speak(Loc.T("nav.action.exiting"));
             return true;
         }
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"TryExit error: {ex.Message}");
-            TolkWrapper.Speak("Exit failed");
+            TolkWrapper.Speak(Loc.T("nav.action.exit_failed"));
             return false;
         }
     }
@@ -389,7 +384,7 @@ public class GameplayAnnouncer
     {
         if (!CanReroll())
         {
-            TolkWrapper.Speak("Cannot refresh now");
+            TolkWrapper.Speak(Loc.T("nav.action.cannot_reroll"));
             return false;
         }
 
@@ -398,7 +393,7 @@ public class GameplayAnnouncer
 
         if (gold < cost)
         {
-            TolkWrapper.Speak($"Not enough gold. Need {cost}, have {gold}");
+            TolkWrapper.Speak(Loc.T("nav.action.not_enough_gold", cost, gold));
             return false;
         }
 
@@ -406,20 +401,20 @@ public class GameplayAnnouncer
         {
             if (AppState.CurrentState.RerollCommand())
             {
-                TolkWrapper.Speak($"Refreshed for {cost} gold");
+                TolkWrapper.Speak(Loc.T("nav.action.rerolled", cost));
                 Plugin.Instance.StartCoroutine(DelayedRefresh());
                 return true;
             }
             else
             {
-                TolkWrapper.Speak("Refresh failed");
+                TolkWrapper.Speak(Loc.T("nav.action.reroll_failed"));
                 return false;
             }
         }
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"TryReroll error: {ex.Message}");
-            TolkWrapper.Speak("Refresh failed");
+            TolkWrapper.Speak(Loc.T("nav.action.reroll_failed"));
             return false;
         }
     }
@@ -436,17 +431,17 @@ public class GameplayAnnouncer
         var actions = new List<string>();
 
         if (CanExit())
-            actions.Add("E to exit");
+            actions.Add(Loc.T("nav.action.exit_hint"));
 
         if (CanReroll())
         {
             int cost = GetRerollCost();
-            actions.Add($"R to refresh ({cost} gold)");
+            actions.Add(Loc.T("nav.action.reroll_hint", cost));
         }
 
         if (actions.Count > 0)
             TolkWrapper.Speak(string.Join(", ", actions));
         else
-            TolkWrapper.Speak("No actions available");
+            TolkWrapper.Speak(Loc.T("nav.action.none_available"));
     }
 }

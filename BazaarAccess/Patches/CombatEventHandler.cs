@@ -71,8 +71,8 @@ public static class CombatEventHandler
             return;
 
         string message = evt.CombatantId == ECombatantId.Player
-            ? "You are enraged"
-            : $"{GetOpponentDisplayName()} is enraged";
+            ? Loc.T("patch.combat.enraged_you")
+            : Loc.T("patch.combat.enraged_other", GetOpponentDisplayName());
 
         TolkWrapper.Speak(message);
     }
@@ -86,8 +86,8 @@ public static class CombatEventHandler
             return;
 
         string message = evt.CombatantId == ECombatantId.Player
-            ? "Your enrage ends"
-            : $"{GetOpponentDisplayName()}'s enrage ends";
+            ? Loc.T("patch.combat.enrage_ends_you")
+            : Loc.T("patch.combat.enrage_ends_other", GetOpponentDisplayName());
 
         TolkWrapper.Speak(message);
     }
@@ -137,18 +137,18 @@ public static class CombatEventHandler
                 uint victories = Data.Run?.Victories ?? 0;
                 if (victories > 0)
                 {
-                    message = $"Victory! {victories} wins";
+                    message = Loc.Plural("patch.combat.victory_wins", (int)victories, victories);
                 }
                 else
                 {
-                    message = "Victory!";
+                    message = Loc.T("patch.combat.victory");
                 }
             }
             else
             {
                 // Get current prestige
                 int prestige = Data.Run?.Player?.GetAttributeValue(EPlayerAttributeType.Prestige) ?? 0;
-                message = $"Defeat! {prestige} prestige remaining";
+                message = Loc.T("patch.combat.defeat_prestige", prestige);
             }
 
             TolkWrapper.Speak(message);
@@ -157,7 +157,7 @@ public static class CombatEventHandler
         {
             Plugin.Logger.LogError($"DelayedCombatResultAnnounce error: {ex.Message}");
             // Fallback to simple announcement
-            TolkWrapper.Speak(_pendingCombatResult == BazaarMatchHistory.EVictoryCondition.Win ? "Victory!" : "Defeat!");
+            TolkWrapper.Speak(_pendingCombatResult == BazaarMatchHistory.EVictoryCondition.Win ? Loc.T("patch.combat.victory") : Loc.T("patch.combat.defeat"));
         }
 
         _combatResultCoroutine = null;
@@ -211,6 +211,6 @@ public static class CombatEventHandler
             Plugin.Logger.LogWarning($"GetOpponentDisplayName error: {ex.Message}");
         }
 
-        return "Enemy";
+        return Loc.T("patch.combat.enemy_fallback");
     }
 }

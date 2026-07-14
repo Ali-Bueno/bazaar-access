@@ -63,7 +63,7 @@ public static class PedestalManager
         var currentState = StateChangePatch.GetCurrentRunState();
         if (currentState != ERunState.Pedestal)
         {
-            TolkWrapper.Speak("Can only upgrade at a pedestal");
+            TolkWrapper.Speak(Loc.T("action.only.upgrade.pedestal"));
             return false;
         }
 
@@ -71,21 +71,21 @@ public static class PedestalManager
         if (state == null)
         {
             Plugin.Logger.LogWarning("UpgradeItem: AppState.CurrentState is null");
-            TolkWrapper.Speak("Cannot upgrade now");
+            TolkWrapper.Speak(Loc.T("action.cannot.upgrade.now"));
             return false;
         }
 
         // Check if CommitToPedestal operation is allowed
         if (!state.CanHandleOperation(StateOps.CommitToPedestal))
         {
-            TolkWrapper.Speak("Cannot upgrade this item");
+            TolkWrapper.Speak(Loc.T("action.cannot.upgrade.item"));
             return false;
         }
 
         // Check if the card can be upgraded (not already at max tier)
         if (card.Tier == ETier.Legendary)
         {
-            TolkWrapper.Speak("Item is already at maximum tier");
+            TolkWrapper.Speak(Loc.T("action.item.max.tier"));
             return false;
         }
 
@@ -125,12 +125,12 @@ public static class PedestalManager
 
             if (nextTier != null)
             {
-                TolkWrapper.Speak($"Upgrading {name} from {currentTier} to {nextTier}");
+                TolkWrapper.Speak(Loc.T("action.upgrading.from.to", name, currentTier, nextTier));
                 Plugin.Logger.LogInfo($"UpgradeItem: {name} ({currentTier} -> {nextTier})");
             }
             else
             {
-                TolkWrapper.Speak($"Upgrading {name} stats");
+                TolkWrapper.Speak(Loc.T("action.upgrading.stats", name));
                 Plugin.Logger.LogInfo($"UpgradeItem: {name} (stats upgrade, stays {currentTier})");
             }
             return true;
@@ -138,7 +138,7 @@ public static class PedestalManager
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"UpgradeItem failed: {ex.Message}");
-            TolkWrapper.Speak("Upgrade failed");
+            TolkWrapper.Speak(Loc.T("action.upgrade.failed"));
             return false;
         }
     }
@@ -590,16 +590,16 @@ public static class PedestalManager
                 {
                     nextTier = TierHelper.GetName(pedestalInfo.TargetTier.Value);
                 }
-                return $"Upgrade {cardName} from {currentTier} to {nextTier}";
+                return Loc.T("action.upgrade.description", cardName, currentTier, nextTier);
 
             case PedestalType.Enchant:
-                return $"Enchant {cardName} with {pedestalInfo.EnchantmentName}";
+                return Loc.T("action.enchant.description", cardName, pedestalInfo.EnchantmentName);
 
             case PedestalType.EnchantRandom:
-                return $"Enchant {cardName} with a random enchantment";
+                return Loc.T("action.enchant.random.description", cardName);
 
             default:
-                return $"Use {cardName} at pedestal";
+                return Loc.T("action.use.at.pedestal", cardName);
         }
     }
 
@@ -636,7 +636,7 @@ public static class PedestalManager
         var currentState = StateChangePatch.GetCurrentRunState();
         if (currentState != ERunState.Pedestal)
         {
-            TolkWrapper.Speak("Not at a pedestal");
+            TolkWrapper.Speak(Loc.T("action.not.at.pedestal"));
             return false;
         }
 
@@ -668,13 +668,13 @@ public static class PedestalManager
         var state = AppState.CurrentState;
         if (state == null)
         {
-            TolkWrapper.Speak("Cannot use pedestal now");
+            TolkWrapper.Speak(Loc.T("action.cannot.use.pedestal.now"));
             return false;
         }
 
         if (!state.CanHandleOperation(StateOps.CommitToPedestal))
         {
-            TolkWrapper.Speak("Cannot use this item at pedestal");
+            TolkWrapper.Speak(Loc.T("action.cannot.use.item.pedestal"));
             return false;
         }
 
@@ -694,14 +694,14 @@ public static class PedestalManager
             }
 
             state.CommitToPedestalCommand(card.InstanceId);
-            TolkWrapper.Speak($"Using {name} at pedestal");
+            TolkWrapper.Speak(Loc.T("action.using.at.pedestal", name));
             Plugin.Logger.LogInfo($"CommitToPedestalDirect: {name}");
             return true;
         }
         catch (Exception ex)
         {
             Plugin.Logger.LogError($"CommitToPedestalDirect failed: {ex.Message}");
-            TolkWrapper.Speak("Pedestal action failed");
+            TolkWrapper.Speak(Loc.T("action.pedestal.failed"));
             return false;
         }
     }
@@ -715,20 +715,20 @@ public static class PedestalManager
         if (state == null)
         {
             Plugin.Logger.LogWarning("EnchantItem: AppState.CurrentState is null");
-            TolkWrapper.Speak("Cannot enchant now");
+            TolkWrapper.Speak(Loc.T("action.cannot.enchant.now"));
             return false;
         }
 
         if (!state.CanHandleOperation(StateOps.CommitToPedestal))
         {
-            TolkWrapper.Speak("Cannot enchant this item");
+            TolkWrapper.Speak(Loc.T("action.cannot.enchant.item"));
             return false;
         }
 
         // Check if already enchanted
         if (card is ItemCard itemCard && itemCard.Enchantment.HasValue)
         {
-            TolkWrapper.Speak("Item is already enchanted");
+            TolkWrapper.Speak(Loc.T("action.item.already.enchanted"));
             return false;
         }
 
@@ -754,11 +754,11 @@ public static class PedestalManager
 
             if (pedestalInfo.Type == PedestalType.EnchantRandom)
             {
-                TolkWrapper.Speak($"Enchanting {name} with random enchantment");
+                TolkWrapper.Speak(Loc.T("action.enchanting.random", name));
             }
             else
             {
-                TolkWrapper.Speak($"Enchanting {name} with {enchantName}");
+                TolkWrapper.Speak(Loc.T("action.enchanting.with", name, enchantName));
             }
 
             Plugin.Logger.LogInfo($"EnchantItem: {name} with {enchantName}");
@@ -767,7 +767,7 @@ public static class PedestalManager
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"EnchantItem failed: {ex.Message}");
-            TolkWrapper.Speak("Enchantment failed");
+            TolkWrapper.Speak(Loc.T("action.enchantment.failed"));
             return false;
         }
     }

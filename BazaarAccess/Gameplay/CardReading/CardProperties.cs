@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using BazaarAccess.Core;
 using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameShared.Domain.Cards.Enchantments;
 using BazaarGameShared.Domain.Cards.Item;
@@ -49,7 +50,7 @@ internal static class CardProperties
 
     public static string GetCardName(Card card)
     {
-        if (card == null) return "Empty";
+        if (card == null) return Loc.T("card.name.empty");
 
         var template = card.Template;
         string baseName = string.Empty;
@@ -61,7 +62,7 @@ internal static class CardProperties
 
         if (string.IsNullOrEmpty(baseName))
         {
-            baseName = template?.InternalName ?? "Unknown";
+            baseName = template?.InternalName ?? Loc.T("card.name.unknown");
         }
 
         // Prepend enchantment name if enchanted
@@ -102,28 +103,29 @@ internal static class CardProperties
 
     public static string GetTierName(ETier tier)
     {
-        return tier switch
-        {
-            ETier.Bronze => "Bronze",
-            ETier.Silver => "Silver",
-            ETier.Gold => "Gold",
-            ETier.Diamond => "Diamond",
-            ETier.Legendary => "Legendary",
-            _ => tier.ToString()
-        };
+        return GameVocabulary.Tier(tier);
     }
 
     public static string GetSizeName(Card card)
     {
         var template = card?.Template;
-        if (template == null) return "";
+        if (template == null) return string.Empty;
 
-        return template.Size switch
+        return GetSizeName(template.Size);
+    }
+
+    /// <summary>
+    /// Single source of truth for the size word (Small/Medium/Large/Unknown), shared by
+    /// CardProperties, DetailLineBuilder and GameplayAnnouncer so they never diverge.
+    /// </summary>
+    public static string GetSizeName(ECardSize size)
+    {
+        return size switch
         {
-            ECardSize.Small => "small",
-            ECardSize.Medium => "medium",
-            ECardSize.Large => "large",
-            _ => ""
+            ECardSize.Small => Loc.T("vocab.size.small"),
+            ECardSize.Medium => Loc.T("vocab.size.medium"),
+            ECardSize.Large => Loc.T("vocab.size.large"),
+            _ => Loc.T("vocab.size.unknown")
         };
     }
 
@@ -146,7 +148,7 @@ internal static class CardProperties
 
         var relevantTags = card.Tags
             .Where(t => RelevantTags.Contains(t))
-            .Select(t => t.ToString())
+            .Select(t => GameVocabulary.Tag(t))
             .ToList();
 
         return string.Join(", ", relevantTags);
@@ -164,12 +166,15 @@ internal static class CardProperties
         bool isHeated = card.GetAttributeValue(ECardAttributeType.Heated) > 0;
         bool isChilled = card.GetAttributeValue(ECardAttributeType.Chilled) > 0;
 
+        string heated = GameVocabulary.Keyword("Heated");
+        string chilled = GameVocabulary.Keyword("Chilled");
+
         if (isHeated && isChilled)
-            return "Heated and Chilled";
+            return Loc.T("vocab.card.temperature_both", heated, chilled);
         if (isHeated)
-            return "Heated";
+            return heated;
         if (isChilled)
-            return "Chilled";
+            return chilled;
 
         return string.Empty;
     }

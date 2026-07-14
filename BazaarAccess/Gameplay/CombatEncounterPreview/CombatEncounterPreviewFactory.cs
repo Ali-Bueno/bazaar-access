@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using BazaarAccess.Core;
 using BazaarAccess.Gameplay.CardReading;
 using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameShared.Domain.Cards;
@@ -73,7 +74,7 @@ internal static class CombatEncounterPreviewFactory
         if (!string.IsNullOrWhiteSpace(monster.InternalName))
             return monster.InternalName;
 
-        return "Enemy";
+        return Loc.T("action.default.enemy.name");
     }
 
     private static int GetPreviewHealth(TMonster monster)

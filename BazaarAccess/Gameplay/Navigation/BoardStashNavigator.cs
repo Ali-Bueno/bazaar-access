@@ -259,13 +259,13 @@ public class BoardStashNavigator
             var bm = GetBoardManager();
             if (bm == null)
             {
-                TolkWrapper.Speak("Not available");
+                TolkWrapper.Speak(Loc.T("nav.stash.not_available"));
                 return;
             }
 
             if (!bm.AllowInteraction)
             {
-                TolkWrapper.Speak("Cannot open stash now");
+                TolkWrapper.Speak(Loc.T("nav.stash.cannot_open_now"));
                 return;
             }
 
@@ -274,7 +274,7 @@ public class BoardStashNavigator
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"ToggleStash error: {ex.Message}");
-            TolkWrapper.Speak("Cannot toggle stash");
+            TolkWrapper.Speak(Loc.T("nav.stash.toggle_error"));
         }
     }
 
@@ -289,7 +289,7 @@ public class BoardStashNavigator
             var player = Data.Run?.Player;
             if (player?.Hand?.Container == null)
             {
-                TolkWrapper.Speak("Board info not available");
+                TolkWrapper.Speak(Loc.T("nav.board.info_unavailable"));
                 return;
             }
 
@@ -315,16 +315,16 @@ public class BoardStashNavigator
             int itemCount = socketables.Count;
 
             var parts = new List<string>();
-            parts.Add($"Board: {usedCapacity} of {unlockedCount} capacity used");
-            parts.Add($"{itemCount} items");
-            parts.Add($"{freeSlots} slots free");
+            parts.Add(Loc.T("nav.board.capacity", usedCapacity, unlockedCount));
+            parts.Add(Loc.Plural("nav.items", itemCount, itemCount));
+            parts.Add(Loc.Plural("nav.slots_free", freeSlots, freeSlots));
 
             TolkWrapper.Speak(string.Join(", ", parts));
         }
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"AnnounceBoardCapacity error: {ex.Message}");
-            TolkWrapper.Speak("Cannot read board info");
+            TolkWrapper.Speak(Loc.T("nav.board.read_error"));
         }
     }
 
@@ -335,7 +335,7 @@ public class BoardStashNavigator
             var player = Data.Run?.Player;
             if (player?.Stash?.Container == null)
             {
-                TolkWrapper.Speak("Stash info not available");
+                TolkWrapper.Speak(Loc.T("nav.stash.info_unavailable"));
                 return;
             }
 
@@ -353,16 +353,16 @@ public class BoardStashNavigator
             int itemCount = socketables.Count;
 
             var parts = new List<string>();
-            parts.Add($"Stash: {usedCapacity} of {totalSlots} capacity used");
-            parts.Add($"{itemCount} items");
-            parts.Add($"{freeSlots} slots free");
+            parts.Add(Loc.T("nav.stash.capacity", usedCapacity, totalSlots));
+            parts.Add(Loc.Plural("nav.items", itemCount, itemCount));
+            parts.Add(Loc.Plural("nav.slots_free", freeSlots, freeSlots));
 
             TolkWrapper.Speak(string.Join(", ", parts));
         }
         catch (System.Exception ex)
         {
             Plugin.Logger.LogError($"AnnounceStashCapacity error: {ex.Message}");
-            TolkWrapper.Speak("Cannot read stash info");
+            TolkWrapper.Speak(Loc.T("nav.stash.read_error"));
         }
     }
 

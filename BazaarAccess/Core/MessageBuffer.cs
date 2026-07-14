@@ -40,7 +40,7 @@ public static class MessageBuffer
     {
         if (_messages.Count == 0)
         {
-            TolkWrapper.Speak("No messages");
+            TolkWrapper.Speak(Loc.T("patch.messagebuffer.no_messages"));
             return;
         }
 
@@ -55,7 +55,7 @@ public static class MessageBuffer
     {
         if (_messages.Count == 0)
         {
-            TolkWrapper.Speak("No messages");
+            TolkWrapper.Speak(Loc.T("patch.messagebuffer.no_messages"));
             return;
         }
 
@@ -65,7 +65,7 @@ public static class MessageBuffer
         }
         else
         {
-            TolkWrapper.Speak("First message");
+            TolkWrapper.Speak(Loc.T("patch.messagebuffer.first_message"));
         }
 
         ReadCurrent();
@@ -78,7 +78,7 @@ public static class MessageBuffer
     {
         if (_messages.Count == 0)
         {
-            TolkWrapper.Speak("No messages");
+            TolkWrapper.Speak(Loc.T("patch.messagebuffer.no_messages"));
             return;
         }
 
@@ -88,7 +88,7 @@ public static class MessageBuffer
         }
         else
         {
-            TolkWrapper.Speak("Last message");
+            TolkWrapper.Speak(Loc.T("patch.messagebuffer.last_message"));
         }
 
         ReadCurrent();
@@ -101,7 +101,7 @@ public static class MessageBuffer
     {
         if (_currentIndex < 0 || _currentIndex >= _messages.Count)
         {
-            TolkWrapper.Speak("No message");
+            TolkWrapper.Speak(Loc.T("patch.messagebuffer.no_message"));
             return;
         }
 

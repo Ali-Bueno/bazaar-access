@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using BazaarAccess.Core;
 using BazaarGameClient.Domain.Models.Cards;
 
 namespace BazaarAccess.Gameplay.Navigation
@@ -86,7 +87,7 @@ namespace BazaarAccess.Gameplay.Navigation
             // Already at last line
             if (_index >= _lines.Count - 1)
             {
-                return $"Last line. {_lines[_index]}";
+                return Loc.T("nav.detail.last_line", _lines[_index]);
             }
 
             // Move to next line
@@ -113,7 +114,7 @@ namespace BazaarAccess.Gameplay.Navigation
             // Already at first line
             if (_index <= 0)
             {
-                return $"First line. {_lines[_index]}";
+                return Loc.T("nav.detail.first_line", _lines[_index]);
             }
 
             // Move to previous line

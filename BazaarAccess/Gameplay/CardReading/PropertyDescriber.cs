@@ -26,9 +26,8 @@ internal static class PropertyDescriber
 
             string tagName = tag.ToString();
             string description = GetLegendDescription(tagName);
-            descriptions.Add(description != null
-                ? $"{tagName}: {description}"
-                : $"{tagName}: No description available");
+            descriptions.Add(Loc.T("card.stat.line", GameVocabulary.Tag(tag),
+                description ?? Loc.T("card.property.noDescription")));
         }
 
         return descriptions;
@@ -62,7 +61,7 @@ internal static class PropertyDescriber
                 string description = GetLegendDescription(keyword);
                 if (description != null)
                 {
-                    descriptions.Add($"{keyword}: {description}");
+                    descriptions.Add(Loc.T("card.stat.line", GameVocabulary.Keyword(keyword), description));
                     addedKeywords.Add(keyword);
                 }
             }

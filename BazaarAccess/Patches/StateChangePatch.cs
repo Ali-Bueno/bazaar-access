@@ -551,14 +551,14 @@ public static class StateChangePatch
             // Announce day change (takes priority over hour)
             if (currentDay > 0 && currentDay != _lastDay)
             {
-                TolkWrapper.Speak($"Day {currentDay}");
+                TolkWrapper.Speak(Loc.T("patch.state.day", currentDay));
                 _lastDay = currentDay;
                 _lastHour = currentHour;
             }
             // Announce hour change (only if day didn't change)
             else if (currentHour > 0 && currentHour != _lastHour)
             {
-                TolkWrapper.Speak($"Hour {currentHour}");
+                TolkWrapper.Speak(Loc.T("patch.state.hour", currentHour));
                 _lastHour = currentHour;
             }
         }
@@ -718,17 +718,17 @@ public static class StateChangePatch
     {
         return state switch
         {
-            ERunState.Choice => "Shop",
-            ERunState.Encounter => "Encounters",
-            ERunState.Combat => "Combat",
-            ERunState.PVPCombat => "PvP Combat",
-            ERunState.Loot => "Loot",
-            ERunState.LevelUp => "Level up",
+            ERunState.Choice => Loc.T("patch.state.shop"),
+            ERunState.Encounter => Loc.T("patch.state.encounters"),
+            ERunState.Combat => Loc.T("patch.state.combat"),
+            ERunState.PVPCombat => Loc.T("patch.state.pvp_combat"),
+            ERunState.Loot => Loc.T("patch.state.loot"),
+            ERunState.LevelUp => Loc.T("patch.state.level_up"),
             ERunState.Pedestal => GetPedestalDescription(),
-            ERunState.EndRunVictory => "Victory",
-            ERunState.EndRunDefeat => "Defeat",
-            ERunState.NewRun => "Starting run",
-            ERunState.Shutdown => "Game ending",
+            ERunState.EndRunVictory => Loc.T("patch.state.victory"),
+            ERunState.EndRunDefeat => Loc.T("patch.state.defeat"),
+            ERunState.NewRun => Loc.T("patch.state.starting_run"),
+            ERunState.Shutdown => Loc.T("patch.state.game_ending"),
             _ => state.ToString()
         };
     }
@@ -738,10 +738,10 @@ public static class StateChangePatch
         var info = Gameplay.PedestalManager.GetCurrentPedestalInfo();
         return info.Type switch
         {
-            Gameplay.PedestalManager.PedestalType.Enchant => "Enchant altar",
-            Gameplay.PedestalManager.PedestalType.EnchantRandom => "Enchant altar",
-            Gameplay.PedestalManager.PedestalType.Upgrade => "Upgrade altar",
-            _ => "Altar"
+            Gameplay.PedestalManager.PedestalType.Enchant => Loc.T("patch.state.pedestal_enchant"),
+            Gameplay.PedestalManager.PedestalType.EnchantRandom => Loc.T("patch.state.pedestal_enchant"),
+            Gameplay.PedestalManager.PedestalType.Upgrade => Loc.T("patch.state.pedestal_upgrade"),
+            _ => Loc.T("patch.state.pedestal_generic")
         };
     }
 

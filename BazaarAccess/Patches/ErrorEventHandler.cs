@@ -16,7 +16,7 @@ public static class ErrorEventHandler
     {
         string name = card != null ? ItemReader.GetCardName(card) : "item";
         Plugin.Logger.LogInfo($"NotEnoughSpace: {name}");
-        TolkWrapper.Speak($"No space for {name}");
+        TolkWrapper.Speak(Loc.T("patch.error.no_space", name));
     }
 
     /// <summary>
@@ -27,7 +27,7 @@ public static class ErrorEventHandler
         string name = card != null ? ItemReader.GetCardName(card) : "item";
         int price = card != null ? ItemReader.GetBuyPrice(card) : 0;
         Plugin.Logger.LogInfo($"CantAffordCard: {name} costs {price}");
-        TolkWrapper.Speak($"Cannot afford {name}");
+        TolkWrapper.Speak(Loc.T("patch.error.cant_afford", name));
     }
 
     /// <summary>
@@ -37,6 +37,6 @@ public static class ErrorEventHandler
     {
         string name = card != null ? ItemReader.GetCardName(card) : "item";
         Plugin.Logger.LogInfo($"UnsellableItemAttempt: {name}");
-        TolkWrapper.Speak($"{name} cannot be sold");
+        TolkWrapper.Speak(Loc.T("patch.error.unsellable", name));
     }
 }

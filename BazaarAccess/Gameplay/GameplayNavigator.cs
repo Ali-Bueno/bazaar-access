@@ -58,11 +58,11 @@ public class GameplayNavigator
 
         if (Board.BoardCount == 0)
         {
-            TolkWrapper.Speak("Your board is empty");
+            TolkWrapper.Speak(Loc.T("nav.board.empty"));
             return;
         }
 
-        TolkWrapper.Speak($"Your board, {Board.BoardCount} items");
+        TolkWrapper.Speak(Loc.Plural("nav.board.your_board", Board.BoardCount, Board.BoardCount));
     }
 
     // ===============================================
@@ -131,17 +131,17 @@ public class GameplayNavigator
     public void ReadDetailLineDown()
     {
         InitDetailLines();
-        if (!Detail.HasLines) { TolkWrapper.Speak("No details"); return; }
+        if (!Detail.HasLines) { TolkWrapper.Speak(Loc.T("nav.detail.none")); return; }
         string text = Detail.LineDown();
-        TolkWrapper.Speak(text ?? "No details");
+        TolkWrapper.Speak(text ?? Loc.T("nav.detail.none"));
     }
 
     public void ReadDetailLineUp()
     {
         InitDetailLines();
-        if (!Detail.HasLines) { TolkWrapper.Speak("No details"); return; }
+        if (!Detail.HasLines) { TolkWrapper.Speak(Loc.T("nav.detail.none")); return; }
         string text = Detail.LineUp();
-        TolkWrapper.Speak(text ?? "No details");
+        TolkWrapper.Speak(text ?? Loc.T("nav.detail.none"));
     }
 
     // --- Board/Stash delegates ---
@@ -254,7 +254,7 @@ public class GameplayNavigator
         if (Selection.Count > 0)
             GoToSection(NavigationSection.Selection);
         else
-            TolkWrapper.Speak("No choices available");
+            TolkWrapper.Speak(Loc.T("nav.no_choices"));
     }
 
     public void GoToBoard()
@@ -264,10 +264,10 @@ public class GameplayNavigator
         else if (Board.StashCount > 0)
         {
             GoToSection(NavigationSection.Stash);
-            TolkWrapper.Speak("Board empty, showing stash");
+            TolkWrapper.Speak(Loc.T("nav.board.empty_showing_stash"));
         }
         else
-            TolkWrapper.Speak("No items on board");
+            TolkWrapper.Speak(Loc.T("nav.board.no_items"));
     }
 
     public void GoToHero() => GoToSection(NavigationSection.Hero);
@@ -276,14 +276,14 @@ public class GameplayNavigator
     {
         if (!Board.IsStashOpen)
         {
-            TolkWrapper.Speak("Stash is closed. Press Space to open.");
+            TolkWrapper.Speak(Loc.T("nav.stash.closed_hint"));
             return;
         }
 
         if (Board.StashCount > 0)
             GoToSection(NavigationSection.Stash);
         else
-            TolkWrapper.Speak("Stash is empty");
+            TolkWrapper.Speak(Loc.T("nav.stash.empty"));
     }
 
     // ===============================================
@@ -329,7 +329,7 @@ public class GameplayNavigator
         {
             if (_currentSection == NavigationSection.Board)
             {
-                TolkWrapper.Speak("End of list");
+                TolkWrapper.Speak(Loc.T("nav.end_of_list"));
                 return;
             }
             AnnounceCurrentItem();
@@ -354,7 +354,7 @@ public class GameplayNavigator
         {
             if (_currentSection == NavigationSection.Board)
             {
-                TolkWrapper.Speak("Start of list");
+                TolkWrapper.Speak(Loc.T("nav.start_of_list"));
                 return;
             }
             AnnounceCurrentItem();
@@ -406,13 +406,13 @@ public class GameplayNavigator
         if (newIndex < 0)
         {
             if (_currentIndex == 0 && _currentSection == NavigationSection.Board)
-            { TolkWrapper.Speak("Start of list"); return; }
+            { TolkWrapper.Speak(Loc.T("nav.start_of_list")); return; }
             newIndex = 0;
         }
         if (newIndex >= count)
         {
             if (_currentIndex == count - 1 && _currentSection == NavigationSection.Board)
-            { TolkWrapper.Speak("End of list"); return; }
+            { TolkWrapper.Speak(Loc.T("nav.end_of_list")); return; }
             newIndex = count - 1;
         }
 
@@ -526,13 +526,13 @@ public class GameplayNavigator
                     switch (navItem.Type)
                     {
                         case NavItemType.Exit:
-                            lines.Add("Exit");
-                            lines.Add("Leave the current state and continue");
+                            lines.Add(Loc.T("nav.action.exit"));
+                            lines.Add(Loc.T("nav.action.exit_description"));
                             break;
                         case NavItemType.Reroll:
                             int gold = Data.Run?.Player?.GetAttributeValue(EPlayerAttributeType.Gold) ?? 0;
-                            lines.Add($"Refresh: {navItem.RerollCost} gold");
-                            lines.Add($"Your gold: {gold}");
+                            lines.Add(Loc.T("nav.action.reroll_line", navItem.RerollCost));
+                            lines.Add(Loc.T("nav.hero.stat_value", Loc.T("vocab.hero.gold"), gold));
                             break;
                     }
                     Detail.InitCustom(lines);

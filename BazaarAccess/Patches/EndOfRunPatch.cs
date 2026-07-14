@@ -422,11 +422,11 @@ public class EndOfRunUI : IAccessibleScreen
         // Formato para ACHIEVEMENT: "Nombre: Descripción"
         if (achievementDescription != null && achievementName != null)
         {
-            return $"Achievement {achievementName}: {achievementDescription}";
+            return Loc.T("patch.endofrun.achievement_named", achievementName, achievementDescription);
         }
         if (achievementDescription != null)
         {
-            return $"Achievement: {achievementDescription}";
+            return Loc.T("patch.endofrun.achievement_desc", achievementDescription);
         }
 
         // Fallback: devolver textos válidos separados
@@ -596,7 +596,7 @@ public class EndOfRunUI : IAccessibleScreen
 
         if (_textLines.Count == 0)
         {
-            TolkWrapper.Speak("No information available. Press Enter to continue.");
+            TolkWrapper.Speak(Loc.T("patch.endofrun.no_info"));
             return;
         }
 
@@ -605,7 +605,7 @@ public class EndOfRunUI : IAccessibleScreen
         if (_currentLineIndex >= _textLines.Count)
         {
             _currentLineIndex = _textLines.Count - 1;
-            TolkWrapper.Speak("End of information. Press Enter to continue.");
+            TolkWrapper.Speak(Loc.T("patch.endofrun.end_of_info"));
             return;
         }
 
@@ -618,7 +618,7 @@ public class EndOfRunUI : IAccessibleScreen
 
         if (_textLines.Count == 0)
         {
-            TolkWrapper.Speak("No information available. Press Enter to continue.");
+            TolkWrapper.Speak(Loc.T("patch.endofrun.no_info"));
             return;
         }
 
@@ -627,7 +627,7 @@ public class EndOfRunUI : IAccessibleScreen
             _currentLineIndex = 0;
             if (_textLines.Count > 0)
             {
-                TolkWrapper.Speak($"Start. {_textLines[0]}");
+                TolkWrapper.Speak(Loc.T("patch.endofrun.start_line", _textLines[0]));
             }
             return;
         }
@@ -644,14 +644,14 @@ public class EndOfRunUI : IAccessibleScreen
         {
             Plugin.Logger.LogInfo("EndOfRunUI: Clicking continue button");
             _continueButton.onClick?.Invoke();
-            TolkWrapper.Speak("Continue");
+            TolkWrapper.Speak(Loc.T("patch.endofrun.continue_clicked"));
 
             // Esperar y refrescar después de la transición
             Plugin.Instance.StartCoroutine(DelayedRefresh());
         }
         else
         {
-            TolkWrapper.Speak("Please wait");
+            TolkWrapper.Speak(Loc.T("patch.endofrun.please_wait"));
         }
     }
 
@@ -668,13 +668,13 @@ public class EndOfRunUI : IAccessibleScreen
         }
         else
         {
-            TolkWrapper.Speak("Screen changed. Press Enter to continue or arrows to read.");
+            TolkWrapper.Speak(Loc.T("patch.endofrun.screen_changed"));
         }
     }
 
     public string GetHelp()
     {
-        return "Up/Down arrows: Read info line by line. Enter: Continue to next screen.";
+        return Loc.T("patch.endofrun.help");
     }
 
     public void OnFocus()
@@ -684,11 +684,11 @@ public class EndOfRunUI : IAccessibleScreen
         if (_textLines.Count > 0)
         {
             _currentLineIndex = 0;
-            TolkWrapper.Speak($"End of run. {_textLines[0]}. Use arrows to read more, Enter to continue.");
+            TolkWrapper.Speak(Loc.T("patch.endofrun.intro_with_line", _textLines[0]));
         }
         else
         {
-            TolkWrapper.Speak("End of run. Press Enter to continue.");
+            TolkWrapper.Speak(Loc.T("patch.endofrun.intro_empty"));
         }
     }
 

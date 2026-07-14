@@ -1,3 +1,4 @@
+using BazaarAccess.Core;
 using UnityEngine;
 
 namespace BazaarAccess.UI.Login;
@@ -6,7 +7,7 @@ public class ForgotPasswordConfirmUI : LoginBaseUI
 {
     private readonly object _view;
 
-    public override string UIName => "Password Reset Sent";
+    public override string UIName => Loc.T("ui.login.password_reset_sent_title");
 
     public ForgotPasswordConfirmUI(Transform root, object view) : base(root)
     {
@@ -16,8 +17,8 @@ public class ForgotPasswordConfirmUI : LoginBaseUI
 
     protected override void BuildMenu()
     {
-        AddBazaarButton(_view, "continueButton", "Continue");
-        AddBazaarButton(_view, "resendButton", "Resend Email");
+        AddBazaarButton(_view, "continueButton", Loc.T("ui.continue"));
+        AddBazaarButton(_view, "resendButton", Loc.T("ui.login.resend_email_button"));
     }
 
     protected override void OnBack()

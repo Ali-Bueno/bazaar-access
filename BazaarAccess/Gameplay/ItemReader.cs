@@ -42,6 +42,9 @@ public static class ItemReader
     public static string GetSizeName(Card card)
         => CardProperties.GetSizeName(card);
 
+    public static string GetSizeName(ECardSize size)
+        => CardProperties.GetSizeName(size);
+
     public static int GetBuyPrice(Card card)
         => CardProperties.GetBuyPrice(card);
 

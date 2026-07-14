@@ -35,7 +35,7 @@ public class GenericPopupUI : BaseUI
         if (!string.IsNullOrEmpty(_message))
         {
             Menu.AddOption(
-                () => "Read message",
+                () => Loc.T("ui.popup.read_message"),
                 () => TolkWrapper.Speak(_message));
         }
 

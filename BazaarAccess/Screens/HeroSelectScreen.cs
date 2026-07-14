@@ -17,7 +17,7 @@ namespace BazaarAccess.Screens;
 /// </summary>
 public class HeroSelectScreen : BaseScreen
 {
-    public override string ScreenName => "Hero Select";
+    public override string ScreenName => Loc.T("screen.heroselect.name");
 
     private readonly List<HeroItemView> _heroViews = new List<HeroItemView>();
 
@@ -81,12 +81,12 @@ public class HeroSelectScreen : BaseScreen
         if (toggle == null) return;
 
         Menu.AddOption(
-            () => $"Random Hero: {(HeroSelectButtonsView.IsRandomHeroEnabled ? "on" : "off")}",
+            () => Loc.T("screen.heroselect.random", Loc.T(HeroSelectButtonsView.IsRandomHeroEnabled ? "screen.state.on" : "screen.state.off")),
             () =>
             {
                 int currentIndex = Menu.CurrentIndex;
                 toggle.isOn = !toggle.isOn;
-                TolkWrapper.Speak($"Random Hero: {(toggle.isOn ? "on" : "off")}");
+                TolkWrapper.Speak(Loc.T("screen.heroselect.random", Loc.T(toggle.isOn ? "screen.state.on" : "screen.state.off")));
                 Menu.Clear();
                 BuildMenu();
                 Menu.SetIndex(currentIndex);
@@ -133,7 +133,7 @@ public class HeroSelectScreen : BaseScreen
                     Menu.Clear();
                     BuildMenu();
                     Menu.SetIndex(currentIndex);
-                    TolkWrapper.Speak("Casual selected");
+                    TolkWrapper.Speak(Loc.T("screen.heroselect.casual_selected_announce"));
                 });
         }
 
@@ -153,9 +153,9 @@ public class HeroSelectScreen : BaseScreen
                     Menu.SetIndex(currentIndex);
                     string rank = Gameplay.ItemReader.GetPlayerRank();
                     if (!string.IsNullOrEmpty(rank))
-                        TolkWrapper.Speak($"Ranked selected. Rank: {rank}");
+                        TolkWrapper.Speak(Loc.T("screen.heroselect.ranked_selected_announce_rank", rank));
                     else
-                        TolkWrapper.Speak("Ranked selected");
+                        TolkWrapper.Speak(Loc.T("screen.heroselect.ranked_selected_announce"));
                 });
         }
     }
@@ -167,11 +167,11 @@ public class HeroSelectScreen : BaseScreen
             if (ClientCache.RunConfig.HasData &&
                 ClientCache.RunConfig.Value.RunType == EPlayMode.Unranked)
             {
-                return "Casual, selected";
+                return Loc.T("screen.heroselect.casual_selected");
             }
         }
         catch { }
-        return "Casual";
+        return Loc.T("screen.heroselect.casual");
     }
 
     private string GetRankedButtonText()
@@ -183,12 +183,12 @@ public class HeroSelectScreen : BaseScreen
             {
                 string rank = Gameplay.ItemReader.GetPlayerRank();
                 if (!string.IsNullOrEmpty(rank))
-                    return $"Ranked, selected. Rank: {rank}";
-                return "Ranked, selected";
+                    return Loc.T("screen.heroselect.ranked_selected_rank", rank);
+                return Loc.T("screen.heroselect.ranked_selected");
             }
         }
         catch { }
-        return "Ranked";
+        return Loc.T("screen.heroselect.ranked");
     }
 
     /// <summary>
@@ -237,10 +237,10 @@ public class HeroSelectScreen : BaseScreen
         // Fallback based on game state
         if (Data.HasActiveRun)
         {
-            return "Resume";
+            return Loc.T("screen.heroselect.resume");
         }
 
-        return "Ready";
+        return Loc.T("screen.heroselect.ready");
     }
 
     /// <summary>
@@ -251,7 +251,7 @@ public class HeroSelectScreen : BaseScreen
     {
         _backAction = ResolveBackAction();
         if (_backAction != null)
-            Menu.AddOption(() => "Back", () => _backAction());
+            Menu.AddOption(() => Loc.T("screen.heroselect.back"), () => _backAction());
     }
 
     /// <summary>
@@ -369,7 +369,7 @@ public class HeroSelectScreen : BaseScreen
 
     private string GetHeroOptionText(HeroItemView view)
     {
-        if (view == null) return "Unknown Hero";
+        if (view == null) return Loc.T("screen.heroselect.unknown_hero");
 
         string heroName = view.Hero.ToString();
         bool isSelected = Data.SelectedHero == view.Hero;
@@ -409,12 +409,12 @@ public class HeroSelectScreen : BaseScreen
 
         if (isSelected && !HeroSelectButtonsView.IsRandomHeroEnabled)
         {
-            parts.Add("selected");
+            parts.Add(Loc.T("screen.heroselect.hero_selected_tag"));
         }
 
         if (isLocked)
         {
-            parts.Add("locked");
+            parts.Add(Loc.T("screen.heroselect.hero_locked_tag"));
         }
 
         return string.Join(". ", parts);
@@ -440,7 +440,7 @@ public class HeroSelectScreen : BaseScreen
 
         if (isLocked)
         {
-            TolkWrapper.Speak($"{view.Hero} is locked");
+            TolkWrapper.Speak(Loc.T("screen.heroselect.hero_is_locked", view.Hero));
             // This will open the hero unlock/purchase dialog
             view.OnItemSelected();
         }
@@ -451,7 +451,7 @@ public class HeroSelectScreen : BaseScreen
 
             // Selecting a hero disables random hero mode automatically (game handles this)
             view.OnItemSelected();
-            TolkWrapper.Speak($"{view.Hero} selected");
+            TolkWrapper.Speak(Loc.T("screen.heroselect.hero_selected", view.Hero));
 
             // Rebuild menu to update selection indicator and random hero state
             Menu.Clear();
@@ -545,12 +545,12 @@ public class HeroSelectScreen : BaseScreen
     {
         if (HeroSelectButtonsView.IsRandomHeroEnabled)
         {
-            TolkWrapper.Speak("Hero Select. Random hero mode enabled");
+            TolkWrapper.Speak($"{ScreenName}. {Loc.T("screen.heroselect.random_enabled")}");
         }
         else
         {
             string currentHero = Data.SelectedHero.ToString();
-            TolkWrapper.Speak($"Hero Select. Current hero: {currentHero}");
+            TolkWrapper.Speak($"{ScreenName}. {Loc.T("screen.heroselect.current_hero", currentHero)}");
         }
         // Don't call base.OnFocus() to avoid double announcement
     }

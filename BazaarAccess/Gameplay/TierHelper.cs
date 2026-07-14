@@ -1,3 +1,4 @@
+using BazaarAccess.Core;
 using BazaarGameShared.Domain.Core.Types;
 
 namespace BazaarAccess.Gameplay;
@@ -24,19 +25,12 @@ public static class TierHelper
     }
 
     /// <summary>
-    /// Gets a display-friendly name for a tier.
+    /// Gets a display-friendly name for a tier. Delegates to ItemReader/CardProperties so
+    /// there is a single source of truth (the game's own tier word via GameVocabulary).
     /// </summary>
     public static string GetName(ETier tier)
     {
-        return tier switch
-        {
-            ETier.Bronze => "Bronze",
-            ETier.Silver => "Silver",
-            ETier.Gold => "Gold",
-            ETier.Diamond => "Diamond",
-            ETier.Legendary => "Legendary",
-            _ => tier.ToString()
-        };
+        return ItemReader.GetTierName(tier);
     }
 
     /// <summary>
@@ -46,7 +40,7 @@ public static class TierHelper
     public static string GetNextName(ETier current)
     {
         var next = GetNextTier(current);
-        return next == current ? "max" : GetName(next);
+        return next == current ? Loc.T("action.tier.max") : GetName(next);
     }
 
     /// <summary>

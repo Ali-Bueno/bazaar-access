@@ -151,13 +151,13 @@ public static class HealthTracker
 
                 if (ratio <= CritHealthThreshold && !_announcedPlayerCrit)
                 {
-                    TolkWrapper.Speak("Critical health!", interrupt: true);
+                    TolkWrapper.Speak(Loc.T("combat.health.critical"), interrupt: true);
                     _announcedPlayerCrit = true;
                     _announcedPlayerLow = true;
                 }
                 else if (ratio <= LowHealthThreshold && !_announcedPlayerLow)
                 {
-                    TolkWrapper.Speak("Low health!", interrupt: true);
+                    TolkWrapper.Speak(Loc.T("combat.health.low"), interrupt: true);
                     _announcedPlayerLow = true;
                 }
             }
@@ -171,13 +171,13 @@ public static class HealthTracker
 
                 if (ratio <= CritHealthThreshold && !_announcedEnemyCrit)
                 {
-                    TolkWrapper.Speak("Enemy critical!", interrupt: true);
+                    TolkWrapper.Speak(Loc.T("combat.health.enemy_critical"), interrupt: true);
                     _announcedEnemyCrit = true;
                     _announcedEnemyLow = true;
                 }
                 else if (ratio <= LowHealthThreshold && !_announcedEnemyLow)
                 {
-                    TolkWrapper.Speak("Enemy low!", interrupt: true);
+                    TolkWrapper.Speak(Loc.T("combat.health.enemy_low"), interrupt: true);
                     _announcedEnemyLow = true;
                 }
             }
@@ -232,9 +232,9 @@ public static class HealthTracker
                 if (actualHealth < 0) actualHealth = reportedHealth; // Fallback if assumption is wrong
 
                 if (shield > 0)
-                    parts.Add($"You: {actualHealth} health, {shield} shield");
+                    parts.Add(Loc.T("combat.health_with_shield", Loc.T("combat.you_label"), actualHealth, shield));
                 else
-                    parts.Add($"You: {reportedHealth} health");
+                    parts.Add(Loc.T("combat.health_only", Loc.T("combat.you_label"), reportedHealth));
 
                 _lastPlayerHealth = actualHealth;
             }
@@ -248,9 +248,9 @@ public static class HealthTracker
                 if (actualEnemyHealth < 0) actualEnemyHealth = reportedEnemyHealth; // Fallback if assumption is wrong
 
                 if (enemyShield > 0)
-                    parts.Add($"{_enemyName}: {actualEnemyHealth} health, {enemyShield} shield");
+                    parts.Add(Loc.T("combat.health_with_shield", _enemyName, actualEnemyHealth, enemyShield));
                 else
-                    parts.Add($"{_enemyName}: {reportedEnemyHealth} health");
+                    parts.Add(Loc.T("combat.health_only", _enemyName, reportedEnemyHealth));
 
                 _lastEnemyHealth = actualEnemyHealth;
             }
@@ -279,7 +279,7 @@ public static class HealthTracker
         if (health < 0) health = reportedHealth;
 
         if (shield > 0)
-            return $"{health} with {shield} shield";
+            return Loc.T("combat.health_value_with_shield", health, shield);
         return health.ToString();
     }
 
@@ -298,7 +298,7 @@ public static class HealthTracker
         if (health < 0) health = reportedHealth;
 
         if (shield > 0)
-            return $"{health} with {shield} shield";
+            return Loc.T("combat.health_value_with_shield", health, shield);
         return health.ToString();
     }
 }

@@ -1,3 +1,4 @@
+using BazaarAccess.Core;
 using UnityEngine;
 
 namespace BazaarAccess.UI.Login;
@@ -6,7 +7,7 @@ public class RegistrationFailedUI : LoginBaseUI
 {
     private readonly object _view;
 
-    public override string UIName => "Registration Failed";
+    public override string UIName => Loc.T("ui.login.registration_failed_title");
 
     public RegistrationFailedUI(Transform root, object view) : base(root)
     {
@@ -16,7 +17,7 @@ public class RegistrationFailedUI : LoginBaseUI
 
     protected override void BuildMenu()
     {
-        AddBazaarButton(_view, "continueButton", "Try Again");
+        AddBazaarButton(_view, "continueButton", Loc.T("ui.login.try_again_button"));
     }
 
     protected override void OnBack()

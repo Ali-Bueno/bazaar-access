@@ -1,0 +1,921 @@
+# BazaarAccess - Türkçe (tr-TR)
+#
+# Bu, referans kataloğudur: diğer tüm diller bu dosyanın çevirisidir.
+# Bir çeviride eksik olan her anahtar için mod İngilizce'ye döner, bu yüzden kısmi
+# çeviri sorun değildir - yapabildiğiniz kadarını çevirin, gerisini boş bırakın.
+#
+# Biçim
+#   anahtar = metin
+#   '#' ile başlayan satırlar yorumdur. Boş satırlar yok sayılır.
+#   {0}, {1}... modun dolduracağı yer tutuculardır (bir eşya adı, bir miktar...).
+#   İngilizce metinde geçen her yer tutucuyu koruyun - dilinizin farklı bir
+#   sözcük sırası gerektirmesi durumunda yeniden sıralayabilirsiniz.
+#   Satır sonu için \n kullanın.
+#
+# Sayılar
+#   .one / .other ile biten anahtarlar miktara göre seçilir: tekil için .one,
+#   diğer her miktar için .other. Bu ayrıma ihtiyaç duymayan diller ikisine de
+#   aynı metni verebilir.
+#
+# Shield, Burn, Bronze veya Weapon gibi kelimeler burada YOKTUR: mod bunları
+# oyunun kendisinden, zaten çevrilmiş olarak alır, böylece kartın kullandığı
+# kelimenin aynısını söyler.
+
+
+# --- Başlangıç ---
+mod.loaded = Bazaar Access yüklendi
+
+
+# Savaş anlatımı: CombatDescriber.cs, Combat/EffectFormatter.cs, Combat/HealthTracker.cs
+
+# --- Mod değiştirme (M tuşu) ---
+combat.mode.batched = Savaş görüntüleyici toplu eylem moduna ayarlandı
+combat.mode.individual = Savaş görüntüleyici tekil eylem moduna ayarlandı
+
+# --- H tuşu savaş özeti ---
+combat.summary.not_in_combat = Savaşta değilsin.
+combat.summary.dealt_took = {0} hasar verdin, {1} hasar aldın
+combat.summary.health_vs = Can: {0} - {1}
+combat.summary.unavailable = Özet mevcut değil.
+
+# --- Ortak etiketler ---
+combat.enemy_name = Düşman
+combat.you_label = Sen
+combat.enemy_item_name = Düşman {0}
+combat.item_fallback_name = Eşya
+
+# --- Tekil mod / etki başına metin (ifade örtüştüğünde dalga özetlerinde de kullanılır) ---
+combat.crit_hit_damage = Kritik vuruş! {0}: {1} hasar
+combat.item_effect = {0}: {1}
+combat.damage_amount = {0} hasar
+combat.damage = hasar
+combat.heal_amount = {0} iyileşme
+combat.heal = iyileşme
+combat.shield_amount = {0} kalkan
+combat.shield = kalkan
+combat.burn_amount = {0} yanma
+combat.burn_applied = yanma uygulandı
+combat.poison_amount = {0} zehir
+combat.poison_applied = zehir uygulandı
+combat.regen_amount = {0} yenilenme
+combat.regen_applied = yenilenme uygulandı
+combat.stole_gold = {0} altın çaldı
+combat.gold_stolen = altın çalındı
+combat.max_health_increase = maksimum can +{0}
+combat.max_health_increased = maksimum can arttı
+combat.max_health_decrease = maksimum can -{0}
+combat.max_health_decreased = maksimum can azaldı
+combat.slowed = yavaşlatıldı
+combat.freeze_applied = donma uygulandı
+combat.hasted = hızlandırıldı
+combat.charged = şarj edildi
+combat.reloaded_ammo = {0} mermi doldurdu
+combat.reloaded = dolduruldu
+combat.destroyed_named = {0} yok etti
+combat.destroyed = yok edildi
+combat.disabled_named = {0} devre dışı bıraktı
+combat.disabled = devre dışı
+combat.repaired_named = {0} onardı
+combat.repaired = onarıldı
+combat.transformed = dönüştü
+combat.upgraded = yükseltildi
+combat.quest_complete = görev tamamlandı
+combat.started_flying = uçmaya başladı
+combat.stopped_flying = uçmayı bıraktı
+combat.toggled_flying = uçuşu değiştirdi
+combat.flying = uçuyor
+combat.landed = yere indi
+combat.flying_toggled = uçuş değişti
+combat.frozen_alert = Donduruldu!
+
+# --- Öznitelik değişikliği anlatımı ---
+combat.modified_by = {0} kadar değişti
+combat.modified = değişti
+combat.attr_increased_by = {0}, {1} arttı
+combat.attr_decreased_by = {0}, {1} azaldı
+combat.attr_changed = {0} değişti
+combat.on_target = {0} üzerinde
+
+# --- Toplu mod dalga özetleri ---
+combat.wave_side = {0}: {1}
+combat.wave.crit_damage_item = kritik vuruş! {0} hasar ({1})
+combat.wave.crit_damage = kritik vuruş! {0} hasar
+combat.wave.damage_item = {0} hasar ({1})
+combat.wave.reload_item = {0}, {1} doldurdu
+combat.wave.reloads.one = {0} doldurma
+combat.wave.reloads.other = {0} doldurma
+combat.wave.buffs.one = {0} güçlendirme
+combat.wave.buffs.other = {0} güçlendirme
+combat.wave.debuffs.one = {0} zayıflatma
+combat.wave.debuffs.other = {0} zayıflatma
+combat.wave.repairs.one = {0} onarım
+combat.wave.repairs.other = {0} onarım
+
+# --- Can (HealthTracker) ---
+combat.health.critical = Kritik can!
+combat.health.low = Düşük can!
+combat.health.enemy_critical = Düşman kritik!
+combat.health.enemy_low = Düşman düşük can!
+combat.health_with_shield = {0}: {1} can, {2} kalkan
+combat.health_only = {0}: {1} can
+combat.health_value_with_shield = {1} kalkanla {0}
+
+# 2. Grup - CardReading/* + ItemReader.cs
+# Ön ek: card.
+
+# --- Genel kart adı/yuva yedek metinleri ---
+card.name.empty = Boş
+card.name.unknown = Bilinmiyor
+card.slot.empty = Boş yuva
+
+# --- Görev / teslimat paketi (kısa ve ayrıntılı açıklamalar) ---
+card.quest.generic = Görev
+card.quest.item.generic = Görev eşyası
+card.delivery.package = Teslimat paketi
+card.quest.complete = Tamamlandı
+card.quest.fraction = {0}/{1}
+card.quest.withDesc = Görev: {0} ({1})
+card.quest.statusOnly = Görev: {0}
+card.quest.reward = Ödül: {0}
+card.quest.completeShort = Görev tamamlandı
+card.quest.progress = Görev {0}/{1}
+
+# --- Ayrıntı satırı etiketleri (mod tarafından yazılmıştır, oyunun kelime dağarcığı değildir) ---
+card.state.label = Durum: {0}
+card.enchanted.label = Büyülü: {0}
+card.buy.gold = {0} altına satın al
+card.sell.gold = {0} altına sat
+card.buy.info = {0}, {1} altın
+card.sell.info = {0}, {1} altına satılır
+
+# --- Genel "etiket: değer" / "etiket değer" istatistik satırı biçimleri.
+# Etiketin kendisi bağımsız değişken olarak geçirilir ve genellikle çevrilmemiş oyun
+# terimidir (Damage, Shield, Cooldown...); yalnızca çevresindeki biçim bir şablondur.
+card.stat.line = {0}: {1}
+card.stat.inline = {0} {1}
+
+# --- Etiket/anahtar kelime özellik açıklamaları (I tuşu) ---
+card.property.noDescription = Açıklama mevcut değil
+
+# --- Karşılaşma kartları (dükkan yolu / savaş / PvP) ---
+card.encounter.info = {0}, {1}, {2}
+card.encounter.pvp.withRank = {0}, {1}, {2}, {3}
+card.encounter.pvp.withTier = {0}, {1}, {2}, {3}
+card.encounter.type.combat = Savaş
+card.encounter.type.event = Etkinlik
+card.encounter.type.upgrade = Yükseltme
+card.encounter.type.path = Yol
+card.encounter.type.pvp = PvP
+card.encounter.type.default = Karşılaşma
+card.encounter.level = Seviye: {0}
+card.encounter.xp = XP: {0}
+card.encounter.gold = Altın: {0}
+card.encounter.pvp.stats = , Seviye {0}, {1} galibiyet, {2} prestij
+card.encounter.rewards = , Seviye {0}, {1} XP, {2} altın
+card.encounter.pvp.label = PvP Karşılaşması
+card.encounter.pvp.player = Oyuncu: {0}
+card.encounter.pvp.hero = Kahraman: {0}
+card.encounter.pvp.rank.division = Rütbe: {0} {1}
+card.encounter.pvp.rank = Rütbe: {0}
+card.encounter.pvp.rating = Puan: {0}
+card.encounter.pvp.wins = Galibiyet: {0}
+card.encounter.pvp.prestige = Prestij: {0}
+
+# --- Savaş özeti (H tuşu). Bunlar modun kendi bileşik anlatım ifadeleridir
+# ("Damage dealt" gibi), diğer yerlerde kullanılan ham oyun öznitelik adlarından
+# ("Damage", "Shield"...) farklı olduğu için tam etiketler olarak çevrilirler.
+card.recap.header = Özet
+card.recap.uses = Kullanım
+card.recap.damageDealt = Verilen hasar
+card.recap.healApplied = Uygulanan iyileşme
+card.recap.shieldApplied = Uygulanan kalkan
+card.recap.burnApplied = Uygulanan yanma
+card.recap.poisonApplied = Uygulanan zehir
+card.recap.regenApplied = Uygulanan yenilenme
+card.recap.rageApplied = Uygulanan öfke
+card.recap.hastedItems = Hızlandırılan eşyalar
+card.recap.slowedItems = Yavaşlatılan eşyalar
+card.recap.frozenItems = Dondurulan eşyalar
+
+# 3. Grup - Gameplay/Navigation/* + Gameplay/GameplayNavigator.cs
+# Bu gruptaki tüm anahtarlar "nav." ön ekini kullanır (bu grup için ayrılmıştır).
+
+# --- Genel / bu gruptaki dosyalar arasında paylaşılan ---
+nav.empty = Boş
+nav.empty_slot = Boş yuva
+nav.no_item_selected = Seçili eşya yok
+nav.no_items = Eşya yok
+nav.no_skill = Yetenek yok
+nav.no_skills = Yetenek yok
+nav.no_choices = Kullanılabilir seçim yok
+nav.nothing_selected = Hiçbir şey seçilmedi
+nav.unknown = Bilinmiyor
+nav.end_of_list = Listenin sonu
+nav.start_of_list = Listenin başı
+nav.name_with_desc = {0}: {1}
+nav.price_gold = {0} altın
+nav.items.one = {0} eşya
+nav.items.other = {0} eşya
+nav.slots_free.one = {0} boş yuva
+nav.slots_free.other = {0} boş yuva
+nav.skills_count.one = {0} yetenek
+nav.skills_count.other = {0} yetenek
+
+# --- Ayrıntı satırı okuma (DetailReader.cs, "ayrıntı yok" başka yerlerde de kullanılır) ---
+nav.detail.none = Ayrıntı yok
+nav.detail.last_line = Son satır. {0}
+nav.detail.first_line = İlk satır. {0}
+
+# --- Pano / Depo (BoardStashNavigator.cs) ---
+nav.stash.not_available = Kullanılamıyor
+nav.stash.cannot_open_now = Depo şu anda açılamıyor
+nav.stash.toggle_error = Depo değiştirilemiyor
+nav.stash.info_unavailable = Depo bilgisi mevcut değil
+nav.stash.capacity = Depo: {1} kapasitenin {0} kullanılıyor
+nav.stash.read_error = Depo bilgisi okunamıyor
+nav.stash.closed_hint = Depo kapalı. Açmak için Boşluk tuşuna bas.
+nav.stash.empty = Depo boş
+nav.board.info_unavailable = Pano bilgisi mevcut değil
+nav.board.capacity = Pano: {1} kapasitenin {0} kullanılıyor
+nav.board.read_error = Pano bilgisi okunamıyor
+nav.board.empty = Panon boş
+nav.board.your_board.one = Panon, {0} eşya
+nav.board.your_board.other = Panon, {0} eşya
+nav.board.empty_showing_stash = Pano boş, depo gösteriliyor
+nav.board.no_items = Panoda eşya yok
+
+# --- Düşman gezinme (EnemyNavigator.cs) ---
+nav.enemy.none = Düşman yok
+nav.enemy.label = Düşman
+nav.enemy.opponent_named = Rakip: {0}
+nav.enemy.of_max = /{0}
+nav.enemy.read_error = Düşman bilgisi okunamıyor
+nav.enemy.replay_in_progress = Tekrar oynatma sürüyor. Rakip panosunu kesintisiz görüntülemek için Özet'e geçmek üzere E'ye bas.
+nav.enemy.no_items = Rakip eşyası yok
+nav.enemy.default_name = Rakip
+nav.enemy.cannot_access_board = Rakip panosuna erişilemiyor
+nav.enemy.items_label = Eşyalar
+nav.enemy.skills_label = Yetenekler
+nav.enemy.items_with_count = Eşyalar, {0}
+nav.enemy.stats_label = Düşman istatistikleri
+nav.enemy.no_data = Düşman verisi yok
+# İyelik şablonu: cümlenin tamamı anahtardır, böylece çevirmen tamamen yeniden yazabilir
+# (İngilizce "'s" çoğu dilde karşılık bulmaz).
+nav.enemy.board.one = {0} panosu, {1} eşya
+nav.enemy.board.other = {0} panosu, {1} eşya
+
+# --- Durum / bölüm duyuruları (GameplayAnnouncer.cs) ---
+nav.state.shop = Dükkan
+nav.state.encounters = Karşılaşmalar
+nav.state.loot = Ganimet
+nav.state.levelup = {0}. seviyeye çıktın!
+nav.state.levelup_choose.one = {0}. seviyeye çıktın! Bir yetenek seç, {1} tane mevcut
+nav.state.levelup_choose.other = {0}. seviyeye çıktın! Bir yetenek seç, {1} tane mevcut
+nav.state.enchant_altar = Büyü sunağı, {0}
+nav.state.random_enchant = rastgele
+nav.state.upgrade_altar = Yükseltme sunağı
+nav.state.altar = Sunak
+nav.state.combat = Savaş
+nav.state.pvp = PvP
+nav.state.victory = Zafer
+nav.state.defeat = Yenilgi
+nav.section.board = Pano
+nav.section.stash = Depo
+nav.section.skills = Yetenekler
+nav.section.free_prefix = Boş {0}
+nav.section.count.one = {0}, {1} eşya
+nav.section.count.other = {0}, {1} eşya
+nav.action.exit = Çıkış
+nav.action.exit_detail = Çıkış. Mevcut durumu bırak ve devam et.
+nav.action.exit_description = Mevcut durumu bırak ve devam et
+nav.action.reroll_cost = Yenile, {0} altın
+nav.action.reroll_detail = Yenile. {0} altına yeni eşyalar al. {1} altının var.
+nav.action.reroll_line = Yenile: {0} altın
+nav.action.cannot_exit = Şu anda çıkılamıyor
+nav.action.exiting = Çıkılıyor
+nav.action.exit_failed = Çıkış başarısız
+nav.action.cannot_reroll = Şu anda yenilenemiyor
+nav.action.not_enough_gold = Yeterli altın yok. {0} gerekli, {1} mevcut
+nav.action.rerolled = {0} altına yenilendi
+nav.action.reroll_failed = Yenileme başarısız
+nav.action.exit_hint = Çıkmak için E
+nav.action.reroll_hint = Yenilemek için R ({0} altın)
+nav.action.none_available = Kullanılabilir eylem yok
+nav.wins.one = {0} galibiyet
+nav.wins.other = {0} galibiyet
+nav.item.no_size_info = Boyut bilgisi yok
+nav.item.size_info = {0}: Boyut {1} ({2})
+
+# --- Kahraman gezinme (HeroNavigator.cs) ---
+nav.hero.no_skills_equipped = Takılı yetenek yok
+nav.hero.stats_count.one = Kahraman istatistikleri, {0} istatistik
+nav.hero.stats_count.other = Kahraman istatistikleri, {0} istatistik
+nav.hero.skills_intro.one = Kahraman yetenekleri, {0} yetenek. {1}
+nav.hero.skills_intro.other = Kahraman yetenekleri, {0} yetenek. {1}
+nav.hero.no_data = Kahraman verisi yok
+nav.hero.stat_value = {0}: {1}
+nav.hero.stat_none = {0}: yok
+
+# --- Özet gezinme (RecapNavigator.cs) ---
+nav.recap.your_hero_stats = Kahraman'ın. İstatistikler: {0}
+nav.recap.your_hero_skills_suffix = , Yetenekler: {0}. Yetenekler için sağ ok.
+nav.recap.stats_label = İstatistikler
+nav.recap.stats_with_count = İstatistikler, {0}
+nav.recap.skills_with_count = Yetenekler, {0}
+
+# --- Seçim / dükkan açıklamaları (SelectionNavigator.cs) ---
+nav.type.options = seçenekler
+nav.type.rewards = ödüller
+nav.type.encounters = karşılaşmalar
+nav.type.skills = yetenekler
+nav.type.items = eşyalar
+nav.selection.quest_prefix = Görev: {0}
+nav.selection.quest_progress = {0}: {1}
+nav.selection.package_prefix = Teslimat paketi: {0}
+
+# 4. Grup anahtarları - Gameplay eylem katmanı (ActionHelper, ActionMenuHandler, GameplayScreen,
+# PedestalManager, TierHelper, ShopItemMenuHandler, CombatInputHandler, ReplayInputHandler,
+# ItemInspectNavigator, CombatEncounterPreview/*)
+# Tüm anahtarlar action. ön ekini kullanır.
+
+# --- Satın alma / satma / taşıma (ActionHelper.cs) ---
+action.cannot.buy.now = Şu anda satın alınamıyor
+action.acquired = {0} edinildi
+action.bought = {0}, {1} altına satın alındı
+action.purchase.failed = Satın alma başarısız
+action.cannot.sell.now = Şu anda satılamıyor
+action.sold = {0}, {1} altına satıldı
+action.sale.failed = Satış başarısız
+action.cannot.move.now = Şu anda taşınamıyor
+action.cannot.move.items.now = Şu anda eşyalar taşınamıyor
+action.player.data.unavailable = Oyuncu verisi mevcut değil
+action.cannot.access.destination = Hedefe erişilemiyor
+action.no.space.stash = Depoda yer yok
+action.no.space.board = Panoda yer yok
+action.moved.to.stash = {0}, Depo'ya taşındı
+action.moved.to.board = {0}, Pano'ya taşındı
+action.move.failed = Taşıma başarısız
+action.cannot.select.now = Şu anda seçilemiyor
+action.selected = {0} seçildi
+action.selection.failed = Seçim başarısız
+action.edge.left = Sol kenarda
+action.edge.right = Sağ kenarda
+action.stash.at.start = Başlangıçta
+action.stash.at.end = Sonda
+
+# --- Eylem menüsü katmanı (ActionMenuHandler.cs) ---
+action.menu.no.actions = Kullanılabilir eylem yok
+action.menu.count.one = {0}. {1}. {2} eylem. İptal için Backspace.
+action.menu.count.other = {0}. {1}. {2} eylem. İptal için Backspace.
+action.exited = Çıkıldı
+action.cancelled = Eylem iptal edildi
+action.cannot.sell = Satılamıyor
+action.cannot.upgrade.enchant.here = Burada yükseltilemez veya büyülenemez
+action.cannot.move = Taşınamıyor
+action.cannot.reorder = Yeniden sıralanamıyor
+action.details = Ayrıntılar
+action.sell = {0} altına sat (S)
+action.upgrade.stats = {0} istatistiklerini yükselt (U)
+action.upgrade.to = {0} seviyesine yükselt (U)
+action.enchant.with = {0} ile büyüle (U)
+action.use.pedestal = Sunağı kullan (U)
+action.move.to.stash = Depoya taşı (M)
+action.move.to.board = Panoya taşı (M)
+action.option.position = {0}, {2} üzerinden {1}
+action.moved.stash.short = Depoya taşındı
+action.moved.board.short = Panoya taşındı
+action.reorder.left.edge.before = Sol kenar, {0}'dan önce
+action.reorder.left.edge = Sol kenar
+action.reorder.right.edge.after = Sağ kenar, {0}'dan sonra
+action.reorder.right.edge = Sağ kenar
+action.reorder.between = {0} ile {1} arasında
+action.reorder.after = {0}'dan sonra
+action.reorder.before = {0}'dan önce
+action.reorder.position = Konum {0}
+action.cannot.move.this = Bu taşınamıyor
+action.cannot.determine.position = Konum belirlenemiyor
+action.already.at.left.edge = Zaten sol kenarda
+action.already.at.right.edge = Zaten sağ kenarda
+action.moving.to.left.edge = Sol kenara taşınıyor
+action.moving.to.right.edge = Sağ kenara taşınıyor
+
+# --- Oynanış ekranı girdi yönlendirici (GameplayScreen.cs) ---
+action.select.item.upgrade = Yükseltmek için panonda veya deponda bir eşya seç
+action.no.item.selected = Seçili eşya yok
+action.not.at.pedestal = Bir sunakta değilsin
+action.no.property.info = Kullanılabilir özellik bilgisi yok
+action.properties.list = {0} özellikleri: {1}
+action.help.text = Sol/Sağ: Eşyalarda gezin. Yukarı/Aşağı: Ayrıntıları oku. Tab: Bölüm değiştir. Boşluk: Depoyu aç/kapat. G: Depoya git. B: Pano. V: Kahraman. C: Seçimler. F: Düşman. X: İncele. I: Özellikler. W: Galibiyetler. Enter: Seç, ya da dükkan ve pano eşyalarında menü aç. E: Çık. R: Yenile. Eylem menüsünde: S sat, U yükselt, M taşı, Oklar yeniden sırala. Ctrl+Oklar: Ayrıntı okuma. Nokta/Virgül: Mesajlar.
+action.exited.enemy.view = Düşman görünümünden çıkıldı
+action.nothing.selected = Hiçbir şey seçilmedi
+action.nothing.to.inspect = İncelenecek bir şey yok
+action.cannot.select.this = Bu seçilemiyor
+action.not.an.item = Bu bir eşya değil
+action.not.a.skill = Bu bir yetenek değil
+action.select.item.first = Önce panonda veya deponda bir eşya seç
+action.cannot.move.right.now = Şu anda taşınamıyor
+action.select.stash.item.first = Önce deponda bir eşya seç
+action.select.board.item.first = Önce panonda bir eşya seç
+action.cannot.reorder.this = Bu yeniden sıralanamıyor
+action.cannot.reorder.right.now = Şu anda yeniden sıralanamıyor
+action.combat.short = Savaş
+action.stash.closed = Depo kapatıldı
+action.stash.opened.empty = Depo açıldı, boş. Kapatmak için Boşluk tuşuna bas.
+action.combat.ended = Savaş bitti. Devam etmek için Enter.
+action.continuing = Devam ediliyor
+action.replaying.combat = Savaş tekrar oynatılıyor
+action.recap.entered = Özet. V kahraman, F düşman, G düşman panosu, B kendi panon.
+action.recap.exited = Özetten çıkıldı. Devam için Enter, tekrar oynatma için R, özete dönmek için E.
+action.done = Tamamlandı
+
+# --- Sunak eylemleri (PedestalManager.cs) ---
+action.only.upgrade.pedestal = Yalnızca bir sunakta yükseltilebilir
+action.cannot.upgrade.now = Şu anda yükseltilemiyor
+action.cannot.upgrade.item = Bu eşya yükseltilemiyor
+action.item.max.tier = Eşya zaten en üst kademede
+action.upgrading.from.to = {0}, {1} kademesinden {2} kademesine yükseltiliyor
+action.upgrading.stats = {0} istatistikleri yükseltiliyor
+action.upgrade.failed = Yükseltme başarısız
+action.upgrade.description = {0}'ı {1} kademesinden {2} kademesine yükselt
+action.enchant.description = {0}'ı {1} ile büyüle
+action.enchant.random.description = {0}'ı rastgele bir büyüyle büyüle
+action.use.at.pedestal = {0}'ı sunakta kullan
+action.cannot.use.pedestal.now = Sunak şu anda kullanılamıyor
+action.cannot.use.item.pedestal = Bu eşya sunakta kullanılamıyor
+action.using.at.pedestal = {0}, sunakta kullanılıyor
+action.pedestal.failed = Sunak eylemi başarısız
+action.cannot.enchant.now = Şu anda büyülenemiyor
+action.cannot.enchant.item = Bu eşya büyülenemiyor
+action.item.already.enchanted = Eşya zaten büyülü
+action.enchanting.random = {0}, rastgele büyüyle büyüleniyor
+action.enchanting.with = {0}, {1} ile büyüleniyor
+action.enchantment.failed = Büyüleme başarısız
+
+# --- Kademe ilerlemesi (TierHelper.cs) ---
+action.tier.max = maksimum
+
+# --- Dükkan eşyası menüsü (ShopItemMenuHandler.cs) ---
+action.buy.for.gold = {0} altına satın al
+action.buy.plain = Satın Al
+action.cancel = İptal
+
+# --- Savaş gezinme (CombatInputHandler.cs) ---
+action.exited.board.view = Pano görünümünden çıkıldı
+action.exited.enemy.board.view = Düşman panosu görünümünden çıkıldı
+action.exited.enemy.stats.view = Düşman istatistikleri görünümünden çıkıldı
+action.exited.hero.stats.view = Kahraman istatistikleri görünümünden çıkıldı
+
+# --- Tekrar oynatma/özet gezinme (ReplayInputHandler.cs) ---
+action.replay.press.e.first = Önce Özet için E'ye, sonra rakip panosu için G'ye bas.
+action.replay.post.combat.help = Savaş sonrası. Devam için Enter, tekrar oynatma için R, özet için E.
+
+# --- Eşya inceleme paneli (ItemInspectNavigator.cs) ---
+action.exited.item.inspect = Eşya incelemesinden çıkıldı
+action.item.inspect.entered = Eşya incelemesi
+action.start.of.list = Listenin başı
+action.end.of.list = Listenin sonu
+action.no.item = Eşya yok
+action.reset = Sıfırla
+action.exit = Çıkış
+action.legend.prefix = Gösterge. {0}
+action.no.details = Ayrıntı yok
+action.label.tier = Kademe
+action.label.enchantment = Büyü
+action.combo.box = {0} açılır kutusu: {1}. Değiştirmek için home, end, yukarı veya aşağı oklarını kullan.
+
+# --- Savaş karşılaşması önizlemesi (CombatEncounterPreviewFactory.cs, CombatEncounterPreviewNavigator.cs) ---
+action.default.enemy.name = Düşman
+action.loadout = {0} teçhizatı
+action.exited.preview = Önizlemeden çıkıldı
+action.no.skills = Yetenek yok
+action.no.skill = Yetenek yok
+action.no.items = Eşya yok
+action.health = Can: {0}
+action.stats.health = İstatistikler. Can: {0}
+action.skills.zero = Yetenekler (0)
+action.skills.count = Yetenekler ({0}). {1}
+action.board.no.items = Pano. Eşya yok
+action.board.current = Pano. {0}
+action.skill.with.description = {0}: {1}
+
+# 5. Grup - Ekranlar: MainMenuScreen, ChestSceneScreen, CollectionScreen,
+# HeroSelectScreen, BattlePassScreen.
+# Biçim: anahtar = metin. {0}, {1}... yer tutuculardır. .one/.other ile biten
+# anahtarlar miktara göre seçilir (bkz. Loc.Plural).
+
+# --- MainMenuScreen ---
+screen.mainmenu.name = Ana Menü
+
+# --- ChestSceneScreen ---
+screen.chestscene.name = Sandıklar
+screen.chestscene.back = Geri
+screen.chestscene.season_fallback = Sezon {0} Sandığı
+screen.chestscene.no_chests = Kullanılabilir sandık yok
+screen.chestscene.chest_summary = {0}: {1}
+screen.chestscene.open_n = {0} tane aç
+screen.chestscene.open_multi = {0} tanesini birden aç
+screen.chestscene.not_enough_multi = Toplu açmak için yeterli sandık yok
+screen.chestscene.opening_multi = {0} {1} sandık açılıyor
+screen.chestscene.error_opening_multi = Sandıklar açılırken hata oluştu
+screen.chestscene.opening_single = {0} açılıyor
+screen.chestscene.open_failed = Sandık açılamadı
+screen.chestscene.open_error = Sandık açılırken hata oluştu
+
+# --- CollectionScreen ---
+screen.collection.name = Koleksiyon
+screen.collection.category.heroskins = Kahraman Görünümleri
+screen.collection.category.boards = Panolar
+screen.collection.category.cardskins = Kart Görünümleri
+screen.collection.category.carpets = Halılar
+screen.collection.category.cardbacks = Kart Arkaları
+screen.collection.category.albums = Albümler
+screen.collection.item_unknown = Bilinmiyor
+screen.collection.equipped = takılı
+screen.collection.category_summary.one = {0}, {1} eşya
+screen.collection.category_summary.other = {0}, {1} eşya
+screen.collection.no_items = Eşya yok
+screen.collection.no_items_category = Bu kategoride eşya yok
+screen.collection.no_item_select = Seçilecek eşya yok
+screen.collection.already_equipped = {0} zaten takılı
+screen.collection.equipping = {0} takılıyor
+screen.collection.equipped_done = {0} takıldı
+screen.collection.equip_failed = Eşya takılamadı
+
+# --- HeroSelectScreen ---
+screen.heroselect.name = Kahraman Seçimi
+screen.heroselect.random = Rastgele Kahraman: {0}
+screen.state.on = açık
+screen.state.off = kapalı
+screen.heroselect.casual_selected_announce = Gündelik seçildi
+screen.heroselect.ranked_selected_announce_rank = Dereceli seçildi. Rütbe: {0}
+screen.heroselect.ranked_selected_announce = Dereceli seçildi
+screen.heroselect.casual_selected = Gündelik, seçili
+screen.heroselect.casual = Gündelik
+screen.heroselect.ranked_selected_rank = Dereceli, seçili. Rütbe: {0}
+screen.heroselect.ranked_selected = Dereceli, seçili
+screen.heroselect.ranked = Dereceli
+screen.heroselect.resume = Devam Et
+screen.heroselect.ready = Hazır
+screen.heroselect.back = Geri
+screen.heroselect.unknown_hero = Bilinmeyen Kahraman
+screen.heroselect.hero_selected_tag = seçili
+screen.heroselect.hero_locked_tag = kilitli
+screen.heroselect.hero_is_locked = {0} kilitli
+screen.heroselect.hero_selected = {0} seçildi
+screen.heroselect.random_enabled = Rastgele kahraman modu etkin
+screen.heroselect.current_hero = Mevcut kahraman: {0}
+
+# --- BattlePassScreen ---
+screen.battlepass.name = Sezon Bileti
+screen.battlepass.back = Geri
+screen.battlepass.challenges = Görevler
+screen.battlepass.tiers = Kademeler ve Ödüller
+screen.battlepass.collect_all = Tüm Ödülleri Topla
+screen.battlepass.open_chests = Sandıkları Aç
+screen.battlepass.nav_hint = Gezinmek için yukarı ve aşağı kullan. Geri dönmek için Backspace.
+screen.battlepass.daily.one = {0} günlük görev
+screen.battlepass.daily.other = {0} günlük görev
+screen.battlepass.weekly.one = {0} haftalık görev
+screen.battlepass.weekly.other = {0} haftalık görev
+screen.battlepass.weekly_label = Haftalık
+screen.battlepass.daily_label = Günlük
+screen.battlepass.no_challenges_weekly = Haftalık görev yok
+screen.battlepass.no_challenges_daily = Günlük görev yok
+screen.battlepass.challenge_fallback_title = Görev
+screen.battlepass.progress = {1} üzerinden {0}
+screen.battlepass.status_claimed = Alındı
+screen.battlepass.status_ready = Alınmaya hazır
+screen.battlepass.status_inprogress = Devam ediyor
+screen.battlepass.xp_reward = {0} XP
+screen.battlepass.challenge_summary = {0}. {1}. {2}. İlerleme: {3}. {4}. {5}.
+screen.battlepass.challenge_header = {0}, {2} üzerinden {1}
+screen.battlepass.progress_label_simple = İlerleme: {0}
+screen.battlepass.claimed = Alındı! {0} kazandın
+screen.battlepass.daily_challenges_header = Günlük görevler
+screen.battlepass.first_challenge = İlk görev
+screen.battlepass.weekly_challenges_header = Haftalık görevler
+screen.battlepass.last_challenge = Son görev
+screen.battlepass.tiers_not_loaded = Kademeler henüz yüklenmedi. Lütfen bekle.
+screen.battlepass.tiers_total = Kademeler. Toplam {0}.
+screen.battlepass.tiers_unavailable = Kademeler mevcut değil
+screen.battlepass.no_tiers = Kullanılabilir kademe yok
+screen.battlepass.tier_fallback = Kademe {0}
+screen.battlepass.tier_header = Kademe {1} üzerinden {0}
+screen.battlepass.tier_status_locked = kilitli
+screen.battlepass.tier_status_inprogress = devam ediyor
+screen.battlepass.tier_status_ready = alınmaya hazır
+screen.battlepass.tier_status_claimed = alındı
+screen.battlepass.tier_status_unknown = bilinmiyor
+screen.battlepass.tier_xp_progress = {1} XP üzerinden {0}
+screen.battlepass.tier_xp_required = {0} XP gerekli
+screen.battlepass.chest_count.one = {0} sandık
+screen.battlepass.chest_count.other = {0} sandık
+screen.battlepass.currency_amount = {0} {1}
+screen.battlepass.collection_item_count.one = {0} koleksiyon eşyası
+screen.battlepass.collection_item_count.other = {0} koleksiyon eşyası
+screen.battlepass.rewards_prefix = Ödüller: {0}
+screen.battlepass.first_tier = İlk kademe
+screen.battlepass.last_tier = Son kademe
+screen.battlepass.collecting_all = Tüm ödüller toplanıyor
+screen.battlepass.no_rewards = Toplanacak ödül yok
+screen.battlepass.opening_chests = Sandıklar açılıyor
+screen.battlepass.chests_open_failed = Sandıklar açılamadı
+
+# 6. Grup - UI/ (diyaloglar, giriş akışı, seçenekler, eğitimler, sandık ödülleri)
+# Biçim: anahtar = metin. {0}, {1}... yer tutuculardır. .one/.other miktara göre
+# seçilir (bkz. Loc.Plural).
+
+# --- Ortak / genel ifadeler (bu gruptaki birkaç dosyada tekrar kullanılır) ---
+ui.continue = Devam Et
+ui.continue_prompt = Devam etmek için Enter'a bas.
+ui.on = açık
+ui.off = kapalı
+ui.previous = Önceki
+ui.next = Sonraki
+ui.button_disabled = Düğme devre dışı
+ui.disabled_suffix = (devre dışı)
+ui.field_default_label = Alan
+
+# --- Sandık ödülleri (ChestRewardsUI.cs) ---
+ui.chest.rarity.common = Yaygın
+ui.chest.rarity.uncommon = Az Yaygın
+ui.chest.rarity.rare = Nadir
+ui.chest.rarity.epic = Epik
+ui.chest.rarity.legendary = Efsanevi
+ui.chest.rarity.unknown = Bilinmiyor
+ui.chest.collection_type.hero_skin = Kahraman Görünümü
+ui.chest.collection_type.board = Pano
+ui.chest.collection_type.card_skin = Kart Görünümü
+ui.chest.collection_type.carpet = Halı
+ui.chest.collection_type.card_back = Kart Arkası
+ui.chest.collection_type.stash = Depo
+ui.chest.collection_type.bank = Banka
+ui.chest.collection_type.toy = Oyuncak
+ui.chest.collection_type.album = Albüm
+ui.chest.loading = Ödüller yükleniyor...
+ui.chest.no_rewards = Ödül yok.
+ui.chest.you_received = Şunu kazandın
+ui.chest.received_count.one = {0} ödül kazandın
+ui.chest.received_count.other = {0} ödül kazandın
+ui.chest.rarity_count = {0} {1}
+ui.chest.gems.one = {0} mücevher
+ui.chest.gems.other = {0} mücevher
+ui.chest.gems_total.one = toplam {0} mücevher
+ui.chest.gems_total.other = toplam {0} mücevher
+ui.chest.bonus_gems.one = {0} bonus mücevher
+ui.chest.bonus_gems.other = {0} bonus mücevher
+ui.chest.vouchers.one = {0} dereceli kupon
+ui.chest.vouchers.other = {0} dereceli kupon
+ui.chest.bonus_chests.one = {0} bonus sandık
+ui.chest.bonus_chests.other = {0} bonus sandık
+ui.chest.browse_instructions = Göz atmak için okları, devam etmek için Enter'ı kullan
+ui.chest.reward_typed = {0} {1}: {2}
+ui.chest.reward_named = {0}: {1}
+ui.chest.reward_item = {0} eşya
+ui.chest.duplicate = {0} (tekrar)
+ui.chest.empty_reward = Boş ödül
+
+# --- Yeni koleksiyon eşyası açılır penceresi (CollectionItemUI.cs) ---
+ui.collection.new_item = Yeni eşya: {0}.
+ui.collection.new_item_with_edition = Yeni eşya: {0}, {1}.
+ui.collection.default_name = Koleksiyon Eşyası
+
+# --- Seçenekler diyaloğu (OptionsUI.cs) ---
+ui.options.title = Seçenekler
+ui.keybind.default_name = Tuş Ataması
+ui.keybind.toggle_stash = Depoyu Aç/Kapat
+ui.keybind.access_settings = Erişilebilirlik Ayarları
+ui.keybind.access_locked_tooltip = Kilitli İpucunu Görüntüle
+ui.keybind.playlist = Çalma Listesi
+ui.keybind.atlas = Atlas
+
+# --- Duraklatma menüsü (FightMenuUI.cs) ---
+ui.fightmenu.title = Duraklatma Menüsü
+
+# --- Genel açılır pencere (GenericPopupUI.cs) ---
+ui.popup.read_message = Mesajı oku
+
+# --- Onay diyaloğu (ConfirmationDialogUI.cs) ---
+ui.confirm.no_button = Seçili düğme yok
+ui.confirm.help = Sol/Sağ: Düğmelerde gezin. Enter: Seç. Escape: İptal.
+ui.confirm.no_buttons = Düğme bulunamadı
+
+# --- Eğitim diyaloğu, Sonraki/Önceki içeren FTUE açılır pencereleri (TutorialDialogUI.cs) ---
+ui.tutorial.help_nav = Enter veya Sağ: Sonraki. Sol: Önceki. Escape: Mesajı tekrarla.
+ui.tutorial.help_basic = Enter: Devam et. Escape: Mesajı tekrarla.
+ui.tutorial.continue_or_next = Devam etmek için Enter veya Sağ oka bas
+ui.tutorial.previous_2of2 = Önceki, 2 üzerinden 2
+
+# --- Açıkken oynamaya izin veren eğitim katmanı (TutorialUI.cs) ---
+ui.tutorial2.help_full_nav = Eğitim etkin. Oyunda gezinmek için okları kullan. Eğitime devam etmek için Enter'a bas. Yeniden okumak için nokta veya virgül.
+ui.tutorial2.help_full_basic = Eğitim etkin. Oyunda gezinmek için okları kullan. Eğitime devam etmek için Enter'a bas. Mesajları yeniden okumak için nokta veya virgül.
+ui.tutorial2.help_short_nav = Eğitim. Oklar: Önceki/Sonraki. Enter: Devam et. Nokta/Virgül: Yeniden oku.
+ui.tutorial2.help_short_basic = Eğitim. Enter: Devam et. Nokta/Virgül: Mesajları yeniden oku.
+ui.tutorial2.buffer_prefix = Eğitim: {0}
+ui.tutorial2.nav_hint = Önceki veya Sonraki'yi seçmek için okları, ardından Enter'ı kullan.
+
+# --- Giriş / hesap akışı (UI/Login/*.cs) ---
+ui.login.access_denied_title = Erişim Reddedildi
+ui.login.account_verified_title = Hesap Doğrulandı
+ui.login.create_account_email_title = Hesap Oluştur - E-posta
+ui.login.create_account_terms_title = Hesap Oluştur - Koşullar
+ui.login.create_account_userpass_title = Hesap Oluştur - Kullanıcı Adı ve Şifre
+ui.login.password_reset_sent_title = Şifre Sıfırlama Gönderildi
+ui.login.reset_password = Şifreyi Sıfırla
+ui.login.welcome_title = Hoş Geldin
+ui.login.login_title = Giriş
+ui.login.registration_failed_title = Kayıt Başarısız
+ui.login.reset_email_title = Sıfırlama E-postası
+
+ui.login.email_label = E-posta
+ui.login.confirm_email_label = E-postayı Onayla
+ui.login.new_email_label = Yeni E-posta
+ui.login.confirm_new_email_label = Yeni E-postayı Onayla
+ui.login.password_label = Şifre
+ui.login.confirm_password_label = Şifreyi Onayla
+ui.login.username_label = Kullanıcı Adı
+
+ui.login.resend_email_button = E-postayı Yeniden Gönder
+ui.login.try_again_button = Tekrar Dene
+ui.login.send_reset_link_button = Sıfırlama Bağlantısı Gönder
+ui.login.link_account_button = Hesabı Bağla
+ui.login.create_account_button = Hesap Oluştur
+
+ui.login.tos_label = Hizmet Şartları
+ui.login.eula_label = Son Kullanıcı Lisans Sözleşmesi
+ui.login.marketing_emails_label = Pazarlama e-postaları
+ui.login.accepted = kabul edildi
+ui.login.not_accepted = kabul edilmedi
+
+ui.login.available = uygun
+ui.login.not_available = uygun değil
+ui.login.matches = eşleşiyor
+ui.login.empty_or_mismatch = boş veya uyuşmuyor
+ui.login.valid = geçerli
+ui.login.pwd_too_short = çok kısa
+ui.login.pwd_needs_letter = harf gerekli
+ui.login.pwd_needs_number = rakam gerekli
+ui.login.issue_username = kullanıcı adı
+ui.login.issue_pwd_length = şifre uzunluğu
+ui.login.issue_pwd_letters = şifre harfleri
+ui.login.issue_pwd_numbers = şifre rakamları
+ui.login.issue_confirm_password = şifre onayı
+ui.login.requirements_met = Tüm gereksinimler karşılandı. Devam etmeye hazır.
+ui.login.requirements_summary = Gereksinimler: {1} üzerinden {0}. Eksik: {2}
+
+# 7. Grup - Patches/ + Accessibility/ + Core/MessageBuffer.cs
+# Her satırda bir anahtar: anahtar = İngilizce metin. {0}, {1}... yer tutuculardır (bkz. Loc.T).
+# .one/.other ekleri, sayıya göre Loc.Plural() tarafından seçilir.
+
+# --- CombatEventHandler.cs ---
+patch.combat.enraged_you = Öfkelendin
+patch.combat.enraged_other = {0} öfkelendi
+patch.combat.enrage_ends_you = Öfken sona eriyor
+patch.combat.enrage_ends_other = {0}'ın öfkesi sona eriyor
+patch.combat.victory_wins.one = Zafer! {0} galibiyet
+patch.combat.victory_wins.other = Zafer! {0} galibiyet
+patch.combat.victory = Zafer!
+patch.combat.defeat_prestige = Yenilgi! {0} prestij kaldı
+patch.combat.defeat = Yenilgi!
+patch.combat.enemy_fallback = Düşman
+
+# --- EndOfRunPatch.cs (mod tarafından zaten yerelleştirilmiş, kazınan oyun metni çevresine eklenen etiketler) ---
+patch.endofrun.achievement_named = Başarım {0}: {1}
+patch.endofrun.achievement_desc = Başarım: {0}
+patch.endofrun.no_info = Bilgi mevcut değil. Devam etmek için Enter'a bas.
+patch.endofrun.end_of_info = Bilginin sonu. Devam etmek için Enter'a bas.
+patch.endofrun.start_line = Başlangıç. {0}
+patch.endofrun.continue_clicked = Devam Et
+patch.endofrun.please_wait = Lütfen bekle
+patch.endofrun.screen_changed = Ekran değişti. Devam için Enter'a, okumak için oklara bas.
+patch.endofrun.intro_with_line = Koşu sonu. {0}. Daha fazlasını okumak için okları, devam için Enter'ı kullan.
+patch.endofrun.intro_empty = Koşu sonu. Devam etmek için Enter'a bas.
+patch.endofrun.help = Yukarı/Aşağı oklar: Bilgiyi satır satır oku. Enter: Sonraki ekrana geç.
+
+# --- ErrorEventHandler.cs ---
+patch.error.no_space = {0} için yer yok
+patch.error.cant_afford = {0} için yeterli altın yok
+patch.error.unsellable = {0} satılamaz
+
+# --- HeroChangedPatch.cs ---
+patch.hero.unknown = Bilinmiyor
+
+# --- MenuPatches.cs ---
+patch.menu.tier_unlocked = Kademe {0} açıldı
+patch.menu.marketplace = Pazar Yeri
+patch.menu.player_profile = Oyuncu Profili
+
+# --- StateChangePatch.cs (oyunun kendi metninde bulunmayan durum adları ve mod tarafından eklenen gün/saat) ---
+patch.state.shop = Dükkan
+patch.state.encounters = Karşılaşmalar
+patch.state.combat = Savaş
+patch.state.pvp_combat = PvP Savaşı
+patch.state.loot = Ganimet
+patch.state.level_up = Seviye atlama
+patch.state.victory = Zafer
+patch.state.defeat = Yenilgi
+patch.state.starting_run = Koşu başlıyor
+patch.state.game_ending = Oyun bitiyor
+patch.state.pedestal_enchant = Büyü sunağı
+patch.state.pedestal_upgrade = Yükseltme sunağı
+patch.state.pedestal_generic = Sunak
+patch.state.day = {0}. Gün
+patch.state.hour = {0}. Saat
+
+# --- Accessibility/AccessibleMenu.cs (GetHelp) ---
+patch.menu.help_base = Gezinmek için yukarı ve aşağı kullan. Seçmek için Enter.
+patch.menu.help_back_suffix = Geri dönmek için Escape.
+
+# --- Accessibility/TextFieldOption.cs ---
+patch.textfield.unavailable = {0}: kullanılamıyor
+patch.textfield.empty = {0}: boş
+patch.textfield.chars_entered.one = {0}: {1} karakter girildi
+patch.textfield.chars_entered.other = {0}: {1} karakter girildi
+patch.textfield.value = {0}: {1}
+patch.textfield.editing = düzenleniyor
+patch.textfield.done = tamamlandı
+
+# --- Core/MessageBuffer.cs ---
+patch.messagebuffer.no_messages = Mesaj yok
+patch.messagebuffer.first_message = İlk mesaj
+patch.messagebuffer.last_message = Son mesaj
+patch.messagebuffer.no_message = Mesaj yok
+
+
+# Oyunun çevirmediği kelimeler (eşya boyutları, kahraman istatistikleri): burada yer alırlar.
+# BazaarAccess - Yerelleştirme 8. grup (oyun kelime dağarcığı takip geçişi)
+#
+# Buradaki tüm anahtarlar bu geçişten yeni eklemelerdir. Henüz en-US.txt'e
+# birleştirilmedi - bakımcı bunları elle ekler.
+#
+# Çevirmen notu: vocab.hero.shield / vocab.hero.poison / vocab.hero.burn /
+# vocab.hero.critchance kahraman istatistik etiketleridir. Modun aynı kavram için
+# iki farklı kelime söylememesi adına, dilinizde oyunun kendisinin shield / poison /
+# burn / crit chance için kullandığı AYNI kelimeyi kullanın (oyunun kendi kelimesi
+# GameVocabulary aracılığıyla diğer her yerde kullanılır; bu dört anahtar yalnızca
+# kahraman istatistiklerinin güvenilir bir eşleşen kelime dağarcığı girdisi olmayan
+# farklı bir oyun enum'u kullanması nedeniyle vardır).
+
+# --- Kart/eşya boyutu (CardProperties, DetailLineBuilder, GameplayAnnouncer arasında birleştirilmiştir) ---
+vocab.size.small = Küçük
+vocab.size.medium = Orta
+vocab.size.large = Büyük
+vocab.size.unknown = Bilinmiyor
+
+vocab.card.size_slots = Boyut: {0} yuva ({1})
+vocab.card.temperature_both = {0} ve {1}
+
+# --- Kahraman istatistik etiketleri (HeroNavigator.GetStatName) ---
+vocab.hero.health = Can
+vocab.hero.maxhealth = Maksimum Can
+vocab.hero.gold = Altın
+vocab.hero.level = Seviye
+vocab.hero.experience = Deneyim
+vocab.hero.prestige = Prestij
+vocab.hero.shield = Kalkan
+vocab.hero.poison = Zehir
+vocab.hero.burn = Yanma
+vocab.hero.regeneration = Yenilenme
+vocab.hero.critchance = Kritik Şansı
+vocab.hero.income = Gelir
+
+# --- Kahraman rütbe/öfke cümleleri (HeroNavigator.AnnounceSubsection/AnnounceStat) ---
+vocab.hero.rank = Rütbe: {0}
+vocab.hero.rank_unranked = Rütbe: derecesiz
+vocab.hero.rage_colon = Öfke: {0} / {1}
+
+# --- Kahraman istatistik özeti (HeroNavigator.ReadAllStats) ---
+vocab.hero.summary.health = Can {1} üzerinden {0}
+vocab.hero.summary.gold = Altın {0}
+vocab.hero.summary.level = Seviye {0}
+vocab.hero.summary.rage = Öfke {0} / {1}
+vocab.hero.summary.shield = Kalkan {0}
+
+# BazaarAccess - Son yerelleştirme geçişi (yeni anahtarlar)
+#
+# Bunlar DetailLineBuilder.cs üzerindeki son artık-kapatma geçişinden yeni
+# eklemelerdir. Henüz en-US.txt'e birleştirilmedi - bakımcı bunları elle ekler.
+#
+# Aşağıdaki dört anahtarın hepsi istatistiğin kendi oyun kelime dağarcığı
+# kelimesini bağımsız değişken olarak alır (Cooldown/Damage/Heal/Shield...);
+# yalnızca çevresindeki biçim ("seconds", "s", virgül, kelime sırası) modun
+# kendi ifadesidir.
+
+# --- Gameplay/CardReading/DetailLineBuilder.cs ---
+
+# Bağımsız ayrıntı satırı: "Cooldown 5.0 seconds" ({0} = etiket, {1} = değer)
+card.stat.cooldownFull = {0} {1} saniye
+
+# Daha uzun bir cümle içinde satır arası ek: ", Cooldown 5.0s" ({0} = etiket, {1} = değer)
+card.stat.cooldownShort = , {0} {1}s
+
+# Etiketsiz, salt değer + birim (kısa düşman açıklaması): "5.0s"
+card.stat.secondsBare = {0}s
+
+# Eşya boyutu için satır arası ek: ", Size 2" ({0} = yuva sayısı)
+card.stat.sizeInline = , Boyut {0}
+
+# Kısa "değer etiket" istatistiği (örn. "180 damage"). Bağımsız değişken
+# sırası card.stat.inline'dan TERSTİR ({0} = değer, {1} = etiket) - her dilin
+# kendi doğal sırasını kullanabilmesi için ayrı bir anahtar olarak tutulmuştur.
+card.stat.compact = {0} {1}

@@ -11,7 +11,7 @@ public static class HeroChangedPatch
 {
     static void Postfix(object hero)
     {
-        string heroName = hero?.ToString() ?? "Unknown";
+        string heroName = hero?.ToString() ?? Loc.T("patch.hero.unknown");
         Plugin.Logger.LogInfo($"Hero selected: {heroName}");
         TolkWrapper.Speak(heroName);
     }

@@ -1,3 +1,4 @@
+using BazaarAccess.Core;
 using UnityEngine;
 
 namespace BazaarAccess.UI.Login;
@@ -9,7 +10,7 @@ public class ResetEmailUI : LoginBaseUI
 {
     private readonly object _view;
 
-    public override string UIName => "Reset Email";
+    public override string UIName => Loc.T("ui.login.reset_email_title");
 
     public ResetEmailUI(Transform root, object view) : base(root)
     {
@@ -21,14 +22,14 @@ public class ResetEmailUI : LoginBaseUI
     {
         // Email field
         var emailField = GetInputField(_view, "email");
-        AddTextField("New Email", emailField);
+        AddTextField(Loc.T("ui.login.new_email_label"), emailField);
 
         // Confirm Email field
         var confirmEmailField = GetInputField(_view, "confirmEmail");
-        AddTextField("Confirm New Email", confirmEmailField);
+        AddTextField(Loc.T("ui.login.confirm_new_email_label"), confirmEmailField);
 
         // Continue button
-        AddBazaarButton(_view, "continueButton", "Continue");
+        AddBazaarButton(_view, "continueButton", Loc.T("ui.continue"));
     }
 
     protected override void OnBack()

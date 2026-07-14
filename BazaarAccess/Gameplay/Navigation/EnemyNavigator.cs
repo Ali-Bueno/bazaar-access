@@ -50,7 +50,7 @@ namespace BazaarAccess.Gameplay.Navigation
                 var opponent = Data.Run?.Opponent;
                 if (opponent == null)
                 {
-                    TolkWrapper.Speak("No enemy");
+                    TolkWrapper.Speak(Loc.T("nav.enemy.none"));
                     _active = false;
                     return;
                 }
@@ -66,32 +66,32 @@ namespace BazaarAccess.Gameplay.Navigation
                     var pvpOpponent = Data.SimPvpOpponent;
                     if (pvpOpponent != null && !string.IsNullOrEmpty(pvpOpponent.Name))
                     {
-                        parts.Add($"Opponent: {pvpOpponent.Name}");
+                        parts.Add(Loc.T("nav.enemy.opponent_named", pvpOpponent.Name));
                     }
                     else
                     {
-                        parts.Add("Enemy");
+                        parts.Add(Loc.T("nav.enemy.label"));
                     }
                 }
                 else
                 {
-                    parts.Add("Enemy");
+                    parts.Add(Loc.T("nav.enemy.label"));
                 }
 
                 // Health
                 if (opponent.Attributes.TryGetValue(EPlayerAttributeType.Health, out int health))
                 {
-                    parts.Add($"Health: {health}");
+                    parts.Add(Loc.T("nav.hero.stat_value", Loc.T("vocab.hero.health"), health));
                 }
                 if (opponent.Attributes.TryGetValue(EPlayerAttributeType.HealthMax, out int maxHealth))
                 {
-                    parts.Add($"of {maxHealth}");
+                    parts.Add(Loc.T("nav.enemy.of_max", maxHealth));
                 }
 
                 // Shield
                 if (opponent.Attributes.TryGetValue(EPlayerAttributeType.Shield, out int shield) && shield > 0)
                 {
-                    parts.Add($"Shield: {shield}");
+                    parts.Add(Loc.T("nav.hero.stat_value", Loc.T("vocab.hero.shield"), shield));
                 }
 
                 // Only allow item navigation outside of combat
@@ -104,11 +104,11 @@ namespace BazaarAccess.Gameplay.Navigation
                     int enemyItemCount = _cards.Count;
                     if (enemyItemCount > 0)
                     {
-                        parts.Add($"{enemyItemCount} items");
+                        parts.Add(Loc.Plural("nav.items", enemyItemCount, enemyItemCount));
                     }
                     if (_skillIndices.Count > 0)
                     {
-                        parts.Add($"{_skillIndices.Count} skills");
+                        parts.Add(Loc.Plural("nav.skills_count", _skillIndices.Count, _skillIndices.Count));
                     }
                 }
 
@@ -117,7 +117,7 @@ namespace BazaarAccess.Gameplay.Navigation
             catch (Exception ex)
             {
                 Plugin.Logger.LogError($"EnemyNavigator.ReadInfo error: {ex.Message}");
-                TolkWrapper.Speak("Cannot read enemy info");
+                TolkWrapper.Speak(Loc.T("nav.enemy.read_error"));
                 _active = false;
             }
         }
@@ -206,7 +206,7 @@ namespace BazaarAccess.Gameplay.Navigation
 
                 if (isReplayRunning)
                 {
-                    TolkWrapper.Speak("Replay in progress. Press E for Recap to view opponent board without interruptions.");
+                    TolkWrapper.Speak(Loc.T("nav.enemy.replay_in_progress"));
                     return false;
                 }
 
@@ -216,7 +216,7 @@ namespace BazaarAccess.Gameplay.Navigation
                 int skillCount = GetSkillCount();
                 if (itemCount == 0 && skillCount == 0)
                 {
-                    TolkWrapper.Speak("No opponent items");
+                    TolkWrapper.Speak(Loc.T("nav.enemy.no_items"));
                     return false;
                 }
 
@@ -227,7 +227,7 @@ namespace BazaarAccess.Gameplay.Navigation
                 ClearDetailReading();
 
                 // Get opponent name if available
-                string opponentName = "Opponent";
+                string opponentName = Loc.T("nav.enemy.default_name");
                 var pvpOpponent = Data.SimPvpOpponent;
                 if (pvpOpponent != null && !string.IsNullOrEmpty(pvpOpponent.Name))
                 {
@@ -235,7 +235,7 @@ namespace BazaarAccess.Gameplay.Navigation
                 }
 
                 // Announce board
-                TolkWrapper.Speak($"{opponentName}'s board, {itemCount} items");
+                TolkWrapper.Speak(Loc.Plural("nav.enemy.board", itemCount, opponentName, itemCount));
 
                 // Tell caller to set recap section if in recap mode
                 return inRecapMode;
@@ -243,7 +243,7 @@ namespace BazaarAccess.Gameplay.Navigation
             catch (Exception ex)
             {
                 Plugin.Logger.LogError($"EnemyNavigator.EnterBoardMode error: {ex.Message}");
-                TolkWrapper.Speak("Cannot access opponent board");
+                TolkWrapper.Speak(Loc.T("nav.enemy.cannot_access_board"));
                 return false;
             }
         }
@@ -261,7 +261,7 @@ namespace BazaarAccess.Gameplay.Navigation
                 int itemCount = _cards.Count;
                 if (itemCount == 0)
                 {
-                    TolkWrapper.Speak("No items");
+                    TolkWrapper.Speak(Loc.T("nav.no_items"));
                     return;
                 }
                 if (_itemIndex >= itemCount - 1)
@@ -276,7 +276,7 @@ namespace BazaarAccess.Gameplay.Navigation
                 int skillCount = GetSkillCount();
                 if (skillCount == 0)
                 {
-                    TolkWrapper.Speak("No skills");
+                    TolkWrapper.Speak(Loc.T("nav.no_skills"));
                     return;
                 }
                 if (_skillIndex >= skillCount - 1)
@@ -301,7 +301,7 @@ namespace BazaarAccess.Gameplay.Navigation
             {
                 if (_cards.Count == 0)
                 {
-                    TolkWrapper.Speak("No items");
+                    TolkWrapper.Speak(Loc.T("nav.no_items"));
                     return;
                 }
                 if (_itemIndex <= 0)
@@ -316,7 +316,7 @@ namespace BazaarAccess.Gameplay.Navigation
                 int skillCount = GetSkillCount();
                 if (skillCount == 0)
                 {
-                    TolkWrapper.Speak("No skills");
+                    TolkWrapper.Speak(Loc.T("nav.no_skills"));
                     return;
                 }
                 if (_skillIndex <= 0)
@@ -347,7 +347,7 @@ namespace BazaarAccess.Gameplay.Navigation
             }
             else if (_subsection == EnemySubsection.Items)
             {
-                TolkWrapper.Speak("No skills");
+                TolkWrapper.Speak(Loc.T("nav.no_skills"));
             }
             else
             {
@@ -369,11 +369,11 @@ namespace BazaarAccess.Gameplay.Navigation
             {
                 _subsection = EnemySubsection.Items;
                 _itemIndex = 0;
-                TolkWrapper.Speak($"Items, {itemCount}");
+                TolkWrapper.Speak(Loc.T("nav.enemy.items_with_count", itemCount));
             }
             else
             {
-                TolkWrapper.Speak(_subsection == EnemySubsection.Items ? "Items" : "Skills");
+                TolkWrapper.Speak(_subsection == EnemySubsection.Items ? Loc.T("nav.enemy.items_label") : Loc.T("nav.enemy.skills_label"));
             }
         }
 
@@ -429,7 +429,7 @@ namespace BazaarAccess.Gameplay.Navigation
             var card = GetCurrentCard();
             if (card == null)
             {
-                TolkWrapper.Speak("No item selected");
+                TolkWrapper.Speak(Loc.T("nav.no_item_selected"));
                 return;
             }
 
@@ -443,7 +443,7 @@ namespace BazaarAccess.Gameplay.Navigation
 
             if (_detailLines.Count == 0)
             {
-                TolkWrapper.Speak("No details");
+                TolkWrapper.Speak(Loc.T("nav.detail.none"));
                 return;
             }
 
@@ -469,7 +469,7 @@ namespace BazaarAccess.Gameplay.Navigation
             var card = GetCurrentCard();
             if (card == null)
             {
-                TolkWrapper.Speak("No item selected");
+                TolkWrapper.Speak(Loc.T("nav.no_item_selected"));
                 return;
             }
 
@@ -483,7 +483,7 @@ namespace BazaarAccess.Gameplay.Navigation
 
             if (_detailLines.Count == 0)
             {
-                TolkWrapper.Speak("No details");
+                TolkWrapper.Speak(Loc.T("nav.detail.none"));
                 return;
             }
 
@@ -509,7 +509,7 @@ namespace BazaarAccess.Gameplay.Navigation
             var card = GetCurrentCard();
             if (card == null)
             {
-                TolkWrapper.Speak("No item selected");
+                TolkWrapper.Speak(Loc.T("nav.no_item_selected"));
                 return;
             }
 
@@ -569,14 +569,14 @@ namespace BazaarAccess.Gameplay.Navigation
             int skillCount = GetSkillCount();
             if (_skillIndex < 0 || _skillIndex >= skillCount)
             {
-                TolkWrapper.Speak("No skill");
+                TolkWrapper.Speak(Loc.T("nav.no_skill"));
                 return;
             }
 
             var card = GetCurrentCard();
             if (card == null)
             {
-                TolkWrapper.Speak("Empty slot");
+                TolkWrapper.Speak(Loc.T("nav.empty_slot"));
                 return;
             }
 
@@ -585,7 +585,7 @@ namespace BazaarAccess.Gameplay.Navigation
 
             if (!string.IsNullOrEmpty(desc))
             {
-                TolkWrapper.Speak($"{name}: {desc}");
+                TolkWrapper.Speak(Loc.T("nav.name_with_desc", name, desc));
             }
             else
             {
@@ -605,7 +605,7 @@ namespace BazaarAccess.Gameplay.Navigation
 
             if (card == null)
             {
-                TolkWrapper.Speak("Empty");
+                TolkWrapper.Speak(Loc.T("nav.empty"));
                 return;
             }
 
@@ -617,7 +617,7 @@ namespace BazaarAccess.Gameplay.Navigation
                 string desc = ItemReader.GetFullDescription(card);
                 if (!string.IsNullOrEmpty(desc))
                 {
-                    TolkWrapper.Speak($"{name}: {desc}");
+                    TolkWrapper.Speak(Loc.T("nav.name_with_desc", name, desc));
                 }
                 else
                 {

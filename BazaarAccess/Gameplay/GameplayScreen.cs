@@ -141,7 +141,7 @@ public class GameplayScreen : IAccessibleScreen
 
             case AccessibleKey.Back:
                 _navigator.ExitEnemyMode();
-                TolkWrapper.Speak("Exited enemy view");
+                TolkWrapper.Speak(Loc.T("action.exited.enemy.view"));
                 return;
 
             default:
@@ -337,14 +337,14 @@ public class GameplayScreen : IAccessibleScreen
         // Only works when viewing board or stash items
         if (!_navigator.IsInPlayerSection())
         {
-            TolkWrapper.Speak("Select an item on your board or stash to upgrade");
+            TolkWrapper.Speak(Loc.T("action.select.item.upgrade"));
             return;
         }
 
         var card = _navigator.GetCurrentCard();
         if (card == null)
         {
-            TolkWrapper.Speak("No item selected");
+            TolkWrapper.Speak(Loc.T("action.no.item.selected"));
             return;
         }
 
@@ -355,7 +355,7 @@ public class GameplayScreen : IAccessibleScreen
         }
         else
         {
-            TolkWrapper.Speak("Not at a pedestal");
+            TolkWrapper.Speak(Loc.T("action.not.at.pedestal"));
         }
     }
 
@@ -367,20 +367,20 @@ public class GameplayScreen : IAccessibleScreen
         var card = _navigator.GetCurrentCard();
         if (card == null)
         {
-            TolkWrapper.Speak("No item selected");
+            TolkWrapper.Speak(Loc.T("action.no.item.selected"));
             return;
         }
 
         var descriptions = ItemReader.GetAllPropertyDescriptions(card);
         if (descriptions.Count == 0)
         {
-            TolkWrapper.Speak("No property information available");
+            TolkWrapper.Speak(Loc.T("action.no.property.info"));
             return;
         }
 
         // Leer todas las descripciones
         string name = ItemReader.GetCardName(card);
-        string info = $"{name} properties: " + string.Join(". ", descriptions);
+        string info = Loc.T("action.properties.list", name, string.Join(". ", descriptions));
         TolkWrapper.Speak(info);
 
         // También añadir al buffer para poder releer
@@ -389,12 +389,7 @@ public class GameplayScreen : IAccessibleScreen
 
     public string GetHelp()
     {
-        return "Left/Right: Navigate items. Up/Down: Read details. " +
-               "Tab: Switch section. Space: Toggle stash. G: Go to stash. " +
-               "B: Board. V: Hero. C: Choices. F: Enemy. X: Inspect. I: Properties. W: Wins. " +
-               "Enter: Select, or open a menu on shop and board items. E: Exit. R: Refresh. " +
-               "In Action menu: S sell, U upgrade, M move, Arrows reorder. " +
-               "Ctrl+Arrows: Detail reading. Period/Comma: Messages.";
+        return Loc.T("action.help.text");
     }
 
     public void OnFocus()
@@ -557,7 +552,7 @@ public class GameplayScreen : IAccessibleScreen
             var navItem = _navigator.GetCurrentNavItem();
             if (navItem == null)
             {
-                TolkWrapper.Speak("Nothing selected");
+                TolkWrapper.Speak(Loc.T("action.nothing.selected"));
                 return;
             }
 
@@ -590,7 +585,7 @@ public class GameplayScreen : IAccessibleScreen
             }
             else
             {
-                TolkWrapper.Speak("Nothing selected");
+                TolkWrapper.Speak(Loc.T("action.nothing.selected"));
             }
             return;
         }
@@ -610,7 +605,7 @@ public class GameplayScreen : IAccessibleScreen
 
         if (card?.Type != ECardType.CombatEncounter)
         {
-            TolkWrapper.Speak("Nothing to inspect");
+            TolkWrapper.Speak(Loc.T("action.nothing.to.inspect"));
             return;
         }
 
@@ -658,7 +653,7 @@ public class GameplayScreen : IAccessibleScreen
                 break;
 
             default:
-                TolkWrapper.Speak("Cannot select this");
+                TolkWrapper.Speak(Loc.T("action.cannot.select.this"));
                 break;
         }
     }
@@ -666,7 +661,7 @@ public class GameplayScreen : IAccessibleScreen
     private void BuyItem(Card card)
     {
         var itemCard = card as ItemCard;
-        if (itemCard == null) { TolkWrapper.Speak("Not an item"); return; }
+        if (itemCard == null) { TolkWrapper.Speak(Loc.T("action.not.an.item")); return; }
 
         if (_navigator.IsSelectionFree())
         {
@@ -685,7 +680,7 @@ public class GameplayScreen : IAccessibleScreen
     {
         if (itemCard == null)
         {
-            TolkWrapper.Speak("Not an item");
+            TolkWrapper.Speak(Loc.T("action.not.an.item"));
             return;
         }
 
@@ -715,7 +710,7 @@ public class GameplayScreen : IAccessibleScreen
     private void SelectSkill(Card card)
     {
         var skillCard = card as SkillCard;
-        if (skillCard == null) { TolkWrapper.Speak("Not a skill"); return; }
+        if (skillCard == null) { TolkWrapper.Speak(Loc.T("action.not.a.skill")); return; }
 
         ActionHelper.SelectSkill(skillCard);
         // Usar delayed refresh para dar tiempo al juego de actualizar
@@ -749,7 +744,7 @@ public class GameplayScreen : IAccessibleScreen
     {
         if (itemCard == null)
         {
-            TolkWrapper.Speak("Not an item");
+            TolkWrapper.Speak(Loc.T("action.not.an.item"));
             return;
         }
 
@@ -760,7 +755,7 @@ public class GameplayScreen : IAccessibleScreen
     {
         if (card == null)
         {
-            TolkWrapper.Speak("No item selected");
+            TolkWrapper.Speak(Loc.T("action.no.item.selected"));
             return;
         }
 
@@ -775,20 +770,20 @@ public class GameplayScreen : IAccessibleScreen
     {
         if (!_navigator.IsInPlayerSection())
         {
-            TolkWrapper.Speak("Select an item on your board or stash first");
+            TolkWrapper.Speak(Loc.T("action.select.item.first"));
             return;
         }
 
         var card = _navigator.GetCurrentCard() as ItemCard;
         if (card == null)
         {
-            TolkWrapper.Speak("Cannot move this");
+            TolkWrapper.Speak(Loc.T("action.cannot.move.this"));
             return;
         }
 
         if (!_navigator.CanMoveInCurrentState())
         {
-            TolkWrapper.Speak("Cannot move right now");
+            TolkWrapper.Speak(Loc.T("action.cannot.move.right.now"));
             return;
         }
 
@@ -806,20 +801,20 @@ public class GameplayScreen : IAccessibleScreen
         // Solo funciona si estamos en el stash
         if (_navigator.CurrentSection != NavigationSection.Stash)
         {
-            TolkWrapper.Speak("Select an item in your stash first");
+            TolkWrapper.Speak(Loc.T("action.select.stash.item.first"));
             return;
         }
 
         var card = _navigator.GetCurrentCard() as ItemCard;
         if (card == null)
         {
-            TolkWrapper.Speak("Cannot move this");
+            TolkWrapper.Speak(Loc.T("action.cannot.move.this"));
             return;
         }
 
         if (!_navigator.CanMoveInCurrentState())
         {
-            TolkWrapper.Speak("Cannot move right now");
+            TolkWrapper.Speak(Loc.T("action.cannot.move.right.now"));
             return;
         }
 
@@ -836,20 +831,20 @@ public class GameplayScreen : IAccessibleScreen
         // Solo funciona si estamos en el board
         if (_navigator.CurrentSection != NavigationSection.Board)
         {
-            TolkWrapper.Speak("Select an item on your board first");
+            TolkWrapper.Speak(Loc.T("action.select.board.item.first"));
             return;
         }
 
         var card = _navigator.GetCurrentCard() as ItemCard;
         if (card == null)
         {
-            TolkWrapper.Speak("Cannot move this");
+            TolkWrapper.Speak(Loc.T("action.cannot.move.this"));
             return;
         }
 
         if (!_navigator.CanMoveInCurrentState())
         {
-            TolkWrapper.Speak("Cannot move right now");
+            TolkWrapper.Speak(Loc.T("action.cannot.move.right.now"));
             return;
         }
 
@@ -866,20 +861,20 @@ public class GameplayScreen : IAccessibleScreen
         // Works for both board and stash
         if (!_navigator.IsInPlayerSection())
         {
-            TolkWrapper.Speak("Select an item on your board or stash first");
+            TolkWrapper.Speak(Loc.T("action.select.item.first"));
             return;
         }
 
         var card = _navigator.GetCurrentCard() as ItemCard;
         if (card == null)
         {
-            TolkWrapper.Speak("Cannot reorder this");
+            TolkWrapper.Speak(Loc.T("action.cannot.reorder.this"));
             return;
         }
 
         if (!_navigator.CanMoveInCurrentState())
         {
-            TolkWrapper.Speak("Cannot reorder right now");
+            TolkWrapper.Speak(Loc.T("action.cannot.reorder.right.now"));
             return;
         }
 
@@ -890,7 +885,7 @@ public class GameplayScreen : IAccessibleScreen
             int currentSlot = _navigator.GetCurrentBoardSlot();
             if (currentSlot < 0)
             {
-                TolkWrapper.Speak("Cannot determine position");
+                TolkWrapper.Speak(Loc.T("action.cannot.determine.position"));
                 return;
             }
 
@@ -910,7 +905,7 @@ public class GameplayScreen : IAccessibleScreen
             int currentSlot = _navigator.GetCurrentStashSlot();
             if (currentSlot < 0)
             {
-                TolkWrapper.Speak("Cannot determine position");
+                TolkWrapper.Speak(Loc.T("action.cannot.determine.position"));
                 return;
             }
 
@@ -923,7 +918,7 @@ public class GameplayScreen : IAccessibleScreen
                 }
                 string itemName = ItemReader.GetCardName(card);
                 int newSlot = _navigator.GetCurrentStashSlot();
-                TolkWrapper.Speak($"Position {newSlot + 1}");
+                TolkWrapper.Speak(Loc.T("action.reorder.position", newSlot + 1));
                 _navigator.TriggerVisualSelection();
             }
         }
@@ -1042,7 +1037,7 @@ public class GameplayScreen : IAccessibleScreen
         yield return new WaitForSeconds(0.3f);
         _navigator.Refresh();
 
-        TolkWrapper.Speak("Done");
+        TolkWrapper.Speak(Loc.T("action.done"));
 
         // Auto-focus
         var newState = StateChangePatch.GetCurrentRunState();
@@ -1062,7 +1057,7 @@ public class GameplayScreen : IAccessibleScreen
         if (inCombat)
         {
             // Mensaje corto
-            TolkWrapper.Speak("Combat");
+            TolkWrapper.Speak(Loc.T("action.combat.short"));
         }
         // No anunciar "Exiting combat" - el siguiente estado lo dirá
     }
@@ -1082,7 +1077,7 @@ public class GameplayScreen : IAccessibleScreen
         }
         else
         {
-            TolkWrapper.Speak("Stash closed");
+            TolkWrapper.Speak(Loc.T("action.stash.closed"));
             // If user was navigating the stash, return to section before stash was opened
             if (_navigator.CurrentSection == NavigationSection.Stash)
             {
@@ -1112,7 +1107,7 @@ public class GameplayScreen : IAccessibleScreen
         }
         else
         {
-            TolkWrapper.Speak("Stash opened, empty. Press Space to close.");
+            TolkWrapper.Speak(Loc.T("action.stash.opened.empty"));
         }
     }
 
@@ -1130,7 +1125,7 @@ public class GameplayScreen : IAccessibleScreen
         if (inReplayState)
         {
             // Mensaje corto - el usuario aprenderá los controles
-            TolkWrapper.Speak("Combat ended. Enter to continue.");
+            TolkWrapper.Speak(Loc.T("action.combat.ended"));
         }
         else
         {
@@ -1198,7 +1193,7 @@ public class GameplayScreen : IAccessibleScreen
                     HideNativeRecapView();
                 }
 
-                TolkWrapper.Speak("Continuing");
+                TolkWrapper.Speak(Loc.T("action.continuing"));
                 exitMethod.Invoke(currentState, null);
                 // NO llamar a SetReplayMode(false) aquí - OnReplayStateChanged lo hará cuando el estado cambie
             }
@@ -1234,7 +1229,7 @@ public class GameplayScreen : IAccessibleScreen
             var replayMethod = replayStateType.GetMethod("Replay");
             if (replayMethod != null)
             {
-                TolkWrapper.Speak("Replaying combat");
+                TolkWrapper.Speak(Loc.T("action.replaying.combat"));
                 replayMethod.Invoke(currentState, null);
             }
         }
@@ -1267,7 +1262,7 @@ public class GameplayScreen : IAccessibleScreen
             {
                 recapMethod.Invoke(currentState, null);
                 ShowNativeRecapView();
-                Plugin.Instance.StartCoroutine(WaitForRecapVisibility(true, "Recap. V hero, F enemy, G enemy board, B your board."));
+                Plugin.Instance.StartCoroutine(WaitForRecapVisibility(true, Loc.T("action.recap.entered")));
             }
         }
         catch (System.Exception ex)
@@ -1298,7 +1293,7 @@ public class GameplayScreen : IAccessibleScreen
 
             var recapBackMethod = replayStateType.GetMethod("RecapBack");
             recapBackMethod?.Invoke(currentState, null);
-            Plugin.Instance.StartCoroutine(WaitForRecapVisibility(false, "Exited recap. Enter to continue, R to replay, E to return to recap."));
+            Plugin.Instance.StartCoroutine(WaitForRecapVisibility(false, Loc.T("action.recap.exited")));
         }
         catch (System.Exception ex)
         {

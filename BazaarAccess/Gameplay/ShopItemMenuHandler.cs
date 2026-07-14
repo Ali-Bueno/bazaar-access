@@ -46,7 +46,7 @@ internal sealed class ShopItemMenuHandler
         _isActive = true;
 
         string name = ItemReader.GetCardName(itemCard);
-        TolkWrapper.Speak($"{name}. {GetOptionText(_options[0])}. {_options.Length} actions. Backspace to cancel.");
+        TolkWrapper.Speak(Loc.Plural("action.menu.count", _options.Length, name, GetOptionText(_options[0]), _options.Length));
     }
 
     public void Exit(bool announce = true)
@@ -58,7 +58,7 @@ internal sealed class ShopItemMenuHandler
         _itemCard = null;
 
         if (announce)
-            TolkWrapper.Speak("Exited");
+            TolkWrapper.Speak(Loc.T("action.exited"));
     }
 
     public void HandleInput(AccessibleKey key)
@@ -92,7 +92,7 @@ internal sealed class ShopItemMenuHandler
     private void Navigate(int direction)
     {
         _currentIndex = (_currentIndex + direction + _options.Length) % _options.Length;
-        TolkWrapper.Speak($"{GetOptionText(_options[_currentIndex])}, {_currentIndex + 1} of {_options.Length}");
+        TolkWrapper.Speak(Loc.T("action.option.position", GetOptionText(_options[_currentIndex]), _currentIndex + 1, _options.Length));
     }
 
     private void ExecuteCurrentOption()
@@ -114,7 +114,7 @@ internal sealed class ShopItemMenuHandler
                 break;
 
             case ShopItemActionOption.Cancel:
-                TolkWrapper.Speak("Exited");
+                TolkWrapper.Speak(Loc.T("action.exited"));
                 break;
         }
     }
@@ -124,14 +124,14 @@ internal sealed class ShopItemMenuHandler
         switch (option)
         {
             case ShopItemActionOption.Details:
-                return "Details";
+                return Loc.T("action.details");
 
             case ShopItemActionOption.Buy:
                 int price = ItemReader.GetBuyPrice(_itemCard);
-                return price > 0 ? $"Buy for {price} gold" : "Buy";
+                return price > 0 ? Loc.T("action.buy.for.gold", price) : Loc.T("action.buy.plain");
 
             case ShopItemActionOption.Cancel:
-                return "Cancel";
+                return Loc.T("action.cancel");
 
             default:
                 return option.ToString();

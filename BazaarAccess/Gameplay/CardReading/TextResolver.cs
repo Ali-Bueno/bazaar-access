@@ -140,7 +140,7 @@ internal static class TextResolver
                 var tooltipContext = new TooltipContext(card, card.Template, valueContext);
 
                 var builder = TooltipBuilder.Create(tooltipContext, localizedText);
-                resolved = RenderWithAttributeNames(builder);
+                resolved = TooltipIconResolver.Render(builder);
             }
         }
         catch (Exception ex)
@@ -158,88 +158,6 @@ internal static class TextResolver
         resolved = ConvertMillisecondsInText(resolved);
 
         return resolved;
-    }
-
-    /// <summary>
-    /// Renders a tooltip, appending the attribute name after aura value tokens. Aura tooltips
-    /// (e.g. "Your items have +{aura.0}") show the attribute only as an icon, so a screen reader
-    /// would otherwise hear "+1" with no unit. Skipped when the next text already spells it out.
-    /// </summary>
-    private static string RenderWithAttributeNames(TooltipBuilder builder)
-    {
-        var components = builder.Components;
-        var sb = new StringBuilder();
-
-        for (int i = 0; i < components.Count; i++)
-        {
-            var component = components[i];
-            component.Render(sb);
-
-            // Only aura tokens hide their attribute behind an icon; ability/attribute
-            // tokens already have the attribute word spelled out in the template text.
-            if (component is TooltipComponentAura aura && aura.Resolve().HasValue)
-            {
-                string keyword = GetAuraAttributeName(aura);
-                if (!string.IsNullOrEmpty(keyword) && !NextTextStartsWith(components, i, keyword))
-                {
-                    sb.Append(' ');
-                    sb.Append(keyword);
-                }
-            }
-        }
-
-        return sb.ToString();
-    }
-
-    // The buffed attribute lives on the aura's action (item or player modify), not on the value
-    // token. Returns null when the aura doesn't modify an attribute.
-    private static string GetAuraAttributeName(TooltipComponentAura aura)
-    {
-        var action = aura.Aura?.Action;
-
-        if (action is TAuraActionCardModifyAttribute cardModify)
-            return EffectFormatter.GetFriendlyAttributeName(cardModify.AttributeType.ToString());
-
-        if (action is TAuraActionPlayerModifyAttribute playerModify)
-            return GetPlayerAttributeName(playerModify.AttributeType);
-
-        return null;
-    }
-
-    private static string GetPlayerAttributeName(EPlayerAttributeType attribute)
-    {
-        return attribute switch
-        {
-            EPlayerAttributeType.Health => "health",
-            EPlayerAttributeType.HealthMax => "max health",
-            EPlayerAttributeType.HealthRegen => "health regen",
-            EPlayerAttributeType.HealAmount => "heal",
-            EPlayerAttributeType.Gold => "gold",
-            EPlayerAttributeType.Income => "income",
-            EPlayerAttributeType.CritChance => "crit chance",
-            EPlayerAttributeType.Shield => "shield",
-            EPlayerAttributeType.Burn => "burn",
-            EPlayerAttributeType.Poison => "poison",
-            EPlayerAttributeType.Rage => "rage",
-            EPlayerAttributeType.RageMax => "max rage",
-            EPlayerAttributeType.Experience => "experience",
-            EPlayerAttributeType.Level => "level",
-            EPlayerAttributeType.Prestige => "prestige",
-            _ => attribute.ToString().ToLower()
-        };
-    }
-
-    // True if the text right after index i already begins with the attribute keyword.
-    private static bool NextTextStartsWith(List<ITooltipComponent> components, int i, string keyword)
-    {
-        if (i + 1 >= components.Count) return false;
-        if (!(components[i + 1] is TooltipComponentText textComponent)) return false;
-
-        string next = textComponent.Content;
-        if (string.IsNullOrEmpty(next)) return false;
-
-        next = next.TrimStart(' ', '+', '-', ',', '.', ':', ';');
-        return next.StartsWith(keyword, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

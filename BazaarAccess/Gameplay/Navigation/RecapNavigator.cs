@@ -54,14 +54,14 @@ public class RecapNavigator
         int statCount = _hero.GetStatCount();
         int skillCount = _hero.Skills.Count;
 
-        string msg = $"Your hero. Stats: {statCount}";
+        string msg = Loc.T("nav.recap.your_hero_stats", statCount);
         if (skillCount > 0)
-            msg += $", Skills: {skillCount}. Right arrow for skills.";
+            msg += Loc.T("nav.recap.your_hero_skills_suffix", skillCount);
 
         // Include rank in recap hero announcement
         string rank = ItemReader.GetPlayerRank();
         if (!string.IsNullOrEmpty(rank) && ItemReader.IsRankedMode())
-            msg += $" Rank: {rank}";
+            msg += " " + Loc.T("vocab.hero.rank", rank);
 
         TolkWrapper.Speak(msg);
     }
@@ -132,7 +132,7 @@ public class RecapNavigator
         {
             _currentSection = RecapSection.HeroStats;
             _hero.StatIndex = 0;
-            TolkWrapper.Speak($"Stats, {_hero.GetStatCount()}");
+            TolkWrapper.Speak(Loc.T("nav.recap.stats_with_count", _hero.GetStatCount()));
         }
     }
 
@@ -145,12 +145,12 @@ public class RecapNavigator
         {
             if (_hero.Skills.Count == 0)
             {
-                TolkWrapper.Speak("No skills");
+                TolkWrapper.Speak(Loc.T("nav.no_skills"));
                 return;
             }
             _currentSection = RecapSection.HeroSkills;
             _hero.SkillIndex = 0;
-            TolkWrapper.Speak($"Skills, {_hero.Skills.Count}");
+            TolkWrapper.Speak(Loc.T("nav.recap.skills_with_count", _hero.Skills.Count));
         }
     }
 
@@ -172,12 +172,12 @@ public class RecapNavigator
         var opponent = Data.Run?.Opponent;
         if (opponent == null)
         {
-            TolkWrapper.Speak("No enemy");
+            TolkWrapper.Speak(Loc.T("nav.enemy.none"));
             _currentSection = RecapSection.None;
             return;
         }
 
-        TolkWrapper.Speak("Enemy stats");
+        TolkWrapper.Speak(Loc.T("nav.enemy.stats_label"));
     }
 
     /// <summary>
@@ -195,12 +195,12 @@ public class RecapNavigator
         var opponent = Data.Run?.Opponent;
         if (opponent == null)
         {
-            TolkWrapper.Speak("No enemy");
+            TolkWrapper.Speak(Loc.T("nav.enemy.none"));
             _currentSection = RecapSection.None;
             return;
         }
 
-        TolkWrapper.Speak("Enemy stats");
+        TolkWrapper.Speak(Loc.T("nav.enemy.stats_label"));
     }
 
     /// <summary>
@@ -269,7 +269,7 @@ public class RecapNavigator
         {
             _currentSection = RecapSection.EnemyStats;
             _enemyStatIndex = 0;
-            TolkWrapper.Speak("Stats");
+            TolkWrapper.Speak(Loc.T("nav.recap.stats_label"));
         }
     }
 
@@ -282,12 +282,12 @@ public class RecapNavigator
         {
             if (_enemy.Skills.Count == 0)
             {
-                TolkWrapper.Speak("No skills");
+                TolkWrapper.Speak(Loc.T("nav.no_skills"));
                 return;
             }
             _currentSection = RecapSection.EnemySkills;
             _enemyHeroSkillIndex = 0;
-            TolkWrapper.Speak($"Skills, {_enemy.Skills.Count}");
+            TolkWrapper.Speak(Loc.T("nav.recap.skills_with_count", _enemy.Skills.Count));
         }
     }
 
@@ -338,7 +338,7 @@ public class RecapNavigator
         var opponent = Data.Run?.Opponent;
         if (opponent == null)
         {
-            TolkWrapper.Speak("No enemy data");
+            TolkWrapper.Speak(Loc.T("nav.enemy.no_data"));
             return;
         }
 
@@ -353,14 +353,14 @@ public class RecapNavigator
     {
         if (_enemyHeroSkillIndex < 0 || _enemyHeroSkillIndex >= _enemy.Skills.Count)
         {
-            TolkWrapper.Speak("No skill");
+            TolkWrapper.Speak(Loc.T("nav.no_skill"));
             return;
         }
 
         var skill = _enemy.Skills[_enemyHeroSkillIndex];
         if (skill == null)
         {
-            TolkWrapper.Speak("Empty slot");
+            TolkWrapper.Speak(Loc.T("nav.empty_slot"));
             return;
         }
 
@@ -369,7 +369,7 @@ public class RecapNavigator
 
         if (!string.IsNullOrEmpty(desc))
         {
-            TolkWrapper.Speak($"{name}: {desc}");
+            TolkWrapper.Speak(Loc.T("nav.name_with_desc", name, desc));
         }
         else
         {

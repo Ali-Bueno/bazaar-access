@@ -42,37 +42,27 @@ public class CollectionItemUI : BaseUI
         catch (System.Exception e)
         {
             Plugin.Logger.LogError($"CollectionItemUI: Error reading item info: {e.Message}");
-            _itemName = "Collection Item";
+            _itemName = Loc.T("ui.collection.default_name");
         }
     }
 
     protected override void BuildMenu()
     {
         Menu.AddOption(
-            () => "Press Enter to continue",
+            () => Loc.T("ui.continue_prompt"),
             () => Close());
     }
 
     public override void OnFocus()
     {
         // Announce the new item
-        string announcement = "New item: ";
+        string itemName = !string.IsNullOrEmpty(_itemName) ? _itemName : Loc.T("ui.collection.default_name");
 
-        if (!string.IsNullOrEmpty(_itemName))
-        {
-            announcement += _itemName;
-        }
-        else
-        {
-            announcement += "Collection Item";
-        }
+        string announcement = !string.IsNullOrEmpty(_editionNumber)
+            ? Loc.T("ui.collection.new_item_with_edition", itemName, _editionNumber)
+            : Loc.T("ui.collection.new_item", itemName);
 
-        if (!string.IsNullOrEmpty(_editionNumber))
-        {
-            announcement += $", {_editionNumber}";
-        }
-
-        announcement += ". Press Enter to continue.";
+        announcement += " " + Loc.T("ui.continue_prompt");
 
         TolkWrapper.Speak(announcement);
         MessageBuffer.Add(announcement);

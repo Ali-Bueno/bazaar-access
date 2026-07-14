@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using BazaarAccess.Core;
 using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameShared.Domain.Core.Types;
 using BazaarGameShared.Infra.Messages.CombatSimEvents;
@@ -17,30 +18,32 @@ internal static class RecapStatsReader
     private struct RecapStatEntry
     {
         public readonly ECardStats Stat;
-        public readonly string Label;
+        public readonly string LabelKey;
 
-        public RecapStatEntry(ECardStats stat, string label)
+        public RecapStatEntry(ECardStats stat, string labelKey)
         {
             Stat = stat;
-            Label = label;
+            LabelKey = labelKey;
         }
     }
 
     private static readonly FieldInfo LastCombatSimField =
         typeof(BoardManager).GetField("_lastCombatSim", BindingFlags.Instance | BindingFlags.NonPublic);
 
+    // Label text is resolved via Loc.T(LabelKey) at read time (not cached here), so a mid-session
+    // language change is picked up immediately.
     private static readonly RecapStatEntry[] OrderedRecapStats =
     {
-        new RecapStatEntry(ECardStats.DamageDone, "Damage dealt"),
-        new RecapStatEntry(ECardStats.HealAdded, "Heal applied"),
-        new RecapStatEntry(ECardStats.ShieldAdded, "Shield applied"),
-        new RecapStatEntry(ECardStats.BurnAdded, "Burn applied"),
-        new RecapStatEntry(ECardStats.PoisonAdded, "Poison applied"),
-        new RecapStatEntry(ECardStats.RegenAdded, "Regeneration applied"),
-        new RecapStatEntry(ECardStats.RageAdded, "Rage applied"),
-        new RecapStatEntry(ECardStats.HastedCardsCount, "Hasted items"),
-        new RecapStatEntry(ECardStats.SlowedCardsCount, "Slowed items"),
-        new RecapStatEntry(ECardStats.FrozenCardsCount, "Frozen items"),
+        new RecapStatEntry(ECardStats.DamageDone, "card.recap.damageDealt"),
+        new RecapStatEntry(ECardStats.HealAdded, "card.recap.healApplied"),
+        new RecapStatEntry(ECardStats.ShieldAdded, "card.recap.shieldApplied"),
+        new RecapStatEntry(ECardStats.BurnAdded, "card.recap.burnApplied"),
+        new RecapStatEntry(ECardStats.PoisonAdded, "card.recap.poisonApplied"),
+        new RecapStatEntry(ECardStats.RegenAdded, "card.recap.regenApplied"),
+        new RecapStatEntry(ECardStats.RageAdded, "card.recap.rageApplied"),
+        new RecapStatEntry(ECardStats.HastedCardsCount, "card.recap.hastedItems"),
+        new RecapStatEntry(ECardStats.SlowedCardsCount, "card.recap.slowedItems"),
+        new RecapStatEntry(ECardStats.FrozenCardsCount, "card.recap.frozenItems"),
     };
 
     public static bool IsRecapViewActive()
@@ -62,17 +65,17 @@ internal static class RecapStatsReader
             return new List<string>();
         }
 
-        var lines = new List<string> { "Recap" };
+        var lines = new List<string> { Loc.T("card.recap.header") };
         var stats = GetStats(card);
 
-        lines.Add($"Uses: {GetStatValue(stats, ECardStats.UseCount)}");
+        lines.Add(Loc.T("card.stat.line", Loc.T("card.recap.uses"), GetStatValue(stats, ECardStats.UseCount)));
 
         foreach (var entry in OrderedRecapStats)
         {
             int value = GetStatValue(stats, entry.Stat);
             if (value > 0)
             {
-                lines.Add($"{entry.Label}: {value}");
+                lines.Add(Loc.T("card.stat.line", Loc.T(entry.LabelKey), value));
             }
         }
 

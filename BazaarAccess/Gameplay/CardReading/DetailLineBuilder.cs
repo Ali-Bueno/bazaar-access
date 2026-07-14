@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+using BazaarAccess.Core;
 using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameShared.Domain.Core;
 using BazaarGameShared.Domain.Core.Types;
@@ -62,7 +63,7 @@ internal static class DetailLineBuilder
 
     public static string GetShortDescription(Card card)
     {
-        if (card == null) return "Empty slot";
+        if (card == null) return Loc.T("card.slot.empty");
 
         string name = CardProperties.GetCardName(card);
         string tier = CardProperties.GetTierName(card);
@@ -73,11 +74,11 @@ internal static class DetailLineBuilder
         if (QuestReader.IsQuestItem(card))
         {
             string questProgress = QuestReader.GetQuestProgress(card);
-            parts.Add(questProgress ?? "Quest");
+            parts.Add(questProgress ?? Loc.T("card.quest.generic"));
         }
 
         if (QuestReader.IsPackageItem(card))
-            parts.Add("Delivery package");
+            parts.Add(Loc.T("card.delivery.package"));
 
         if (!string.IsNullOrEmpty(tempState))
             parts.Add(tempState);
@@ -87,7 +88,7 @@ internal static class DetailLineBuilder
 
     public static string GetDetailedDescription(Card card)
     {
-        if (card == null) return "Empty slot";
+        if (card == null) return Loc.T("card.slot.empty");
 
         var sb = new StringBuilder();
 
@@ -101,11 +102,11 @@ internal static class DetailLineBuilder
 
         var template = card.Template;
         if (template != null)
-            sb.Append($", Size {(int)template.Size}");
+            sb.Append(Loc.T("card.stat.sizeInline", (int)template.Size));
 
         float? cdSeconds = GetCooldownSeconds(card);
         if (cdSeconds.HasValue)
-            sb.Append($", Cooldown {cdSeconds.Value:F1}s");
+            sb.Append(Loc.T("card.stat.cooldownShort", ResolveCooldownLabel(), $"{cdSeconds.Value:F1}"));
 
         // Combat stats
         AppendStatIfPresent(sb, card, ECardAttributeType.Ammo, "Ammo");
@@ -149,13 +150,13 @@ internal static class DetailLineBuilder
     public static string GetBuyInfo(Card card)
     {
         if (card == null) return string.Empty;
-        return $"{CardProperties.GetCardName(card)}, {CardProperties.GetBuyPrice(card)} gold";
+        return Loc.T("card.buy.info", CardProperties.GetCardName(card), CardProperties.GetBuyPrice(card));
     }
 
     public static string GetSellInfo(Card card)
     {
         if (card == null) return string.Empty;
-        return $"{CardProperties.GetCardName(card)}, sells for {CardProperties.GetSellPrice(card)} gold";
+        return Loc.T("card.sell.info", CardProperties.GetCardName(card), CardProperties.GetSellPrice(card));
     }
 
     // --- Detail line lists ---
@@ -183,34 +184,34 @@ internal static class DetailLineBuilder
 
     public static string GetEnemyCompactDescription(Card card)
     {
-        if (card == null) return "Empty slot";
+        if (card == null) return Loc.T("card.slot.empty");
 
         var parts = new List<string>();
         parts.Add(CardProperties.GetCardName(card));
 
         float? cdSeconds = GetCooldownSeconds(card);
         if (cdSeconds.HasValue)
-            parts.Add($"{cdSeconds.Value:F1}s");
+            parts.Add(Loc.T("card.stat.secondsBare", $"{cdSeconds.Value:F1}"));
 
         // One primary combat stat for quick reading
         var damage = card.GetAttributeValue(ECardAttributeType.DamageAmount);
         if (damage.HasValue && damage.Value > 0)
         {
-            parts.Add($"{damage.Value} damage");
+            parts.Add(Loc.T("card.stat.compact", damage.Value, ResolveStatLabel(ECardAttributeType.DamageAmount, "damage")));
         }
         else
         {
             var heal = card.GetAttributeValue(ECardAttributeType.HealAmount);
             if (heal.HasValue && heal.Value > 0)
             {
-                parts.Add($"{heal.Value} heal");
+                parts.Add(Loc.T("card.stat.compact", heal.Value, ResolveStatLabel(ECardAttributeType.HealAmount, "heal")));
             }
             else
             {
                 var shield = card.GetAttributeValue(ECardAttributeType.ShieldApplyAmount);
                 if (shield.HasValue && shield.Value > 0)
                 {
-                    parts.Add($"{shield.Value} shield");
+                    parts.Add(Loc.T("card.stat.compact", shield.Value, ResolveStatLabel(ECardAttributeType.ShieldApplyAmount, "shield")));
                 }
             }
         }
@@ -302,32 +303,32 @@ internal static class DetailLineBuilder
                 if (questLines.Count > 0)
                     lines.AddRange(questLines);
                 else
-                    lines.Add("Quest item");
+                    lines.Add(Loc.T("card.quest.item.generic"));
             }
 
             if (QuestReader.IsPackageItem(card))
-                lines.Add("Delivery package");
+                lines.Add(Loc.T("card.delivery.package"));
 
             string tags = CardProperties.GetTags(card);
             if (!string.IsNullOrEmpty(tags)) lines.Add(tags);
 
             string tempState = CardProperties.GetTemperatureState(card);
-            if (!string.IsNullOrEmpty(tempState)) lines.Add($"State: {tempState}");
+            if (!string.IsNullOrEmpty(tempState)) lines.Add(Loc.T("card.state.label", tempState));
 
             if (card is ItemCard enchantedItem && enchantedItem.Enchantment.HasValue)
             {
                 string enchantName = CardProperties.GetEnchantmentName(enchantedItem.Enchantment.Value);
-                lines.Add($"Enchanted: {enchantName}");
+                lines.Add(Loc.T("card.enchanted.label", enchantName));
             }
 
             string sizeText = GetSizeText(card);
             if (sizeText != null) lines.Add(sizeText);
 
             int buyPrice = CardProperties.GetBuyPrice(card);
-            if (buyPrice > 0) lines.Add($"Buy {buyPrice} gold");
+            if (buyPrice > 0) lines.Add(Loc.T("card.buy.gold", buyPrice));
 
             int sellPrice = CardProperties.GetSellPrice(card);
-            if (sellPrice > 0) lines.Add($"Sell {sellPrice} gold");
+            if (sellPrice > 0) lines.Add(Loc.T("card.sell.gold", sellPrice));
 
             string cd = GetCooldownLineText(card);
             if (cd != null) lines.Add(cd);
@@ -344,12 +345,20 @@ internal static class DetailLineBuilder
         return lines;
     }
 
+    /// <summary>
+    /// Resolves the stat label from the game's own vocabulary first, falling back to the
+    /// English label passed in when the game has no word for this attribute (e.g. RepairTargets).
+    /// </summary>
+    private static string ResolveStatLabel(ECardAttributeType type, string fallback)
+        => GameVocabulary.Attribute(type) ?? fallback;
+
     private static void AppendStatIfPresent(StringBuilder sb, Card card, ECardAttributeType type, string label)
     {
         var value = card.GetAttributeValue(type);
         if (value.HasValue && value.Value > 0)
         {
-            sb.Append($", {label} {value.Value}");
+            sb.Append(", ");
+            sb.Append(Loc.T("card.stat.inline", ResolveStatLabel(type, label), value.Value));
         }
     }
 
@@ -358,7 +367,7 @@ internal static class DetailLineBuilder
         var value = card.GetAttributeValue(type);
         if (value.HasValue && value.Value != 0)
         {
-            lines.Add($"{label}: {value.Value}");
+            lines.Add(Loc.T("card.stat.line", ResolveStatLabel(type, label), value.Value));
         }
     }
 
@@ -387,10 +396,14 @@ internal static class DetailLineBuilder
         float? seconds = GetCooldownSeconds(card);
         if (seconds.HasValue)
         {
-            return $"Cooldown {seconds.Value:F1} seconds";
+            return Loc.T("card.stat.cooldownFull", ResolveCooldownLabel(), $"{seconds.Value:F1}");
         }
         return null;
     }
+
+    /// <summary>Cooldown label from the game's own vocabulary, falling back to the English word.</summary>
+    private static string ResolveCooldownLabel()
+        => GameVocabulary.Attribute(ECardAttributeType.Cooldown) ?? "Cooldown";
 
     private static string GetSizeText(Card card)
     {
@@ -398,14 +411,8 @@ internal static class DetailLineBuilder
         if (template == null) return null;
 
         int size = (int)template.Size;
-        string sizeName = template.Size switch
-        {
-            ECardSize.Small => "Small",
-            ECardSize.Medium => "Medium",
-            ECardSize.Large => "Large",
-            _ => ""
-        };
-        return $"Size: {size} slots ({sizeName})";
+        string sizeName = CardProperties.GetSizeName(template.Size);
+        return Loc.T("vocab.card.size_slots", size, sizeName);
     }
 
     private static void AddDescriptionLines(List<string> lines, Card card)

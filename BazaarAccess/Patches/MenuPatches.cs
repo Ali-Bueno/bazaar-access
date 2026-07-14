@@ -105,7 +105,7 @@ public static class BattlePassTierUnlockPatch
     static void Postfix(BattlePassTier __instance)
     {
         int tierNum = __instance.TierNumber;
-        TolkWrapper.Speak($"Tier {tierNum} unlocked");
+        TolkWrapper.Speak(Loc.T("patch.menu.tier_unlocked", tierNum));
     }
 }
 
@@ -121,7 +121,7 @@ public static class MarketplaceScreenAwakePatch
     {
         Plugin.Logger.LogInfo("MarketplaceScreenController.Awake - Marketplace opened");
         // TODO: Create MarketplaceScreen when implemented
-        TolkWrapper.Speak("Marketplace");
+        TolkWrapper.Speak(Loc.T("patch.menu.marketplace"));
     }
 }
 
@@ -137,7 +137,7 @@ public static class ProfileCareerAwakePatch
     {
         Plugin.Logger.LogInfo("ProfileCareerViewController.Awake - Profile opened");
         // TODO: Create ProfileScreen when implemented
-        TolkWrapper.Speak("Player Profile");
+        TolkWrapper.Speak(Loc.T("patch.menu.player_profile"));
     }
 }
 

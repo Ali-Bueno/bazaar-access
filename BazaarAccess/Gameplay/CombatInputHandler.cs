@@ -76,7 +76,7 @@ public class CombatInputHandler
                     return;
                 case AccessibleKey.Back:
                     _combatNavSection = CombatNavSection.None;
-                    TolkWrapper.Speak("Exited board view");
+                    TolkWrapper.Speak(Loc.T("action.exited.board.view"));
                     return;
             }
         }
@@ -117,7 +117,7 @@ public class CombatInputHandler
                 case AccessibleKey.Back:
                     _combatNavSection = CombatNavSection.None;
                     _navigator.ExitEnemyMode();
-                    TolkWrapper.Speak("Exited enemy board view");
+                    TolkWrapper.Speak(Loc.T("action.exited.enemy.board.view"));
                     return;
             }
         }
@@ -154,7 +154,7 @@ public class CombatInputHandler
                     return;
                 case AccessibleKey.Back:
                     _combatNavSection = CombatNavSection.None;
-                    TolkWrapper.Speak("Exited enemy stats view");
+                    TolkWrapper.Speak(Loc.T("action.exited.enemy.stats.view"));
                     return;
             }
         }
@@ -191,7 +191,7 @@ public class CombatInputHandler
                     return;
                 case AccessibleKey.Back:
                     _combatNavSection = CombatNavSection.None;
-                    TolkWrapper.Speak("Exited hero stats view");
+                    TolkWrapper.Speak(Loc.T("action.exited.hero.stats.view"));
                     return;
             }
         }

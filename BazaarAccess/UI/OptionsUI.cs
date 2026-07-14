@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using BazaarAccess.Accessibility;
+using BazaarAccess.Core;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -23,7 +24,7 @@ public class OptionsUI : BaseUI
         public Transform Section;
     }
 
-    public override string UIName => "Options";
+    public override string UIName => Loc.T("ui.options.title");
 
     public OptionsUI(Transform root) : base(root)
     {
@@ -275,7 +276,7 @@ public class OptionsUI : BaseUI
     private string GetToggleText(Toggle toggle)
     {
         string label = NearbyLabel(toggle.transform) ?? toggle.gameObject.name;
-        string state = toggle.isOn ? "on" : "off";
+        string state = toggle.isOn ? Loc.T("ui.on") : Loc.T("ui.off");
         return $"{label}: {state}";
     }
 
@@ -321,7 +322,7 @@ public class OptionsUI : BaseUI
     {
         // Setting isOn fires onValueChanged, so the game applies the change.
         toggle.isOn = !toggle.isOn;
-        Core.TolkWrapper.Speak(toggle.isOn ? "on" : "off");
+        Core.TolkWrapper.Speak(toggle.isOn ? Loc.T("ui.on") : Loc.T("ui.off"));
     }
 
     private void CommitDropdown(TMP_Dropdown dropdown, int index)
@@ -346,7 +347,7 @@ public class OptionsUI : BaseUI
     // Reads the action name + current key from KeyBindController (new Input System) by reflection.
     private string GetKeybindLabel(MonoBehaviour keybindController)
     {
-        string actionName = "Keybind";
+        string actionName = Loc.T("ui.keybind.default_name");
         var ctrlType = keybindController.GetType();
         var actionValue =
             ctrlType.GetField("_resolvedAction", PrivateInstance)?.GetValue(keybindController)
@@ -379,11 +380,11 @@ public class OptionsUI : BaseUI
     {
         return actionEnum switch
         {
-            "ToggleStash" => "Toggle Stash",
-            "Settings" => "Access Settings",
-            "Lock" => "Access Locked Tooltip",
-            "Playlist" => "Playlist",
-            "Atlas" => "Atlas",
+            "ToggleStash" => Loc.T("ui.keybind.toggle_stash"),
+            "Settings" => Loc.T("ui.keybind.access_settings"),
+            "Lock" => Loc.T("ui.keybind.access_locked_tooltip"),
+            "Playlist" => Loc.T("ui.keybind.playlist"),
+            "Atlas" => Loc.T("ui.keybind.atlas"),
             _ => actionEnum
         };
     }

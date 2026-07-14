@@ -9,7 +9,7 @@ public class CreateAccountTermsUI : LoginBaseUI
 {
     private readonly object _view;
 
-    public override string UIName => "Create Account - Terms";
+    public override string UIName => Loc.T("ui.login.create_account_terms_title");
 
     public CreateAccountTermsUI(Transform root, object view) : base(root)
     {
@@ -24,7 +24,7 @@ public class CreateAccountTermsUI : LoginBaseUI
         if (tosToggle != null)
         {
             Menu.AddOption(
-                () => $"Terms of Service: {(tosToggle.isOn ? "accepted" : "not accepted")}",
+                () => $"{Loc.T("ui.login.tos_label")}: {(tosToggle.isOn ? Loc.T("ui.login.accepted") : Loc.T("ui.login.not_accepted"))}",
                 () => ToggleAndAnnounce(tosToggle),
                 null,
                 (dir) => ToggleAndAnnounce(tosToggle)
@@ -36,7 +36,7 @@ public class CreateAccountTermsUI : LoginBaseUI
         if (eulaToggle != null)
         {
             Menu.AddOption(
-                () => $"End User License Agreement: {(eulaToggle.isOn ? "accepted" : "not accepted")}",
+                () => $"{Loc.T("ui.login.eula_label")}: {(eulaToggle.isOn ? Loc.T("ui.login.accepted") : Loc.T("ui.login.not_accepted"))}",
                 () => ToggleAndAnnounce(eulaToggle),
                 null,
                 (dir) => ToggleAndAnnounce(eulaToggle)
@@ -48,7 +48,7 @@ public class CreateAccountTermsUI : LoginBaseUI
         if (promoToggle != null)
         {
             Menu.AddOption(
-                () => $"Marketing emails: {(promoToggle.isOn ? "on" : "off")}",
+                () => $"{Loc.T("ui.login.marketing_emails_label")}: {(promoToggle.isOn ? Loc.T("ui.on") : Loc.T("ui.off"))}",
                 () => ToggleAndAnnounce(promoToggle),
                 null,
                 (dir) => ToggleAndAnnounce(promoToggle)
@@ -56,7 +56,7 @@ public class CreateAccountTermsUI : LoginBaseUI
         }
 
         // Continue button
-        AddBazaarButton(_view, "continueButton", "Continue");
+        AddBazaarButton(_view, "continueButton", Loc.T("ui.continue"));
     }
 
     private Toggle GetViewToggle(string fieldName)
@@ -69,7 +69,7 @@ public class CreateAccountTermsUI : LoginBaseUI
     private void ToggleAndAnnounce(Toggle toggle)
     {
         toggle.isOn = !toggle.isOn;
-        TolkWrapper.Speak(toggle.isOn ? "accepted" : "not accepted");
+        TolkWrapper.Speak(toggle.isOn ? Loc.T("ui.login.accepted") : Loc.T("ui.login.not_accepted"));
     }
 
     protected override void OnBack()

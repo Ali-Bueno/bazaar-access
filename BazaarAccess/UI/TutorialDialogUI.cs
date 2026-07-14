@@ -59,7 +59,7 @@ public class TutorialDialogUI : IAccessibleUI
                 if (_hasNavigation && _onNext != null)
                 {
                     _onNext();
-                    TolkWrapper.Speak("Next");
+                    TolkWrapper.Speak(Loc.T("ui.next"));
                 }
                 else
                 {
@@ -74,7 +74,7 @@ public class TutorialDialogUI : IAccessibleUI
                     if (_onPrevious != null)
                     {
                         _selectedOption = 1;
-                        TolkWrapper.Speak("Previous, 2 of 2");
+                        TolkWrapper.Speak(Loc.T("ui.tutorial.previous_2of2"));
                     }
                 }
                 break;
@@ -105,9 +105,9 @@ public class TutorialDialogUI : IAccessibleUI
     {
         if (_hasNavigation)
         {
-            return "Enter or Right: Next. Left: Previous. Escape: Repeat message.";
+            return Loc.T("ui.tutorial.help_nav");
         }
-        return "Enter: Continue. Escape: Repeat message.";
+        return Loc.T("ui.tutorial.help_basic");
     }
 
     public void OnFocus()
@@ -119,11 +119,11 @@ public class TutorialDialogUI : IAccessibleUI
 
         if (_hasNavigation && _onNext != null)
         {
-            TolkWrapper.Speak("Press Enter or Right arrow to continue");
+            TolkWrapper.Speak(Loc.T("ui.tutorial.continue_or_next"));
         }
         else
         {
-            TolkWrapper.Speak("Press Enter to continue");
+            TolkWrapper.Speak(Loc.T("ui.continue_prompt"));
         }
     }
 

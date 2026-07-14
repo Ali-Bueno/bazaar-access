@@ -1,0 +1,908 @@
+# BazaarAccess - 简体中文 (zh-CN)
+#
+# 本文件是参考目录（en-US.txt）的翻译版本。
+# 如果缺少某个键的翻译，模组会回退到英文，所以部分翻译也没问题——能翻多少翻多少，其余留空即可。
+#
+# 格式
+#   key = 文本
+#   以“#”开头的行是注释。空行会被忽略。
+#   {0}、{1}……是模组填入的占位符（物品名称、数量等）。
+#   保留英文文本中出现的所有占位符——如果语言的语序需要，可以调整它们的顺序。
+#   换行请用 \n。
+#
+# 数量
+#   以 .one / .other 结尾的键根据数量选择：单数用 .one，其余情况用 .other。
+#   不需要区分单复数的语言可以让两者使用相同的文本。
+#
+# 像 Shield、Burn、Bronze、Weapon 这样的词不在本文件中：模组直接从游戏本身获取这些已翻译好的词，
+# 因此念出的词与卡牌上显示的完全一致。
+
+
+# --- Startup ---
+mod.loaded = Bazaar Access 已加载
+
+
+# 战斗播报：CombatDescriber.cs, Combat/EffectFormatter.cs, Combat/HealthTracker.cs
+
+# --- 模式切换（M 键）---
+combat.mode.batched = 战斗播报已设为批量模式
+combat.mode.individual = 战斗播报已设为逐条模式
+
+# --- H 键战斗摘要 ---
+combat.summary.not_in_combat = 当前不在战斗中。
+combat.summary.dealt_took = 你造成了 {0}，承受了 {1}
+combat.summary.health_vs = 生命值：{0} 对 {1}
+combat.summary.unavailable = 摘要不可用。
+
+# --- 通用标签 ---
+combat.enemy_name = 敌人
+combat.you_label = 你
+combat.enemy_item_name = 敌方{0}
+combat.item_fallback_name = 物品
+
+# --- 逐条模式 / 单条效果文本（措辞相同时与波次摘要共用）---
+combat.crit_hit_damage = 暴击！{0}：{1} 伤害
+combat.item_effect = {0}：{1}
+combat.damage_amount = {0} 伤害
+combat.damage = 伤害
+combat.heal_amount = {0} 治疗
+combat.heal = 治疗
+combat.shield_amount = {0} 护盾
+combat.shield = 护盾
+combat.burn_amount = {0} 燃烧
+combat.burn_applied = 施加燃烧
+combat.poison_amount = {0} 中毒
+combat.poison_applied = 施加中毒
+combat.regen_amount = {0} 再生
+combat.regen_applied = 施加再生
+combat.stole_gold = 偷取 {0} 金币
+combat.gold_stolen = 金币被偷取
+combat.max_health_increase = 最大生命值 +{0}
+combat.max_health_increased = 最大生命值提升
+combat.max_health_decrease = 最大生命值 -{0}
+combat.max_health_decreased = 最大生命值降低
+combat.slowed = 减速
+combat.freeze_applied = 施加冰冻
+combat.hasted = 加速
+combat.charged = 已充能
+combat.reloaded_ammo = 装填了 {0} 发弹药
+combat.reloaded = 已装填
+combat.destroyed_named = 摧毁了{0}
+combat.destroyed = 已摧毁
+combat.disabled_named = 使{0}失效
+combat.disabled = 已失效
+combat.repaired_named = 修复了{0}
+combat.repaired = 已修复
+combat.transformed = 已变形
+combat.upgraded = 已升级
+combat.quest_complete = 任务完成
+combat.started_flying = 开始飞行
+combat.stopped_flying = 停止飞行
+combat.toggled_flying = 切换飞行状态
+combat.flying = 飞行中
+combat.landed = 已降落
+combat.flying_toggled = 飞行状态已切换
+combat.frozen_alert = 冰冻！
+
+# --- 属性修改播报 ---
+combat.modified_by = 修改了 {0}
+combat.modified = 已修改
+combat.attr_increased_by = {0} 提升了 {1}
+combat.attr_decreased_by = {0} 降低了 {1}
+combat.attr_changed = {0} 已改变
+combat.on_target = 目标：{0}
+
+# --- 批量模式波次摘要 ---
+combat.wave_side = {0}：{1}
+combat.wave.crit_damage_item = 暴击！{0} 伤害（{1}）
+combat.wave.crit_damage = 暴击！{0} 伤害
+combat.wave.damage_item = {0} 伤害（{1}）
+combat.wave.reload_item = {0} 装填了 {1}
+combat.wave.reloads.one = {0} 次装填
+combat.wave.reloads.other = {0} 次装填
+combat.wave.buffs.one = {0} 次增益
+combat.wave.buffs.other = {0} 次增益
+combat.wave.debuffs.one = {0} 次减益
+combat.wave.debuffs.other = {0} 次减益
+combat.wave.repairs.one = {0} 次修复
+combat.wave.repairs.other = {0} 次修复
+
+# --- 生命值（HealthTracker）---
+combat.health.critical = 生命危急！
+combat.health.low = 生命值过低！
+combat.health.enemy_critical = 敌人生命危急！
+combat.health.enemy_low = 敌人生命值过低！
+combat.health_with_shield = {0}：{1} 生命值，{2} 护盾
+combat.health_only = {0}：{1} 生命值
+combat.health_value_with_shield = {0}，另有 {1} 护盾
+
+# 第二批 - CardReading/* + ItemReader.cs
+# 前缀：card.
+
+# --- 通用卡牌名称/槽位占位文本 ---
+card.name.empty = 空
+card.name.unknown = 未知
+card.slot.empty = 空槽位
+
+# --- 任务 / 快递包裹（简要及详细描述）---
+card.quest.generic = 任务
+card.quest.item.generic = 任务物品
+card.delivery.package = 快递包裹
+card.quest.complete = 已完成
+card.quest.fraction = {0}/{1}
+card.quest.withDesc = 任务：{0}（{1}）
+card.quest.statusOnly = 任务：{0}
+card.quest.reward = 奖励：{0}
+card.quest.completeShort = 任务完成
+card.quest.progress = 任务 {0}/{1}
+
+# --- 详情行标签（模组自定义，非游戏属性词汇）---
+card.state.label = 状态：{0}
+card.enchanted.label = 附魔：{0}
+card.buy.gold = 购买，{0} 金币
+card.sell.gold = 出售，{0} 金币
+card.buy.info = {0}，{1} 金币
+card.sell.info = {0}，售价 {1} 金币
+
+# --- 通用“标签：数值”格式。
+# 标签本身作为参数传入，通常是未翻译的游戏词汇（Damage、Shield、Cooldown……）；
+# 只有周围的格式需要翻译。
+card.stat.line = {0}：{1}
+card.stat.inline = {0} {1}
+
+# --- 标签/关键词属性描述（I 键）---
+card.property.noDescription = 没有可用描述
+
+# --- 遭遇卡牌（商店路径 / 战斗 / PvP）---
+card.encounter.info = {0}，{1}，{2}
+card.encounter.pvp.withRank = {0}，{1}，{2}，{3}
+card.encounter.pvp.withTier = {0}，{1}，{2}，{3}
+card.encounter.type.combat = 战斗
+card.encounter.type.event = 事件
+card.encounter.type.upgrade = 升级
+card.encounter.type.path = 路径
+card.encounter.type.pvp = PvP
+card.encounter.type.default = 遭遇
+card.encounter.level = 等级：{0}
+card.encounter.xp = 经验：{0}
+card.encounter.gold = 金币：{0}
+card.encounter.pvp.stats = ，等级 {0}，{1} 场胜利，{2} 声望
+card.encounter.rewards = ，等级 {0}，{1} 经验，{2} 金币
+card.encounter.pvp.label = PvP 遭遇
+card.encounter.pvp.player = 玩家：{0}
+card.encounter.pvp.hero = 英雄：{0}
+card.encounter.pvp.rank.division = 段位：{0} {1}
+card.encounter.pvp.rank = 段位：{0}
+card.encounter.pvp.rating = 评分：{0}
+card.encounter.pvp.wins = 胜场：{0}
+card.encounter.pvp.prestige = 声望：{0}
+
+# --- 战斗总结（H 键）。这些是模组自己组织的播报短语（例如“造成伤害”），
+# 与游戏本身的属性名称（“伤害”“护盾”等）不同，因此作为完整标签翻译。---
+card.recap.header = 总结
+card.recap.uses = 使用次数
+card.recap.damageDealt = 造成伤害
+card.recap.healApplied = 施加治疗
+card.recap.shieldApplied = 施加护盾
+card.recap.burnApplied = 施加燃烧
+card.recap.poisonApplied = 施加中毒
+card.recap.regenApplied = 施加再生
+card.recap.rageApplied = 施加怒气
+card.recap.hastedItems = 加速的物品
+card.recap.slowedItems = 减速的物品
+card.recap.frozenItems = 冰冻的物品
+
+# 第三批 - Gameplay/Navigation/* + Gameplay/GameplayNavigator.cs
+# 本批所有键均以 "nav." 为前缀（本批专用）。
+
+# --- 通用 / 本批文件共用 ---
+nav.empty = 空
+nav.empty_slot = 空槽位
+nav.no_item_selected = 未选中物品
+nav.no_items = 没有物品
+nav.no_skill = 没有技能
+nav.no_skills = 没有技能
+nav.no_choices = 没有可选项
+nav.nothing_selected = 未选中任何内容
+nav.unknown = 未知
+nav.end_of_list = 列表末尾
+nav.start_of_list = 列表开头
+nav.name_with_desc = {0}：{1}
+nav.price_gold = {0} 金币
+nav.items.one = {0} 件物品
+nav.items.other = {0} 件物品
+nav.slots_free.one = 空余 {0} 个槽位
+nav.slots_free.other = 空余 {0} 个槽位
+nav.skills_count.one = {0} 个技能
+nav.skills_count.other = {0} 个技能
+
+# --- 详情逐行阅读（DetailReader.cs，"没有详情"在其他地方也会用到）---
+nav.detail.none = 没有详情
+nav.detail.last_line = 最后一行。{0}
+nav.detail.first_line = 第一行。{0}
+
+# --- 棋盘 / 仓库（BoardStashNavigator.cs）---
+nav.stash.not_available = 不可用
+nav.stash.cannot_open_now = 当前无法打开仓库
+nav.stash.toggle_error = 无法切换仓库
+nav.stash.info_unavailable = 仓库信息不可用
+nav.stash.capacity = 仓库：已用 {0}/{1} 容量
+nav.stash.read_error = 无法读取仓库信息
+nav.stash.closed_hint = 仓库已关闭。按空格键打开。
+nav.stash.empty = 仓库是空的
+nav.board.info_unavailable = 棋盘信息不可用
+nav.board.capacity = 棋盘：已用 {0}/{1} 容量
+nav.board.read_error = 无法读取棋盘信息
+nav.board.empty = 你的棋盘是空的
+nav.board.your_board.one = 你的棋盘，{0} 件物品
+nav.board.your_board.other = 你的棋盘，{0} 件物品
+nav.board.empty_showing_stash = 棋盘为空，显示仓库
+nav.board.no_items = 棋盘上没有物品
+
+# --- 敌方导航（EnemyNavigator.cs）---
+nav.enemy.none = 没有敌人
+nav.enemy.label = 敌人
+nav.enemy.opponent_named = 对手：{0}
+nav.enemy.of_max = 共 {0}
+nav.enemy.read_error = 无法读取敌方信息
+nav.enemy.replay_in_progress = 正在回放。按 E 键进入总结模式以无干扰查看对手棋盘。
+nav.enemy.no_items = 对手没有物品
+nav.enemy.default_name = 对手
+nav.enemy.cannot_access_board = 无法访问对手棋盘
+nav.enemy.items_label = 物品
+nav.enemy.skills_label = 技能
+nav.enemy.items_with_count = 物品，{0}
+nav.enemy.stats_label = 敌方属性
+nav.enemy.no_data = 没有敌方数据
+# 所有格模板：整句作为键，方便翻译者完全重写
+# （英语的“'s”在大多数语言中没有对应形式）。
+nav.enemy.board.one = {0}的棋盘，{1} 件物品
+nav.enemy.board.other = {0}的棋盘，{1} 件物品
+
+# --- 状态 / 分区播报（GameplayAnnouncer.cs）---
+nav.state.shop = 商店
+nav.state.encounters = 遭遇
+nav.state.loot = 战利品
+nav.state.levelup = 升级到 {0}！
+nav.state.levelup_choose.one = 升级到 {0}！选择一个技能，共 {1} 个可选
+nav.state.levelup_choose.other = 升级到 {0}！选择一个技能，共 {1} 个可选
+nav.state.enchant_altar = 附魔祭坛，{0}
+nav.state.random_enchant = 随机
+nav.state.upgrade_altar = 升级祭坛
+nav.state.altar = 祭坛
+nav.state.combat = 战斗
+nav.state.pvp = PvP
+nav.state.victory = 胜利
+nav.state.defeat = 失败
+nav.section.board = 棋盘
+nav.section.stash = 仓库
+nav.section.skills = 技能
+nav.section.free_prefix = 空闲 {0}
+nav.section.count.one = {0}，{1} 件物品
+nav.section.count.other = {0}，{1} 件物品
+nav.action.exit = 退出
+nav.action.exit_detail = 退出。离开当前状态并继续。
+nav.action.exit_description = 离开当前状态并继续
+nav.action.reroll_cost = 刷新，{0} 金币
+nav.action.reroll_detail = 刷新。花费 {0} 金币获取新物品。你有 {1} 金币。
+nav.action.reroll_line = 刷新：{0} 金币
+nav.action.cannot_exit = 当前无法退出
+nav.action.exiting = 正在退出
+nav.action.exit_failed = 退出失败
+nav.action.cannot_reroll = 当前无法刷新
+nav.action.not_enough_gold = 金币不足。需要 {0}，你有 {1}
+nav.action.rerolled = 已花费 {0} 金币刷新
+nav.action.reroll_failed = 刷新失败
+nav.action.exit_hint = 按 E 退出
+nav.action.reroll_hint = 按 R 刷新（{0} 金币）
+nav.action.none_available = 没有可用操作
+nav.wins.one = {0} 场胜利
+nav.wins.other = {0} 场胜利
+nav.item.no_size_info = 没有尺寸信息
+nav.item.size_info = {0}：尺寸 {1}（{2}）
+
+# --- 英雄导航（HeroNavigator.cs）---
+nav.hero.no_skills_equipped = 没有装备技能
+nav.hero.stats_count.one = 英雄属性，{0} 项
+nav.hero.stats_count.other = 英雄属性，{0} 项
+nav.hero.skills_intro.one = 英雄技能，{0} 个。{1}
+nav.hero.skills_intro.other = 英雄技能，{0} 个。{1}
+nav.hero.no_data = 没有英雄数据
+nav.hero.stat_value = {0}：{1}
+nav.hero.stat_none = {0}：无
+
+# --- 总结导航（RecapNavigator.cs）---
+nav.recap.your_hero_stats = 你的英雄。属性：{0}
+nav.recap.your_hero_skills_suffix = ，技能：{0}。按右箭头查看技能。
+nav.recap.stats_label = 属性
+nav.recap.stats_with_count = 属性，{0}
+nav.recap.skills_with_count = 技能，{0}
+
+# --- 选择 / 商店描述（SelectionNavigator.cs）---
+nav.type.options = 选项
+nav.type.rewards = 奖励
+nav.type.encounters = 遭遇
+nav.type.skills = 技能
+nav.type.items = 物品
+nav.selection.quest_prefix = 任务：{0}
+nav.selection.quest_progress = {0}：{1}
+nav.selection.package_prefix = 快递包裹：{0}
+
+# 第四批 - Gameplay 操作层（ActionHelper、ActionMenuHandler、GameplayScreen、
+# PedestalManager、TierHelper、ShopItemMenuHandler、CombatInputHandler、ReplayInputHandler、
+# ItemInspectNavigator、CombatEncounterPreview/*）
+# 所有键均以 action. 为前缀。
+
+# --- 购买 / 出售 / 移动（ActionHelper.cs）---
+action.cannot.buy.now = 当前无法购买
+action.acquired = 已获得{0}
+action.bought = 以 {1} 金币购买了{0}
+action.purchase.failed = 购买失败
+action.cannot.sell.now = 当前无法出售
+action.sold = 以 {1} 金币出售了{0}
+action.sale.failed = 出售失败
+action.cannot.move.now = 当前无法移动
+action.cannot.move.items.now = 当前无法移动物品
+action.player.data.unavailable = 玩家数据不可用
+action.cannot.access.destination = 无法访问目标位置
+action.no.space.stash = 仓库没有空间
+action.no.space.board = 棋盘没有空间
+action.moved.to.stash = 已将{0}移到仓库
+action.moved.to.board = 已将{0}移到棋盘
+action.move.failed = 移动失败
+action.cannot.select.now = 当前无法选择
+action.selected = 已选择{0}
+action.selection.failed = 选择失败
+action.edge.left = 位于左边缘
+action.edge.right = 位于右边缘
+action.stash.at.start = 位于开头
+action.stash.at.end = 位于末尾
+
+# --- 操作菜单（ActionMenuHandler.cs）---
+action.menu.no.actions = 没有可用操作
+action.menu.count.one = {0}。{1}。共 {2} 个操作。按退格键取消。
+action.menu.count.other = {0}。{1}。共 {2} 个操作。按退格键取消。
+action.exited = 已退出
+action.cancelled = 操作已取消
+action.cannot.sell = 无法出售
+action.cannot.upgrade.enchant.here = 此处无法升级或附魔
+action.cannot.move = 无法移动
+action.cannot.reorder = 无法重新排序
+action.details = 详情
+action.sell = 出售，{0} 金币 (S)
+action.upgrade.stats = 升级{0}属性 (U)
+action.upgrade.to = 升级到{0} (U)
+action.enchant.with = 附魔：{0} (U)
+action.use.pedestal = 使用祭坛 (U)
+action.move.to.stash = 移到仓库 (M)
+action.move.to.board = 移到棋盘 (M)
+action.option.position = {0}，第 {1} 项，共 {2} 项
+action.moved.stash.short = 已移到仓库
+action.moved.board.short = 已移到棋盘
+action.reorder.left.edge.before = 左边缘，在{0}之前
+action.reorder.left.edge = 左边缘
+action.reorder.right.edge.after = 右边缘，在{0}之后
+action.reorder.right.edge = 右边缘
+action.reorder.between = 在{0}和{1}之间
+action.reorder.after = 在{0}之后
+action.reorder.before = 在{0}之前
+action.reorder.position = 位置 {0}
+action.cannot.move.this = 无法移动此物品
+action.cannot.determine.position = 无法确定位置
+action.already.at.left.edge = 已经在左边缘
+action.already.at.right.edge = 已经在右边缘
+action.moving.to.left.edge = 正在移动到左边缘
+action.moving.to.right.edge = 正在移动到右边缘
+
+# --- 游戏内输入路由（GameplayScreen.cs）---
+action.select.item.upgrade = 请在棋盘或仓库中选择一件要升级的物品
+action.no.item.selected = 未选中物品
+action.not.at.pedestal = 不在祭坛旁
+action.no.property.info = 没有可用的属性信息
+action.properties.list = {0}的属性：{1}
+action.help.text = 左右方向键：切换物品。上下方向键：阅读详情。Tab：切换分区。空格：切换仓库。G：前往仓库。B：棋盘。V：英雄。C：选项。F：敌方。X：查看详情。I：属性。W：胜场。回车：选择，或在商店和棋盘物品上打开菜单。E：退出。R：刷新。在操作菜单中：S 出售，U 升级，M 移动，方向键重新排序。Ctrl+方向键：逐行阅读详情。句号/逗号：消息记录。
+action.exited.enemy.view = 已退出敌方视图
+action.nothing.selected = 未选中任何内容
+action.nothing.to.inspect = 没有可查看的内容
+action.cannot.select.this = 无法选择此项
+action.not.an.item = 不是物品
+action.not.a.skill = 不是技能
+action.select.item.first = 请先在棋盘或仓库中选择一件物品
+action.cannot.move.right.now = 当前无法移动
+action.select.stash.item.first = 请先在仓库中选择一件物品
+action.select.board.item.first = 请先在棋盘上选择一件物品
+action.cannot.reorder.this = 无法重新排序此物品
+action.cannot.reorder.right.now = 当前无法重新排序
+action.combat.short = 战斗
+action.stash.closed = 仓库已关闭
+action.stash.opened.empty = 仓库已打开，为空。按空格键关闭。
+action.combat.ended = 战斗结束。按回车继续。
+action.continuing = 正在继续
+action.replaying.combat = 正在回放战斗
+action.recap.entered = 总结模式。V 查看英雄，F 查看敌方，G 查看敌方棋盘，B 查看你的棋盘。
+action.recap.exited = 已退出总结模式。按回车继续，R 重新回放，E 返回总结模式。
+action.done = 完成
+
+# --- 祭坛操作（PedestalManager.cs）---
+action.only.upgrade.pedestal = 只能在祭坛处升级
+action.cannot.upgrade.now = 当前无法升级
+action.cannot.upgrade.item = 无法升级此物品
+action.item.max.tier = 物品已达最高品级
+action.upgrading.from.to = 正在将{0}从 {1} 升级到 {2}
+action.upgrading.stats = 正在升级{0}的属性
+action.upgrade.failed = 升级失败
+action.upgrade.description = 将{0}从 {1} 升级到 {2}
+action.enchant.description = 为{0}附魔：{1}
+action.enchant.random.description = 为{0}附加随机附魔
+action.use.at.pedestal = 在祭坛处使用{0}
+action.cannot.use.pedestal.now = 当前无法使用祭坛
+action.cannot.use.item.pedestal = 无法在祭坛处使用此物品
+action.using.at.pedestal = 正在祭坛处使用{0}
+action.pedestal.failed = 祭坛操作失败
+action.cannot.enchant.now = 当前无法附魔
+action.cannot.enchant.item = 无法为此物品附魔
+action.item.already.enchanted = 物品已附魔
+action.enchanting.random = 正在为{0}附加随机附魔
+action.enchanting.with = 正在为{0}附魔：{1}
+action.enchantment.failed = 附魔失败
+
+# --- 品级进阶（TierHelper.cs）---
+action.tier.max = 最高
+
+# --- 商店物品菜单（ShopItemMenuHandler.cs）---
+action.buy.for.gold = 购买，{0} 金币
+action.buy.plain = 购买
+action.cancel = 取消
+
+# --- 战斗导航（CombatInputHandler.cs）---
+action.exited.board.view = 已退出棋盘视图
+action.exited.enemy.board.view = 已退出敌方棋盘视图
+action.exited.enemy.stats.view = 已退出敌方属性视图
+action.exited.hero.stats.view = 已退出英雄属性视图
+
+# --- 回放/总结导航（ReplayInputHandler.cs）---
+action.replay.press.e.first = 请先按 E 进入总结模式，再按 G 查看对手棋盘。
+action.replay.post.combat.help = 战斗结束。按回车继续，R 重新回放，E 进入总结模式。
+
+# --- 物品详情面板（ItemInspectNavigator.cs）---
+action.exited.item.inspect = 已退出物品详情
+action.item.inspect.entered = 物品详情
+action.start.of.list = 列表开头
+action.end.of.list = 列表末尾
+action.no.item = 没有物品
+action.reset = 重置
+action.exit = 退出
+action.legend.prefix = 图例。{0}
+action.no.details = 没有详情
+action.label.tier = 品级
+action.label.enchantment = 附魔
+action.combo.box = {0}下拉框：{1}。使用 Home、End、上下方向键更改。
+
+# --- 战斗遭遇预览（CombatEncounterPreviewFactory.cs、CombatEncounterPreviewNavigator.cs）---
+action.default.enemy.name = 敌人
+action.loadout = {0}的配装
+action.exited.preview = 已退出预览
+action.no.skills = 没有技能
+action.no.skill = 没有技能
+action.no.items = 没有物品
+action.health = 生命值：{0}
+action.stats.health = 属性。生命值：{0}
+action.skills.zero = 技能（0）
+action.skills.count = 技能（{0}）。{1}
+action.board.no.items = 棋盘。没有物品
+action.board.current = 棋盘。{0}
+action.skill.with.description = {0}：{1}
+
+# 第五批 - 界面：MainMenuScreen、ChestSceneScreen、CollectionScreen、
+# HeroSelectScreen、BattlePassScreen。
+# 格式：key = 文本。{0}、{1}……为占位符。以 .one/.other 结尾的键根据数量选择（见 Loc.Plural）。
+
+# --- MainMenuScreen ---
+screen.mainmenu.name = 主菜单
+
+# --- ChestSceneScreen ---
+screen.chestscene.name = 宝箱
+screen.chestscene.back = 返回
+screen.chestscene.season_fallback = 第 {0} 赛季宝箱
+screen.chestscene.no_chests = 没有可用的宝箱
+screen.chestscene.chest_summary = {0}：{1}
+screen.chestscene.open_n = 打开{0}
+screen.chestscene.open_multi = 一次性打开 {0} 个
+screen.chestscene.not_enough_multi = 宝箱数量不足，无法批量打开
+screen.chestscene.opening_multi = 正在打开 {0} 个{1}宝箱
+screen.chestscene.error_opening_multi = 打开宝箱时出错
+screen.chestscene.opening_single = 正在打开{0}
+screen.chestscene.open_failed = 打开宝箱失败
+screen.chestscene.open_error = 打开宝箱时出错
+
+# --- CollectionScreen ---
+screen.collection.name = 收藏
+screen.collection.category.heroskins = 英雄皮肤
+screen.collection.category.boards = 棋盘
+screen.collection.category.cardskins = 卡牌皮肤
+screen.collection.category.carpets = 地毯
+screen.collection.category.cardbacks = 卡背
+screen.collection.category.albums = 相册
+screen.collection.item_unknown = 未知
+screen.collection.equipped = 已装备
+screen.collection.category_summary.one = {0}，{1} 件
+screen.collection.category_summary.other = {0}，{1} 件
+screen.collection.no_items = 没有物品
+screen.collection.no_items_category = 此分类下没有物品
+screen.collection.no_item_select = 没有可选择的物品
+screen.collection.already_equipped = {0}已装备
+screen.collection.equipping = 正在装备{0}
+screen.collection.equipped_done = {0}已装备
+screen.collection.equip_failed = 装备物品失败
+
+# --- HeroSelectScreen ---
+screen.heroselect.name = 英雄选择
+screen.heroselect.random = 随机英雄：{0}
+screen.state.on = 开
+screen.state.off = 关
+screen.heroselect.casual_selected_announce = 已选择休闲模式
+screen.heroselect.ranked_selected_announce_rank = 已选择排位模式。段位：{0}
+screen.heroselect.ranked_selected_announce = 已选择排位模式
+screen.heroselect.casual_selected = 休闲模式，已选中
+screen.heroselect.casual = 休闲模式
+screen.heroselect.ranked_selected_rank = 排位模式，已选中。段位：{0}
+screen.heroselect.ranked_selected = 排位模式，已选中
+screen.heroselect.ranked = 排位模式
+screen.heroselect.resume = 继续
+screen.heroselect.ready = 准备
+screen.heroselect.back = 返回
+screen.heroselect.unknown_hero = 未知英雄
+screen.heroselect.hero_selected_tag = 已选中
+screen.heroselect.hero_locked_tag = 已锁定
+screen.heroselect.hero_is_locked = {0}已锁定
+screen.heroselect.hero_selected = 已选择{0}
+screen.heroselect.random_enabled = 随机英雄模式已开启
+screen.heroselect.current_hero = 当前英雄：{0}
+
+# --- BattlePassScreen ---
+screen.battlepass.name = 赛季通行证
+screen.battlepass.back = 返回
+screen.battlepass.challenges = 挑战
+screen.battlepass.tiers = 等级与奖励
+screen.battlepass.collect_all = 领取全部奖励
+screen.battlepass.open_chests = 打开宝箱
+screen.battlepass.nav_hint = 使用上下方向键浏览。按退格键返回。
+screen.battlepass.daily.one = {0} 个每日挑战
+screen.battlepass.daily.other = {0} 个每日挑战
+screen.battlepass.weekly.one = {0} 个每周挑战
+screen.battlepass.weekly.other = {0} 个每周挑战
+screen.battlepass.weekly_label = 每周
+screen.battlepass.daily_label = 每日
+screen.battlepass.no_challenges_weekly = 没有每周挑战
+screen.battlepass.no_challenges_daily = 没有每日挑战
+screen.battlepass.challenge_fallback_title = 挑战
+screen.battlepass.progress = {0}/{1}
+screen.battlepass.status_claimed = 已领取
+screen.battlepass.status_ready = 可领取
+screen.battlepass.status_inprogress = 进行中
+screen.battlepass.xp_reward = {0} 经验
+screen.battlepass.challenge_summary = {0}。{1}。{2}。进度：{3}。{4}。{5}。
+screen.battlepass.challenge_header = {0}，第 {1} 项，共 {2} 项
+screen.battlepass.progress_label_simple = 进度：{0}
+screen.battlepass.claimed = 已领取！你获得了 {0}
+screen.battlepass.daily_challenges_header = 每日挑战
+screen.battlepass.first_challenge = 第一个挑战
+screen.battlepass.weekly_challenges_header = 每周挑战
+screen.battlepass.last_challenge = 最后一个挑战
+screen.battlepass.tiers_not_loaded = 等级尚未加载。请稍候。
+screen.battlepass.tiers_total = 等级。共 {0} 个。
+screen.battlepass.tiers_unavailable = 等级不可用
+screen.battlepass.no_tiers = 没有可用等级
+screen.battlepass.tier_fallback = 等级 {0}
+screen.battlepass.tier_header = 等级 {0}，共 {1}
+screen.battlepass.tier_status_locked = 已锁定
+screen.battlepass.tier_status_inprogress = 进行中
+screen.battlepass.tier_status_ready = 可领取
+screen.battlepass.tier_status_claimed = 已领取
+screen.battlepass.tier_status_unknown = 未知
+screen.battlepass.tier_xp_progress = {0}/{1} 经验
+screen.battlepass.tier_xp_required = 需要 {0} 经验
+screen.battlepass.chest_count.one = {0} 个宝箱
+screen.battlepass.chest_count.other = {0} 个宝箱
+screen.battlepass.currency_amount = {0} {1}
+screen.battlepass.collection_item_count.one = {0} 件收藏品
+screen.battlepass.collection_item_count.other = {0} 件收藏品
+screen.battlepass.rewards_prefix = 奖励：{0}
+screen.battlepass.first_tier = 第一等级
+screen.battlepass.last_tier = 最后一个等级
+screen.battlepass.collecting_all = 正在领取全部奖励
+screen.battlepass.no_rewards = 没有可领取的奖励
+screen.battlepass.opening_chests = 正在打开宝箱
+screen.battlepass.chests_open_failed = 无法打开宝箱
+
+# 第六批 - UI/（对话框、登录流程、选项、教程、宝箱奖励）
+# 格式：key = 文本。{0}、{1}……为占位符。.one/.other 根据数量选择（见 Loc.Plural）。
+
+# --- 通用短语（本批多个文件共用）---
+ui.continue = 继续
+ui.continue_prompt = 按回车键继续。
+ui.on = 开
+ui.off = 关
+ui.previous = 上一个
+ui.next = 下一个
+ui.button_disabled = 按钮已禁用
+ui.disabled_suffix = （已禁用）
+ui.field_default_label = 字段
+
+# --- 宝箱奖励（ChestRewardsUI.cs）---
+ui.chest.rarity.common = 普通
+ui.chest.rarity.uncommon = 罕见
+ui.chest.rarity.rare = 稀有
+ui.chest.rarity.epic = 史诗
+ui.chest.rarity.legendary = 传奇
+ui.chest.rarity.unknown = 未知
+ui.chest.collection_type.hero_skin = 英雄皮肤
+ui.chest.collection_type.board = 棋盘
+ui.chest.collection_type.card_skin = 卡牌皮肤
+ui.chest.collection_type.carpet = 地毯
+ui.chest.collection_type.card_back = 卡背
+ui.chest.collection_type.stash = 仓库
+ui.chest.collection_type.bank = 银行
+ui.chest.collection_type.toy = 玩具
+ui.chest.collection_type.album = 相册
+ui.chest.loading = 正在加载奖励……
+ui.chest.no_rewards = 没有奖励。
+ui.chest.you_received = 你获得了
+ui.chest.received_count.one = 你获得了 {0} 个奖励
+ui.chest.received_count.other = 你获得了 {0} 个奖励
+ui.chest.rarity_count = {0} {1}
+ui.chest.gems.one = {0} 颗宝石
+ui.chest.gems.other = {0} 颗宝石
+ui.chest.gems_total.one = 共 {0} 颗宝石
+ui.chest.gems_total.other = 共 {0} 颗宝石
+ui.chest.bonus_gems.one = {0} 颗额外宝石
+ui.chest.bonus_gems.other = {0} 颗额外宝石
+ui.chest.vouchers.one = {0} 张排位券
+ui.chest.vouchers.other = {0} 张排位券
+ui.chest.bonus_chests.one = {0} 个额外宝箱
+ui.chest.bonus_chests.other = {0} 个额外宝箱
+ui.chest.browse_instructions = 使用方向键浏览，按回车继续
+ui.chest.reward_typed = {0} {1}：{2}
+ui.chest.reward_named = {0}：{1}
+ui.chest.reward_item = {0} 件物品
+ui.chest.duplicate = {0}（重复）
+ui.chest.empty_reward = 空奖励
+
+# --- 新收藏品弹窗（CollectionItemUI.cs）---
+ui.collection.new_item = 新物品：{0}。
+ui.collection.new_item_with_edition = 新物品：{0}，{1}。
+ui.collection.default_name = 收藏品
+
+# --- 选项对话框（OptionsUI.cs）---
+ui.options.title = 选项
+ui.keybind.default_name = 按键绑定
+ui.keybind.toggle_stash = 切换仓库
+ui.keybind.access_settings = 无障碍设置
+ui.keybind.access_locked_tooltip = 无障碍锁定提示
+ui.keybind.playlist = 播放列表
+ui.keybind.atlas = 图集
+
+# --- 暂停菜单（FightMenuUI.cs）---
+ui.fightmenu.title = 暂停菜单
+
+# --- 通用弹窗（GenericPopupUI.cs）---
+ui.popup.read_message = 阅读消息
+
+# --- 确认对话框（ConfirmationDialogUI.cs）---
+ui.confirm.no_button = 未选中按钮
+ui.confirm.help = 左右方向键：切换按钮。回车：选择。Escape：取消。
+ui.confirm.no_buttons = 未找到按钮
+
+# --- 教程对话框，带上一步/下一步的新手引导弹窗（TutorialDialogUI.cs）---
+ui.tutorial.help_nav = 回车或右方向键：下一步。左方向键：上一步。Escape：重复消息。
+ui.tutorial.help_basic = 回车：继续。Escape：重复消息。
+ui.tutorial.continue_or_next = 按回车或右方向键继续
+ui.tutorial.previous_2of2 = 上一步，第 2 项，共 2 项
+
+# --- 可在游玩中打开的教程覆盖层（TutorialUI.cs）---
+ui.tutorial2.help_full_nav = 教程进行中。使用方向键操作游戏。按回车继续教程。句号或逗号重新阅读。
+ui.tutorial2.help_full_basic = 教程进行中。使用方向键操作游戏。按回车继续教程。句号或逗号重新阅读消息。
+ui.tutorial2.help_short_nav = 教程。方向键：上一步/下一步。回车：继续。句号/逗号：重新阅读。
+ui.tutorial2.help_short_basic = 教程。回车：继续。句号/逗号：重新阅读消息。
+ui.tutorial2.buffer_prefix = 教程：{0}
+ui.tutorial2.nav_hint = 使用方向键选择上一步或下一步，然后按回车。
+
+# --- 登录 / 账号流程（UI/Login/*.cs）---
+ui.login.access_denied_title = 拒绝访问
+ui.login.account_verified_title = 账号已验证
+ui.login.create_account_email_title = 创建账号 - 邮箱
+ui.login.create_account_terms_title = 创建账号 - 条款
+ui.login.create_account_userpass_title = 创建账号 - 用户名和密码
+ui.login.password_reset_sent_title = 密码重置邮件已发送
+ui.login.reset_password = 重置密码
+ui.login.welcome_title = 欢迎
+ui.login.login_title = 登录
+ui.login.registration_failed_title = 注册失败
+ui.login.reset_email_title = 重置邮箱
+
+ui.login.email_label = 邮箱
+ui.login.confirm_email_label = 确认邮箱
+ui.login.new_email_label = 新邮箱
+ui.login.confirm_new_email_label = 确认新邮箱
+ui.login.password_label = 密码
+ui.login.confirm_password_label = 确认密码
+ui.login.username_label = 用户名
+
+ui.login.resend_email_button = 重新发送邮件
+ui.login.try_again_button = 重试
+ui.login.send_reset_link_button = 发送重置链接
+ui.login.link_account_button = 关联账号
+ui.login.create_account_button = 创建账号
+
+ui.login.tos_label = 服务条款
+ui.login.eula_label = 最终用户许可协议
+ui.login.marketing_emails_label = 营销邮件
+ui.login.accepted = 已接受
+ui.login.not_accepted = 未接受
+
+ui.login.available = 可用
+ui.login.not_available = 不可用
+ui.login.matches = 匹配
+ui.login.empty_or_mismatch = 为空或不匹配
+ui.login.valid = 有效
+ui.login.pwd_too_short = 太短
+ui.login.pwd_needs_letter = 需要字母
+ui.login.pwd_needs_number = 需要数字
+ui.login.issue_username = 用户名
+ui.login.issue_pwd_length = 密码长度
+ui.login.issue_pwd_letters = 密码字母
+ui.login.issue_pwd_numbers = 密码数字
+ui.login.issue_confirm_password = 确认密码
+ui.login.requirements_met = 已满足所有要求。可以继续。
+ui.login.requirements_summary = 要求：{0}/{1}。缺少：{2}
+
+# 第七批 - Patches/ + Accessibility/ + Core/MessageBuffer.cs
+# 每行一个键：key = 英文文本。{0}、{1}……为占位符（见 Loc.T）。
+# .one/.other 后缀由 Loc.Plural() 根据数量选择。
+
+# --- CombatEventHandler.cs ---
+patch.combat.enraged_you = 你已进入狂暴状态
+patch.combat.enraged_other = {0}已进入狂暴状态
+patch.combat.enrage_ends_you = 你的狂暴状态结束
+patch.combat.enrage_ends_other = {0}的狂暴状态结束
+patch.combat.victory_wins.one = 胜利！{0} 场胜利
+patch.combat.victory_wins.other = 胜利！{0} 场胜利
+patch.combat.victory = 胜利！
+patch.combat.defeat_prestige = 失败！剩余 {0} 声望
+patch.combat.defeat = 失败！
+patch.combat.enemy_fallback = 敌人
+
+# --- EndOfRunPatch.cs（模组围绕已本地化的抓取游戏文本添加的标签）---
+patch.endofrun.achievement_named = 成就 {0}：{1}
+patch.endofrun.achievement_desc = 成就：{0}
+patch.endofrun.no_info = 没有可用信息。按回车继续。
+patch.endofrun.end_of_info = 信息结束。按回车继续。
+patch.endofrun.start_line = 开始。{0}
+patch.endofrun.continue_clicked = 继续
+patch.endofrun.please_wait = 请稍候
+patch.endofrun.screen_changed = 界面已切换。按回车继续，或用方向键阅读。
+patch.endofrun.intro_with_line = 本局结束。{0}。使用方向键阅读更多内容，按回车继续。
+patch.endofrun.intro_empty = 本局结束。按回车继续。
+patch.endofrun.help = 上下方向键：逐行阅读信息。回车：进入下一个界面。
+
+# --- ErrorEventHandler.cs ---
+patch.error.no_space = 没有空间容纳{0}
+patch.error.cant_afford = 金币不足，无法购买{0}
+patch.error.unsellable = {0}无法出售
+
+# --- HeroChangedPatch.cs ---
+patch.hero.unknown = 未知
+
+# --- MenuPatches.cs ---
+patch.menu.tier_unlocked = 等级 {0} 已解锁
+patch.menu.marketplace = 市场
+patch.menu.player_profile = 玩家资料
+
+# --- StateChangePatch.cs（游戏原文中没有的状态名称，以及模组新增的天数/时段播报）---
+patch.state.shop = 商店
+patch.state.encounters = 遭遇
+patch.state.combat = 战斗
+patch.state.pvp_combat = PvP 战斗
+patch.state.loot = 战利品
+patch.state.level_up = 升级
+patch.state.victory = 胜利
+patch.state.defeat = 失败
+patch.state.starting_run = 开始本局
+patch.state.game_ending = 游戏结束中
+patch.state.pedestal_enchant = 附魔祭坛
+patch.state.pedestal_upgrade = 升级祭坛
+patch.state.pedestal_generic = 祭坛
+patch.state.day = 第 {0} 天
+patch.state.hour = 第 {0} 时
+
+# --- Accessibility/AccessibleMenu.cs (GetHelp) ---
+patch.menu.help_base = 使用上下方向键浏览。按回车选择。
+patch.menu.help_back_suffix = 按 Escape 返回。
+
+# --- Accessibility/TextFieldOption.cs ---
+patch.textfield.unavailable = {0}：不可用
+patch.textfield.empty = {0}：为空
+patch.textfield.chars_entered.one = {0}：已输入 {1} 个字符
+patch.textfield.chars_entered.other = {0}：已输入 {1} 个字符
+patch.textfield.value = {0}：{1}
+patch.textfield.editing = 编辑中
+patch.textfield.done = 完成
+
+# --- Core/MessageBuffer.cs ---
+patch.messagebuffer.no_messages = 没有消息
+patch.messagebuffer.first_message = 第一条消息
+patch.messagebuffer.last_message = 最后一条消息
+patch.messagebuffer.no_message = 没有消息
+
+
+# 游戏本身不会翻译的词（物品尺寸、英雄属性）：都放在这里。
+# BazaarAccess - 本地化第八批（游戏词汇补充）
+#
+# 本批均为该轮新增的键。尚未合并进 en-US.txt——由维护者手动整合。
+#
+# 译者注：vocab.hero.shield / vocab.hero.poison / vocab.hero.burn /
+# vocab.hero.critchance 是英雄属性标签。请使用游戏本身对应“护盾/中毒/燃烧/暴击几率”
+# 所用的同一个词，避免模组对同一个概念说出两个不同的词（游戏自己的词通过 GameVocabulary
+# 在其他地方都会用到；这四项之所以单独存在，是因为英雄属性使用了另一个没有可靠对应词条的
+# 游戏枚举）。
+
+# --- 卡牌/物品尺寸（CardProperties、DetailLineBuilder、GameplayAnnouncer 通用）---
+vocab.size.small = 小
+vocab.size.medium = 中
+vocab.size.large = 大
+vocab.size.unknown = 未知
+
+vocab.card.size_slots = 尺寸：{0} 格（{1}）
+vocab.card.temperature_both = {0}和{1}
+
+# --- 英雄属性标签（HeroNavigator.GetStatName）---
+vocab.hero.health = 生命值
+vocab.hero.maxhealth = 最大生命值
+vocab.hero.gold = 金币
+vocab.hero.level = 等级
+vocab.hero.experience = 经验
+vocab.hero.prestige = 声望
+vocab.hero.shield = 护盾
+vocab.hero.poison = 中毒
+vocab.hero.burn = 燃烧
+vocab.hero.regeneration = 再生
+vocab.hero.critchance = 暴击几率
+vocab.hero.income = 收入
+
+# --- 英雄段位/怒气语句（HeroNavigator.AnnounceSubsection/AnnounceStat）---
+vocab.hero.rank = 段位：{0}
+vocab.hero.rank_unranked = 段位：未定级
+vocab.hero.rage_colon = 怒气：{0}/{1}
+
+# --- 英雄属性摘要（HeroNavigator.ReadAllStats）---
+vocab.hero.summary.health = 生命值 {0}/{1}
+vocab.hero.summary.gold = 金币 {0}
+vocab.hero.summary.level = 等级 {0}
+vocab.hero.summary.rage = 怒气 {0}/{1}
+vocab.hero.summary.shield = 护盾 {0}
+
+# BazaarAccess - 最终本地化补充（新增键）
+#
+# 本批为对 DetailLineBuilder.cs 做最后查漏补缺时新增的键。
+# 尚未合并进 en-US.txt——由维护者手动整合。
+#
+# 以下四个键都以该属性自身的游戏词汇（Cooldown/Damage/Heal/Shield 等）作为参数，
+# 只有周围的格式（“秒”、“s”、逗号、词序）是模组自己的措辞。
+
+# --- Gameplay/CardReading/DetailLineBuilder.cs ---
+
+# 独立详情行：“冷却时间 5.0 秒”（{0} = 标签，{1} = 数值）
+card.stat.cooldownFull = {0} {1} 秒
+
+# 长句中的附加说明：“，冷却时间 5.0s”（{0} = 标签，{1} = 数值）
+card.stat.cooldownShort = ，{0} {1}s
+
+# 只有数值+单位，没有标签（简明敌方描述）：“5.0s”
+card.stat.secondsBare = {0}s
+
+# 物品尺寸的附加说明：“，尺寸 2”（{0} = 格数）
+card.stat.sizeInline = ，尺寸 {0}
+
+# 简明的“数值 标签”格式（例如“180 伤害”）。参数顺序与 card.stat.inline 相反
+# （{0} = 数值，{1} = 标签）——单独作为一个键，方便不同语言各自采用自然的顺序。
+card.stat.compact = {0} {1}

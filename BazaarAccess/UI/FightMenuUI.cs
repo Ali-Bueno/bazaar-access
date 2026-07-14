@@ -1,4 +1,5 @@
 using BazaarAccess.Accessibility;
+using BazaarAccess.Core;
 using UnityEngine;
 
 namespace BazaarAccess.UI;
@@ -8,7 +9,7 @@ namespace BazaarAccess.UI;
 /// </summary>
 public class FightMenuUI : BaseUI
 {
-    public override string UIName => "Pause Menu";
+    public override string UIName => Loc.T("ui.fightmenu.title");
 
     public FightMenuUI(Transform root) : base(root)
     {

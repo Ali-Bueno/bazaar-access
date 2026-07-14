@@ -1,0 +1,918 @@
+# BazaarAccess - Italiano (it-IT)
+#
+# Questo file è la traduzione italiana del catalogo di riferimento (en-US.txt).
+# La mod ricade sull'inglese per ogni chiave mancante nella traduzione, quindi
+# una traduzione parziale va bene: traduci ciò che puoi e lascia perdere il resto.
+#
+# Formato
+#   chiave = testo
+#   Le righe che iniziano con '#' sono commenti. Le righe vuote sono ignorate.
+#   {0}, {1}... sono segnaposto che la mod riempie (un nome oggetto, una quantità...).
+#   Mantieni ogni segnaposto presente nel testo inglese - puoi riordinarli
+#   se la tua lingua richiede un ordine delle parole diverso.
+#   Usa \n per andare a capo.
+#
+# Conteggi
+#   Le chiavi che finiscono in .one / .other sono scelte in base alla quantità: .one per
+#   una singola cosa, .other per qualsiasi altra quantità. Le lingue che non hanno bisogno
+#   della distinzione possono dare lo stesso testo a entrambe.
+#
+# Parole come Shield, Burn, Bronze o Weapon NON sono qui: la mod le prende direttamente
+# dal gioco, già tradotte, così dice esattamente la stessa parola della carta.
+
+
+# --- Avvio ---
+mod.loaded = Bazaar Access caricato
+
+
+# Narrazione di combattimento: CombatDescriber.cs, Combat/EffectFormatter.cs, Combat/HealthTracker.cs
+
+# --- Cambio modalità (tasto M) ---
+combat.mode.batched = Visualizzatore di combattimento impostato su modalità raggruppata
+combat.mode.individual = Visualizzatore di combattimento impostato su modalità individuale
+
+# --- Riepilogo combattimento (tasto H) ---
+combat.summary.not_in_combat = Non in combattimento.
+combat.summary.dealt_took = Hai inflitto {0}, subito {1}
+combat.summary.health_vs = Salute: {0} contro {1}
+combat.summary.unavailable = Riepilogo non disponibile.
+
+# --- Etichette comuni ---
+combat.enemy_name = Nemico
+combat.you_label = Tu
+combat.enemy_item_name = Nemico {0}
+combat.item_fallback_name = Oggetto
+
+# --- Testo in modalità individuale / per effetto (condiviso con i riepiloghi d'ondata quando la frase coincide) ---
+combat.crit_hit_damage = Colpo critico! {0}: {1} danni
+combat.item_effect = {0}: {1}
+combat.damage_amount = {0} danni
+combat.damage = danni
+combat.heal_amount = {0} cura
+combat.heal = cura
+combat.shield_amount = {0} scudo
+combat.shield = scudo
+combat.burn_amount = {0} bruciatura
+combat.burn_applied = bruciatura applicata
+combat.poison_amount = {0} veleno
+combat.poison_applied = veleno applicato
+combat.regen_amount = {0} rigenerazione
+combat.regen_applied = rigenerazione applicata
+combat.stole_gold = rubato {0} oro
+combat.gold_stolen = oro rubato
+combat.max_health_increase = salute massima +{0}
+combat.max_health_increased = salute massima aumentata
+combat.max_health_decrease = salute massima -{0}
+combat.max_health_decreased = salute massima diminuita
+combat.slowed = rallentato
+combat.freeze_applied = congelamento applicato
+combat.hasted = accelerato
+combat.charged = caricato
+combat.reloaded_ammo = ricaricato {0} munizioni
+combat.reloaded = ricaricato
+combat.destroyed_named = distrutto {0}
+combat.destroyed = distrutto
+combat.disabled_named = disabilitato {0}
+combat.disabled = disabilitato
+combat.repaired_named = riparato {0}
+combat.repaired = riparato
+combat.transformed = trasformato
+combat.upgraded = potenziato
+combat.quest_complete = missione completata
+combat.started_flying = ha iniziato a volare
+combat.stopped_flying = ha smesso di volare
+combat.toggled_flying = volo alternato
+combat.flying = in volo
+combat.landed = atterrato
+combat.flying_toggled = volo alternato
+combat.frozen_alert = Congelato!
+
+# --- Narrazione modifica attributi ---
+combat.modified_by = modificato di {0}
+combat.modified = modificato
+combat.attr_increased_by = {0} aumentato di {1}
+combat.attr_decreased_by = {0} diminuito di {1}
+combat.attr_changed = {0} modificato
+combat.on_target = su {0}
+
+# --- Riepiloghi d'ondata in modalità raggruppata ---
+combat.wave_side = {0}: {1}
+combat.wave.crit_damage_item = colpo critico! {0} danni ({1})
+combat.wave.crit_damage = colpo critico! {0} danni
+combat.wave.damage_item = {0} danni ({1})
+combat.wave.reload_item = {0} ha ricaricato {1}
+combat.wave.reloads.one = {0} ricarica
+combat.wave.reloads.other = {0} ricariche
+combat.wave.buffs.one = {0} potenziamento
+combat.wave.buffs.other = {0} potenziamenti
+combat.wave.debuffs.one = {0} indebolimento
+combat.wave.debuffs.other = {0} indebolimenti
+combat.wave.repairs.one = {0} riparazione
+combat.wave.repairs.other = {0} riparazioni
+
+# --- Salute (HealthTracker) ---
+combat.health.critical = Salute critica!
+combat.health.low = Salute bassa!
+combat.health.enemy_critical = Nemico critico!
+combat.health.enemy_low = Nemico basso!
+combat.health_with_shield = {0}: {1} salute, {2} scudo
+combat.health_only = {0}: {1} salute
+combat.health_value_with_shield = {0} con {1} scudo
+
+# Blocco 2 - CardReading/* + ItemReader.cs
+# Prefisso: card.
+
+# --- Nome carta generico / valori di riserva per lo slot ---
+card.name.empty = Vuoto
+card.name.unknown = Sconosciuto
+card.slot.empty = Slot vuoto
+
+# --- Missione / pacco di consegna (descrizioni brevi e dettagliate) ---
+card.quest.generic = Missione
+card.quest.item.generic = Oggetto missione
+card.delivery.package = Pacco di consegna
+card.quest.complete = Completata
+card.quest.fraction = {0}/{1}
+card.quest.withDesc = Missione: {0} ({1})
+card.quest.statusOnly = Missione: {0}
+card.quest.reward = Ricompensa: {0}
+card.quest.completeShort = Missione completata
+card.quest.progress = Missione {0}/{1}
+
+# --- Etichette delle righe di dettaglio (testo della mod, non vocabolario del gioco) ---
+card.state.label = Stato: {0}
+card.enchanted.label = Incantato: {0}
+card.buy.gold = Compra per {0} oro
+card.sell.gold = Vendi per {0} oro
+card.buy.info = {0}, {1} oro
+card.sell.info = {0}, si vende per {1} oro
+
+# --- Formati generici "etichetta: valore" / "etichetta valore".
+# L'etichetta stessa è passata come argomento ed è spesso vocabolario del gioco
+# non tradotto (Damage, Shield, Cooldown...); solo il formato attorno è un modello.
+card.stat.line = {0}: {1}
+card.stat.inline = {0} {1}
+
+# --- Descrizioni di tag/parole chiave (tasto I) ---
+card.property.noDescription = Nessuna descrizione disponibile
+
+# --- Carte incontro (negozio / combattimento / PvP) ---
+card.encounter.info = {0}, {1}, {2}
+card.encounter.pvp.withRank = {0}, {1}, {2}, {3}
+card.encounter.pvp.withTier = {0}, {1}, {2}, {3}
+card.encounter.type.combat = Combattimento
+card.encounter.type.event = Evento
+card.encounter.type.upgrade = Potenziamento
+card.encounter.type.path = Percorso
+card.encounter.type.pvp = PvP
+card.encounter.type.default = Incontro
+card.encounter.level = Livello: {0}
+card.encounter.xp = XP: {0}
+card.encounter.gold = Oro: {0}
+card.encounter.pvp.stats = , Livello {0}, {1} vittorie, {2} prestigio
+card.encounter.rewards = , Livello {0}, {1} XP, {2} oro
+card.encounter.pvp.label = Incontro PvP
+card.encounter.pvp.player = Giocatore: {0}
+card.encounter.pvp.hero = Eroe: {0}
+card.encounter.pvp.rank.division = Rango: {0} {1}
+card.encounter.pvp.rank = Rango: {0}
+card.encounter.pvp.rating = Punteggio: {0}
+card.encounter.pvp.wins = Vittorie: {0}
+card.encounter.pvp.prestige = Prestigio: {0}
+
+# --- Riepilogo di combattimento (tasto H). Sono frasi composte dalla mod stessa
+# (es. "Damage dealt"), distinte dai nomi grezzi degli attributi del gioco usati
+# altrove ("Damage", "Shield"...), quindi sono tradotte come etichette intere.
+card.recap.header = Riepilogo
+card.recap.uses = Utilizzi
+card.recap.damageDealt = Danno inflitto
+card.recap.healApplied = Cura applicata
+card.recap.shieldApplied = Scudo applicato
+card.recap.burnApplied = Bruciatura applicata
+card.recap.poisonApplied = Veleno applicato
+card.recap.regenApplied = Rigenerazione applicata
+card.recap.rageApplied = Rabbia applicata
+card.recap.hastedItems = Oggetti accelerati
+card.recap.slowedItems = Oggetti rallentati
+card.recap.frozenItems = Oggetti congelati
+
+# Blocco 3 - Gameplay/Navigation/* + Gameplay/GameplayNavigator.cs
+# Tutte le chiavi di questo file usano il prefisso "nav." (riservato a questo blocco).
+
+# --- Generico / condiviso tra i file di questo blocco ---
+nav.empty = Vuoto
+nav.empty_slot = Slot vuoto
+nav.no_item_selected = Nessun oggetto selezionato
+nav.no_items = Nessun oggetto
+nav.no_skill = Nessuna abilità
+nav.no_skills = Nessuna abilità
+nav.no_choices = Nessuna scelta disponibile
+nav.nothing_selected = Niente selezionato
+nav.unknown = Sconosciuto
+nav.end_of_list = Fine della lista
+nav.start_of_list = Inizio della lista
+nav.name_with_desc = {0}: {1}
+nav.price_gold = {0} oro
+nav.items.one = {0} oggetto
+nav.items.other = {0} oggetti
+nav.slots_free.one = {0} slot libero
+nav.slots_free.other = {0} slot liberi
+nav.skills_count.one = {0} abilità
+nav.skills_count.other = {0} abilità
+
+# --- Lettura dettagli (DetailReader.cs, "nessun dettaglio" condiviso anche altrove) ---
+nav.detail.none = Nessun dettaglio
+nav.detail.last_line = Ultima riga. {0}
+nav.detail.first_line = Prima riga. {0}
+
+# --- Plancia / Riserva (BoardStashNavigator.cs) ---
+nav.stash.not_available = Non disponibile
+nav.stash.cannot_open_now = Impossibile aprire la riserva ora
+nav.stash.toggle_error = Impossibile attivare/disattivare la riserva
+nav.stash.info_unavailable = Informazioni sulla riserva non disponibili
+nav.stash.capacity = Riserva: {0} di {1} capacità usata
+nav.stash.read_error = Impossibile leggere le informazioni sulla riserva
+nav.stash.closed_hint = La riserva è chiusa. Premi Spazio per aprirla.
+nav.stash.empty = La riserva è vuota
+nav.board.info_unavailable = Informazioni sulla plancia non disponibili
+nav.board.capacity = Plancia: {0} di {1} capacità usata
+nav.board.read_error = Impossibile leggere le informazioni sulla plancia
+nav.board.empty = La tua plancia è vuota
+nav.board.your_board.one = La tua plancia, {0} oggetto
+nav.board.your_board.other = La tua plancia, {0} oggetti
+nav.board.empty_showing_stash = Plancia vuota, mostro la riserva
+nav.board.no_items = Nessun oggetto sulla plancia
+
+# --- Navigazione nemico (EnemyNavigator.cs) ---
+nav.enemy.none = Nessun nemico
+nav.enemy.label = Nemico
+nav.enemy.opponent_named = Avversario: {0}
+nav.enemy.of_max = di {0}
+nav.enemy.read_error = Impossibile leggere le informazioni sul nemico
+nav.enemy.replay_in_progress = Replay in corso. Premi E per il Riepilogo per vedere la plancia dell'avversario senza interruzioni.
+nav.enemy.no_items = Nessun oggetto dell'avversario
+nav.enemy.default_name = Avversario
+nav.enemy.cannot_access_board = Impossibile accedere alla plancia dell'avversario
+nav.enemy.items_label = Oggetti
+nav.enemy.skills_label = Abilità
+nav.enemy.items_with_count = Oggetti, {0}
+nav.enemy.stats_label = Statistiche nemico
+nav.enemy.no_data = Nessun dato sul nemico
+# Modello possessivo: l'intera frase è la chiave così un traduttore può riscriverla
+# interamente (il genitivo sassone inglese "'s" non ha equivalente diretto in italiano).
+nav.enemy.board.one = Plancia di {0}, {1} oggetto
+nav.enemy.board.other = Plancia di {0}, {1} oggetti
+
+# --- Annunci di stato / sezione (GameplayAnnouncer.cs) ---
+nav.state.shop = Negozio
+nav.state.encounters = Incontri
+nav.state.loot = Bottino
+nav.state.levelup = Sali al livello {0}!
+nav.state.levelup_choose.one = Sali al livello {0}! Scegli un'abilità, {1} disponibile
+nav.state.levelup_choose.other = Sali al livello {0}! Scegli un'abilità, {1} disponibili
+nav.state.enchant_altar = Altare d'incantesimo, {0}
+nav.state.random_enchant = casuale
+nav.state.upgrade_altar = Altare di potenziamento
+nav.state.altar = Altare
+nav.state.combat = Combattimento
+nav.state.pvp = PvP
+nav.state.victory = Vittoria
+nav.state.defeat = Sconfitta
+nav.section.board = Plancia
+nav.section.stash = Riserva
+nav.section.skills = Abilità
+nav.section.free_prefix = {0} disponibile
+nav.section.count.one = {0}, {1} oggetto
+nav.section.count.other = {0}, {1} oggetti
+nav.action.exit = Esci
+nav.action.exit_detail = Esci. Abbandona lo stato attuale e continua.
+nav.action.exit_description = Abbandona lo stato attuale e continua
+nav.action.reroll_cost = Aggiorna, {0} oro
+nav.action.reroll_detail = Aggiorna. Ottieni nuovi oggetti per {0} oro. Hai {1} oro.
+nav.action.reroll_line = Aggiorna: {0} oro
+nav.action.cannot_exit = Impossibile uscire ora
+nav.action.exiting = Uscita in corso
+nav.action.exit_failed = Uscita fallita
+nav.action.cannot_reroll = Impossibile aggiornare ora
+nav.action.not_enough_gold = Oro insufficiente. Servono {0}, hai {1}
+nav.action.rerolled = Aggiornato per {0} oro
+nav.action.reroll_failed = Aggiornamento fallito
+nav.action.exit_hint = E per uscire
+nav.action.reroll_hint = R per aggiornare ({0} oro)
+nav.action.none_available = Nessuna azione disponibile
+nav.wins.one = {0} vittoria
+nav.wins.other = {0} vittorie
+nav.item.no_size_info = Nessuna informazione sulla dimensione
+nav.item.size_info = {0}: Dimensione {1} ({2})
+
+# --- Navigazione eroe (HeroNavigator.cs) ---
+nav.hero.no_skills_equipped = Nessuna abilità equipaggiata
+nav.hero.stats_count.one = Statistiche eroe, {0} statistica
+nav.hero.stats_count.other = Statistiche eroe, {0} statistiche
+nav.hero.skills_intro.one = Abilità dell'eroe, {0} abilità. {1}
+nav.hero.skills_intro.other = Abilità dell'eroe, {0} abilità. {1}
+nav.hero.no_data = Nessun dato sull'eroe
+nav.hero.stat_value = {0}: {1}
+nav.hero.stat_none = {0}: nessuno
+
+# --- Navigazione riepilogo (RecapNavigator.cs) ---
+nav.recap.your_hero_stats = Il tuo eroe. Statistiche: {0}
+nav.recap.your_hero_skills_suffix = , Abilità: {0}. Freccia destra per le abilità.
+nav.recap.stats_label = Statistiche
+nav.recap.stats_with_count = Statistiche, {0}
+nav.recap.skills_with_count = Abilità, {0}
+
+# --- Descrizioni selezione / negozio (SelectionNavigator.cs) ---
+nav.type.options = opzioni
+nav.type.rewards = ricompense
+nav.type.encounters = incontri
+nav.type.skills = abilità
+nav.type.items = oggetti
+nav.selection.quest_prefix = Missione: {0}
+nav.selection.quest_progress = {0}: {1}
+nav.selection.package_prefix = Pacco di consegna: {0}
+
+# Chiavi del blocco 4 - Livello azioni di gioco (ActionHelper, ActionMenuHandler, GameplayScreen,
+# PedestalManager, TierHelper, ShopItemMenuHandler, CombatInputHandler, ReplayInputHandler,
+# ItemInspectNavigator, CombatEncounterPreview/*)
+# Tutte le chiavi usano il prefisso action.
+
+# --- Compra / vendi / sposta (ActionHelper.cs) ---
+action.cannot.buy.now = Impossibile comprare ora
+action.acquired = Acquisito {0}
+action.bought = Comprato {0} per {1} oro
+action.purchase.failed = Acquisto fallito
+action.cannot.sell.now = Impossibile vendere ora
+action.sold = Venduto {0} per {1} oro
+action.sale.failed = Vendita fallita
+action.cannot.move.now = Impossibile spostare ora
+action.cannot.move.items.now = Impossibile spostare oggetti ora
+action.player.data.unavailable = Dati del giocatore non disponibili
+action.cannot.access.destination = Impossibile accedere alla destinazione
+action.no.space.stash = Nessuno spazio nella riserva
+action.no.space.board = Nessuno spazio nella plancia
+action.moved.to.stash = {0} spostato nella riserva
+action.moved.to.board = {0} spostato nella plancia
+action.move.failed = Spostamento fallito
+action.cannot.select.now = Impossibile selezionare ora
+action.selected = Selezionato {0}
+action.selection.failed = Selezione fallita
+action.edge.left = Al bordo sinistro
+action.edge.right = Al bordo destro
+action.stash.at.start = All'inizio
+action.stash.at.end = Alla fine
+
+# --- Menu azioni sovrapposto (ActionMenuHandler.cs) ---
+action.menu.no.actions = Nessuna azione disponibile
+action.menu.count.one = {0}. {1}. {2} azione. Backspace per annullare.
+action.menu.count.other = {0}. {1}. {2} azioni. Backspace per annullare.
+action.exited = Uscito
+action.cancelled = Azione annullata
+action.cannot.sell = Impossibile vendere
+action.cannot.upgrade.enchant.here = Impossibile potenziare o incantare qui
+action.cannot.move = Impossibile spostare
+action.cannot.reorder = Impossibile riordinare
+action.details = Dettagli
+action.sell = Vendi per {0} oro (S)
+action.upgrade.stats = Potenzia statistiche {0} (U)
+action.upgrade.to = Potenzia a {0} (U)
+action.enchant.with = Incanta con {0} (U)
+action.use.pedestal = Usa altare (U)
+action.move.to.stash = Sposta nella riserva (M)
+action.move.to.board = Sposta nella plancia (M)
+action.option.position = {0}, {1} di {2}
+action.moved.stash.short = Spostato nella riserva
+action.moved.board.short = Spostato nella plancia
+action.reorder.left.edge.before = Bordo sinistro, prima di {0}
+action.reorder.left.edge = Bordo sinistro
+action.reorder.right.edge.after = Bordo destro, dopo {0}
+action.reorder.right.edge = Bordo destro
+action.reorder.between = Tra {0} e {1}
+action.reorder.after = Dopo {0}
+action.reorder.before = Prima di {0}
+action.reorder.position = Posizione {0}
+action.cannot.move.this = Impossibile spostare questo
+action.cannot.determine.position = Impossibile determinare la posizione
+action.already.at.left.edge = Già al bordo sinistro
+action.already.at.right.edge = Già al bordo destro
+action.moving.to.left.edge = Spostamento al bordo sinistro
+action.moving.to.right.edge = Spostamento al bordo destro
+
+# --- Router input schermata di gioco (GameplayScreen.cs) ---
+action.select.item.upgrade = Seleziona un oggetto sulla plancia o nella riserva per potenziarlo
+action.no.item.selected = Nessun oggetto selezionato
+action.not.at.pedestal = Non sei a un altare
+action.no.property.info = Nessuna informazione sulle proprietà disponibile
+action.properties.list = Proprietà di {0}: {1}
+action.help.text = Sinistra/Destra: Naviga tra gli oggetti. Su/Giù: Leggi i dettagli. Tab: Cambia sezione. Spazio: Attiva/disattiva la riserva. G: Vai alla riserva. B: Plancia. V: Eroe. C: Scelte. F: Nemico. X: Ispeziona. I: Proprietà. W: Vittorie. Invio: Seleziona, o apri un menu sugli oggetti del negozio e della plancia. E: Esci. R: Aggiorna. Nel menu azioni: S vendi, U potenzia, M sposta, Frecce riordina. Ctrl+Frecce: Lettura dettagliata. Punto/Virgola: Messaggi.
+action.exited.enemy.view = Uscito dalla vista nemico
+action.nothing.selected = Niente selezionato
+action.nothing.to.inspect = Niente da ispezionare
+action.cannot.select.this = Impossibile selezionare questo
+action.not.an.item = Non è un oggetto
+action.not.a.skill = Non è un'abilità
+action.select.item.first = Seleziona prima un oggetto sulla plancia o nella riserva
+action.cannot.move.right.now = Impossibile spostare in questo momento
+action.select.stash.item.first = Seleziona prima un oggetto nella tua riserva
+action.select.board.item.first = Seleziona prima un oggetto sulla tua plancia
+action.cannot.reorder.this = Impossibile riordinare questo
+action.cannot.reorder.right.now = Impossibile riordinare in questo momento
+action.combat.short = Combattimento
+action.stash.closed = Riserva chiusa
+action.stash.opened.empty = Riserva aperta, vuota. Premi Spazio per chiudere.
+action.combat.ended = Combattimento terminato. Invio per continuare.
+action.continuing = Continuazione in corso
+action.replaying.combat = Replay del combattimento
+action.recap.entered = Riepilogo. V eroe, F nemico, G plancia nemica, B la tua plancia.
+action.recap.exited = Uscito dal riepilogo. Invio per continuare, R per il replay, E per tornare al riepilogo.
+action.done = Fatto
+
+# --- Azioni altare (PedestalManager.cs) ---
+action.only.upgrade.pedestal = Puoi potenziare solo a un altare
+action.cannot.upgrade.now = Impossibile potenziare ora
+action.cannot.upgrade.item = Impossibile potenziare questo oggetto
+action.item.max.tier = L'oggetto è già al grado massimo
+action.upgrading.from.to = Potenziamento di {0} da {1} a {2}
+action.upgrading.stats = Potenziamento statistiche di {0}
+action.upgrade.failed = Potenziamento fallito
+action.upgrade.description = Potenzia {0} da {1} a {2}
+action.enchant.description = Incanta {0} con {1}
+action.enchant.random.description = Incanta {0} con un incantesimo casuale
+action.use.at.pedestal = Usa {0} all'altare
+action.cannot.use.pedestal.now = Impossibile usare l'altare ora
+action.cannot.use.item.pedestal = Impossibile usare questo oggetto all'altare
+action.using.at.pedestal = Uso di {0} all'altare
+action.pedestal.failed = Azione all'altare fallita
+action.cannot.enchant.now = Impossibile incantare ora
+action.cannot.enchant.item = Impossibile incantare questo oggetto
+action.item.already.enchanted = L'oggetto è già incantato
+action.enchanting.random = Incantesimo casuale su {0} in corso
+action.enchanting.with = Incantesimo di {1} su {0} in corso
+action.enchantment.failed = Incantesimo fallito
+
+# --- Progressione di grado (TierHelper.cs) ---
+action.tier.max = massimo
+
+# --- Menu oggetto negozio (ShopItemMenuHandler.cs) ---
+action.buy.for.gold = Compra per {0} oro
+action.buy.plain = Compra
+action.cancel = Annulla
+
+# --- Navigazione in combattimento (CombatInputHandler.cs) ---
+action.exited.board.view = Uscito dalla vista plancia
+action.exited.enemy.board.view = Uscito dalla vista plancia nemica
+action.exited.enemy.stats.view = Uscito dalla vista statistiche nemico
+action.exited.hero.stats.view = Uscito dalla vista statistiche eroe
+
+# --- Navigazione replay/riepilogo (ReplayInputHandler.cs) ---
+action.replay.press.e.first = Premi prima E per il Riepilogo, poi G per la plancia dell'avversario.
+action.replay.post.combat.help = Dopo il combattimento. Invio per continuare, R per il replay, E per il riepilogo.
+
+# --- Pannello ispezione oggetto (ItemInspectNavigator.cs) ---
+action.exited.item.inspect = Uscito dall'ispezione oggetto
+action.item.inspect.entered = Ispezione oggetto
+action.start.of.list = Inizio della lista
+action.end.of.list = Fine della lista
+action.no.item = Nessun oggetto
+action.reset = Ripristina
+action.exit = Esci
+action.legend.prefix = Legenda. {0}
+action.no.details = Nessun dettaglio
+action.label.tier = Grado
+action.label.enchantment = Incantesimo
+action.combo.box = Casella combinata {0}: {1}. Usa Home, Fine, o le frecce su e giù per cambiare.
+
+# --- Anteprima incontro di combattimento (CombatEncounterPreviewFactory.cs, CombatEncounterPreviewNavigator.cs) ---
+action.default.enemy.name = Nemico
+action.loadout = Equipaggiamento di {0}
+action.exited.preview = Uscito dall'anteprima
+action.no.skills = Nessuna abilità
+action.no.skill = Nessuna abilità
+action.no.items = Nessun oggetto
+action.health = Salute: {0}
+action.stats.health = Statistiche. Salute: {0}
+action.skills.zero = Abilità (0)
+action.skills.count = Abilità ({0}). {1}
+action.board.no.items = Plancia. Nessun oggetto
+action.board.current = Plancia. {0}
+action.skill.with.description = {0}: {1}
+
+# Blocco 5 - Schermate: MainMenuScreen, ChestSceneScreen, CollectionScreen,
+# HeroSelectScreen, BattlePassScreen.
+# Formato: chiave = testo. {0}, {1}... sono segnaposto. Le chiavi .one/.other
+# sono scelte in base alla quantità (vedi Loc.Plural).
+
+# --- MainMenuScreen ---
+screen.mainmenu.name = Menu principale
+
+# --- ChestSceneScreen ---
+screen.chestscene.name = Forzieri
+screen.chestscene.back = Indietro
+screen.chestscene.season_fallback = Forziere Stagione {0}
+screen.chestscene.no_chests = Nessun forziere disponibile
+screen.chestscene.chest_summary = {0}: {1}
+screen.chestscene.open_n = Apri {0}
+screen.chestscene.open_multi = Apri {0} insieme
+screen.chestscene.not_enough_multi = Forzieri insufficienti per l'apertura multipla
+screen.chestscene.opening_multi = Apertura di {0} forzieri {1}
+screen.chestscene.error_opening_multi = Errore nell'apertura dei forzieri
+screen.chestscene.opening_single = Apertura di {0}
+screen.chestscene.open_failed = Apertura del forziere fallita
+screen.chestscene.open_error = Errore nell'apertura del forziere
+
+# --- CollectionScreen ---
+screen.collection.name = Collezione
+screen.collection.category.heroskins = Skin eroe
+screen.collection.category.boards = Plance
+screen.collection.category.cardskins = Skin carte
+screen.collection.category.carpets = Tappeti
+screen.collection.category.cardbacks = Retro carte
+screen.collection.category.albums = Album
+screen.collection.item_unknown = Sconosciuto
+screen.collection.equipped = equipaggiato
+screen.collection.category_summary.one = {0}, {1} oggetto
+screen.collection.category_summary.other = {0}, {1} oggetti
+screen.collection.no_items = Nessun oggetto
+screen.collection.no_items_category = Nessun oggetto in questa categoria
+screen.collection.no_item_select = Nessun oggetto da selezionare
+screen.collection.already_equipped = {0} è già equipaggiato
+screen.collection.equipping = Equipaggiamento di {0} in corso
+screen.collection.equipped_done = {0} equipaggiato
+screen.collection.equip_failed = Equipaggiamento dell'oggetto fallito
+
+# --- HeroSelectScreen ---
+screen.heroselect.name = Selezione eroe
+screen.heroselect.random = Eroe casuale: {0}
+screen.state.on = attivo
+screen.state.off = disattivato
+screen.heroselect.casual_selected_announce = Casual selezionato
+screen.heroselect.ranked_selected_announce_rank = Classificata selezionata. Rango: {0}
+screen.heroselect.ranked_selected_announce = Classificata selezionata
+screen.heroselect.casual_selected = Casual, selezionato
+screen.heroselect.casual = Casual
+screen.heroselect.ranked_selected_rank = Classificata, selezionata. Rango: {0}
+screen.heroselect.ranked_selected = Classificata, selezionata
+screen.heroselect.ranked = Classificata
+screen.heroselect.resume = Riprendi
+screen.heroselect.ready = Pronto
+screen.heroselect.back = Indietro
+screen.heroselect.unknown_hero = Eroe sconosciuto
+screen.heroselect.hero_selected_tag = selezionato
+screen.heroselect.hero_locked_tag = bloccato
+screen.heroselect.hero_is_locked = {0} è bloccato
+screen.heroselect.hero_selected = {0} selezionato
+screen.heroselect.random_enabled = Modalità eroe casuale attivata
+screen.heroselect.current_hero = Eroe attuale: {0}
+
+# --- BattlePassScreen ---
+screen.battlepass.name = Pass stagionale
+screen.battlepass.back = Indietro
+screen.battlepass.challenges = Sfide
+screen.battlepass.tiers = Gradi e ricompense
+screen.battlepass.collect_all = Riscuoti tutte le ricompense
+screen.battlepass.open_chests = Apri forzieri
+screen.battlepass.nav_hint = Usa su e giù per navigare. Backspace per tornare indietro.
+screen.battlepass.daily.one = {0} sfida giornaliera
+screen.battlepass.daily.other = {0} sfide giornaliere
+screen.battlepass.weekly.one = {0} sfida settimanale
+screen.battlepass.weekly.other = {0} sfide settimanali
+screen.battlepass.weekly_label = Settimanale
+screen.battlepass.daily_label = Giornaliera
+screen.battlepass.no_challenges_weekly = Nessuna sfida settimanale
+screen.battlepass.no_challenges_daily = Nessuna sfida giornaliera
+screen.battlepass.challenge_fallback_title = Sfida
+screen.battlepass.progress = {0} di {1}
+screen.battlepass.status_claimed = Riscossa
+screen.battlepass.status_ready = Pronta da riscuotere
+screen.battlepass.status_inprogress = In corso
+screen.battlepass.xp_reward = {0} XP
+screen.battlepass.challenge_summary = {0}. {1}. {2}. Progresso: {3}. {4}. {5}.
+screen.battlepass.challenge_header = {0} {1} di {2}
+screen.battlepass.progress_label_simple = Progresso: {0}
+screen.battlepass.claimed = Riscossa! Hai ricevuto {0}
+screen.battlepass.daily_challenges_header = Sfide giornaliere
+screen.battlepass.first_challenge = Prima sfida
+screen.battlepass.weekly_challenges_header = Sfide settimanali
+screen.battlepass.last_challenge = Ultima sfida
+screen.battlepass.tiers_not_loaded = Gradi non ancora caricati. Attendi.
+screen.battlepass.tiers_total = Gradi. {0} in totale.
+screen.battlepass.tiers_unavailable = Gradi non disponibili
+screen.battlepass.no_tiers = Nessun grado disponibile
+screen.battlepass.tier_fallback = Grado {0}
+screen.battlepass.tier_header = Grado {0} di {1}
+screen.battlepass.tier_status_locked = bloccato
+screen.battlepass.tier_status_inprogress = in corso
+screen.battlepass.tier_status_ready = pronto da riscuotere
+screen.battlepass.tier_status_claimed = riscosso
+screen.battlepass.tier_status_unknown = sconosciuto
+screen.battlepass.tier_xp_progress = {0} di {1} XP
+screen.battlepass.tier_xp_required = {0} XP richiesti
+screen.battlepass.chest_count.one = {0} forziere
+screen.battlepass.chest_count.other = {0} forzieri
+screen.battlepass.currency_amount = {0} {1}
+screen.battlepass.collection_item_count.one = {0} oggetto da collezione
+screen.battlepass.collection_item_count.other = {0} oggetti da collezione
+screen.battlepass.rewards_prefix = Ricompense: {0}
+screen.battlepass.first_tier = Primo grado
+screen.battlepass.last_tier = Ultimo grado
+screen.battlepass.collecting_all = Riscossione di tutte le ricompense in corso
+screen.battlepass.no_rewards = Nessuna ricompensa da riscuotere
+screen.battlepass.opening_chests = Apertura dei forzieri in corso
+screen.battlepass.chests_open_failed = Impossibile aprire i forzieri
+
+# Blocco 6 - UI/ (finestre di dialogo, login, opzioni, tutorial, ricompense forzieri)
+# Formato: chiave = testo. {0}, {1}... sono segnaposto. .one/.other sono scelte in base
+# alla quantità (vedi Loc.Plural).
+
+# --- Frasi condivise / comuni (riutilizzate in più file di questo blocco) ---
+ui.continue = Continua
+ui.continue_prompt = Premi Invio per continuare.
+ui.on = attivo
+ui.off = disattivato
+ui.previous = Precedente
+ui.next = Successivo
+ui.button_disabled = Pulsante disabilitato
+ui.disabled_suffix = (disabilitato)
+ui.field_default_label = Campo
+
+# --- Ricompense forziere (ChestRewardsUI.cs) ---
+ui.chest.rarity.common = Comune
+ui.chest.rarity.uncommon = Non comune
+ui.chest.rarity.rare = Raro
+ui.chest.rarity.epic = Epico
+ui.chest.rarity.legendary = Leggendario
+ui.chest.rarity.unknown = Sconosciuto
+ui.chest.collection_type.hero_skin = Skin eroe
+ui.chest.collection_type.board = Plancia
+ui.chest.collection_type.card_skin = Skin carta
+ui.chest.collection_type.carpet = Tappeto
+ui.chest.collection_type.card_back = Retro carta
+ui.chest.collection_type.stash = Riserva
+ui.chest.collection_type.bank = Banca
+ui.chest.collection_type.toy = Giocattolo
+ui.chest.collection_type.album = Album
+ui.chest.loading = Caricamento ricompense...
+ui.chest.no_rewards = Nessuna ricompensa.
+ui.chest.you_received = Hai ricevuto
+ui.chest.received_count.one = Hai ricevuto {0} ricompensa
+ui.chest.received_count.other = Hai ricevuto {0} ricompense
+ui.chest.rarity_count = {0} {1}
+ui.chest.gems.one = {0} gemma
+ui.chest.gems.other = {0} gemme
+ui.chest.gems_total.one = {0} gemma in totale
+ui.chest.gems_total.other = {0} gemme in totale
+ui.chest.bonus_gems.one = {0} gemma bonus
+ui.chest.bonus_gems.other = {0} gemme bonus
+ui.chest.vouchers.one = {0} voucher classificato
+ui.chest.vouchers.other = {0} voucher classificati
+ui.chest.bonus_chests.one = {0} forziere bonus
+ui.chest.bonus_chests.other = {0} forzieri bonus
+ui.chest.browse_instructions = Usa le frecce per sfogliare, Invio per continuare
+ui.chest.reward_typed = {0} {1}: {2}
+ui.chest.reward_named = {0}: {1}
+ui.chest.reward_item = {0} oggetto
+ui.chest.duplicate = {0} (duplicato)
+ui.chest.empty_reward = Ricompensa vuota
+
+# --- Popup nuovo oggetto collezione (CollectionItemUI.cs) ---
+ui.collection.new_item = Nuovo oggetto: {0}.
+ui.collection.new_item_with_edition = Nuovo oggetto: {0}, {1}.
+ui.collection.default_name = Oggetto da collezione
+
+# --- Finestra opzioni (OptionsUI.cs) ---
+ui.options.title = Opzioni
+ui.keybind.default_name = Tasto
+ui.keybind.toggle_stash = Attiva/disattiva riserva
+ui.keybind.access_settings = Accedi alle impostazioni
+ui.keybind.access_locked_tooltip = Accedi al tooltip bloccato
+ui.keybind.playlist = Playlist
+ui.keybind.atlas = Atlante
+
+# --- Menu di pausa (FightMenuUI.cs) ---
+ui.fightmenu.title = Menu di pausa
+
+# --- Popup generico (GenericPopupUI.cs) ---
+ui.popup.read_message = Leggi messaggio
+
+# --- Finestra di conferma (ConfirmationDialogUI.cs) ---
+ui.confirm.no_button = Nessun pulsante selezionato
+ui.confirm.help = Sinistra/Destra: Naviga tra i pulsanti. Invio: Seleziona. Esc: Annulla.
+ui.confirm.no_buttons = Nessun pulsante trovato
+
+# --- Finestra tutorial, popup FTUE con Precedente/Successivo (TutorialDialogUI.cs) ---
+ui.tutorial.help_nav = Invio o Destra: Successivo. Sinistra: Precedente. Esc: Ripeti messaggio.
+ui.tutorial.help_basic = Invio: Continua. Esc: Ripeti messaggio.
+ui.tutorial.continue_or_next = Premi Invio o freccia destra per continuare
+ui.tutorial.previous_2of2 = Precedente, 2 di 2
+
+# --- Overlay tutorial che permette di giocare mentre è aperto (TutorialUI.cs) ---
+ui.tutorial2.help_full_nav = Tutorial attivo. Usa le frecce per navigare nel gioco. Premi Invio per continuare il tutorial. Punto o virgola per rileggere.
+ui.tutorial2.help_full_basic = Tutorial attivo. Usa le frecce per navigare nel gioco. Premi Invio per continuare il tutorial. Punto o virgola per rileggere i messaggi.
+ui.tutorial2.help_short_nav = Tutorial. Frecce: Precedente/Successivo. Invio: Continua. Punto/Virgola: Rileggi.
+ui.tutorial2.help_short_basic = Tutorial. Invio: Continua. Punto/Virgola: Rileggi i messaggi.
+ui.tutorial2.buffer_prefix = Tutorial: {0}
+ui.tutorial2.nav_hint = Usa le frecce per selezionare Precedente o Successivo, poi Invio.
+
+# --- Flusso di accesso / account (UI/Login/*.cs) ---
+ui.login.access_denied_title = Accesso negato
+ui.login.account_verified_title = Account verificato
+ui.login.create_account_email_title = Crea account - Email
+ui.login.create_account_terms_title = Crea account - Termini
+ui.login.create_account_userpass_title = Crea account - Nome utente e password
+ui.login.password_reset_sent_title = Reimpostazione password inviata
+ui.login.reset_password = Reimposta password
+ui.login.welcome_title = Benvenuto
+ui.login.login_title = Accesso
+ui.login.registration_failed_title = Registrazione fallita
+ui.login.reset_email_title = Reimposta email
+
+ui.login.email_label = Email
+ui.login.confirm_email_label = Conferma email
+ui.login.new_email_label = Nuova email
+ui.login.confirm_new_email_label = Conferma nuova email
+ui.login.password_label = Password
+ui.login.confirm_password_label = Conferma password
+ui.login.username_label = Nome utente
+
+ui.login.resend_email_button = Reinvia email
+ui.login.try_again_button = Riprova
+ui.login.send_reset_link_button = Invia link di reimpostazione
+ui.login.link_account_button = Collega account
+ui.login.create_account_button = Crea account
+
+ui.login.tos_label = Termini di servizio
+ui.login.eula_label = Contratto di licenza con l'utente finale
+ui.login.marketing_emails_label = Email di marketing
+ui.login.accepted = accettato
+ui.login.not_accepted = non accettato
+
+ui.login.available = disponibile
+ui.login.not_available = non disponibile
+ui.login.matches = corrisponde
+ui.login.empty_or_mismatch = vuoto o non corrispondente
+ui.login.valid = valido
+ui.login.pwd_too_short = troppo corta
+ui.login.pwd_needs_letter = serve una lettera
+ui.login.pwd_needs_number = serve un numero
+ui.login.issue_username = nome utente
+ui.login.issue_pwd_length = lunghezza password
+ui.login.issue_pwd_letters = lettere della password
+ui.login.issue_pwd_numbers = numeri della password
+ui.login.issue_confirm_password = conferma password
+ui.login.requirements_met = Tutti i requisiti soddisfatti. Pronto per continuare.
+ui.login.requirements_summary = Requisiti: {0} di {1}. Mancanti: {2}
+
+# Blocco 7 - Patches/ + Accessibility/ + Core/MessageBuffer.cs
+# Una chiave per riga: chiave = testo inglese tradotto. {0}, {1}... sono segnaposto (vedi Loc.T).
+# I suffissi .one/.other sono scelti da Loc.Plural() in base alla quantità.
+
+# --- CombatEventHandler.cs ---
+patch.combat.enraged_you = Sei infuriato
+patch.combat.enraged_other = {0} è infuriato
+patch.combat.enrage_ends_you = La tua furia finisce
+patch.combat.enrage_ends_other = La furia di {0} finisce
+patch.combat.victory_wins.one = Vittoria! {0} vittoria
+patch.combat.victory_wins.other = Vittoria! {0} vittorie
+patch.combat.victory = Vittoria!
+patch.combat.defeat_prestige = Sconfitta! {0} prestigio rimanente
+patch.combat.defeat = Sconfitta!
+patch.combat.enemy_fallback = Nemico
+
+# --- EndOfRunPatch.cs (etichette che la mod aggiunge attorno al testo di gioco già localizzato) ---
+patch.endofrun.achievement_named = Obiettivo {0}: {1}
+patch.endofrun.achievement_desc = Obiettivo: {0}
+patch.endofrun.no_info = Nessuna informazione disponibile. Premi Invio per continuare.
+patch.endofrun.end_of_info = Fine delle informazioni. Premi Invio per continuare.
+patch.endofrun.start_line = Inizio. {0}
+patch.endofrun.continue_clicked = Continua
+patch.endofrun.please_wait = Attendi
+patch.endofrun.screen_changed = Schermata cambiata. Premi Invio per continuare o le frecce per leggere.
+patch.endofrun.intro_with_line = Fine della partita. {0}. Usa le frecce per leggere altro, Invio per continuare.
+patch.endofrun.intro_empty = Fine della partita. Premi Invio per continuare.
+patch.endofrun.help = Frecce su/giù: Leggi le informazioni riga per riga. Invio: Continua alla schermata successiva.
+
+# --- ErrorEventHandler.cs ---
+patch.error.no_space = Nessuno spazio per {0}
+patch.error.cant_afford = Oro insufficiente per {0}
+patch.error.unsellable = {0} non può essere venduto
+
+# --- HeroChangedPatch.cs ---
+patch.hero.unknown = Sconosciuto
+
+# --- MenuPatches.cs ---
+patch.menu.tier_unlocked = Grado {0} sbloccato
+patch.menu.marketplace = Mercato
+patch.menu.player_profile = Profilo giocatore
+
+# --- StateChangePatch.cs (nomi di stato assenti nel testo del gioco, e giorno/ora aggiunti dalla mod) ---
+patch.state.shop = Negozio
+patch.state.encounters = Incontri
+patch.state.combat = Combattimento
+patch.state.pvp_combat = Combattimento PvP
+patch.state.loot = Bottino
+patch.state.level_up = Salita di livello
+patch.state.victory = Vittoria
+patch.state.defeat = Sconfitta
+patch.state.starting_run = Avvio partita
+patch.state.game_ending = Fine partita in corso
+patch.state.pedestal_enchant = Altare d'incantesimo
+patch.state.pedestal_upgrade = Altare di potenziamento
+patch.state.pedestal_generic = Altare
+patch.state.day = Giorno {0}
+patch.state.hour = Ora {0}
+
+# --- Accessibility/AccessibleMenu.cs (GetHelp) ---
+patch.menu.help_base = Usa su e giù per navigare. Invio per selezionare.
+patch.menu.help_back_suffix = Esc per tornare indietro.
+
+# --- Accessibility/TextFieldOption.cs ---
+patch.textfield.unavailable = {0}: non disponibile
+patch.textfield.empty = {0}: vuoto
+patch.textfield.chars_entered.one = {0}: {1} carattere inserito
+patch.textfield.chars_entered.other = {0}: {1} caratteri inseriti
+patch.textfield.value = {0}: {1}
+patch.textfield.editing = in modifica
+patch.textfield.done = fatto
+
+# --- Core/MessageBuffer.cs ---
+patch.messagebuffer.no_messages = Nessun messaggio
+patch.messagebuffer.first_message = Primo messaggio
+patch.messagebuffer.last_message = Ultimo messaggio
+patch.messagebuffer.no_message = Nessun messaggio
+
+
+# Parole che il gioco NON traduce (dimensioni oggetti, statistiche eroe): stanno qui.
+# BazaarAccess - Localizzazione blocco 8 (passata di completamento vocabolario di gioco)
+#
+# Tutte le chiavi qui sono NUOVE aggiunte da questa passata. Non ancora unite in en-US.txt -
+# il maintainer le integra a mano.
+#
+# Nota per il traduttore: vocab.hero.shield / vocab.hero.poison / vocab.hero.burn /
+# vocab.hero.critchance sono etichette di statistiche eroe. Usa la STESSA parola che il
+# gioco stesso usa per shield / poison / burn / probabilità di critico nella tua lingua,
+# così la mod non dice due parole diverse per la stessa cosa (la parola del gioco è usata
+# ovunque altrove tramite GameVocabulary; queste quattro esistono solo perché le
+# statistiche eroe usano un enum di gioco diverso senza una voce di vocabolario corrispondente affidabile).
+
+# --- Dimensione carta/oggetto (unificata tra CardProperties, DetailLineBuilder, GameplayAnnouncer) ---
+vocab.size.small = Piccolo
+vocab.size.medium = Medio
+vocab.size.large = Grande
+vocab.size.unknown = Sconosciuto
+
+vocab.card.size_slots = Dimensione: {0} slot ({1})
+vocab.card.temperature_both = {0} e {1}
+
+# --- Etichette statistiche eroe (HeroNavigator.GetStatName) ---
+vocab.hero.health = Salute
+vocab.hero.maxhealth = Salute massima
+vocab.hero.gold = Oro
+vocab.hero.level = Livello
+vocab.hero.experience = Esperienza
+vocab.hero.prestige = Prestigio
+vocab.hero.shield = Scudo
+vocab.hero.poison = Veleno
+vocab.hero.burn = Bruciatura
+vocab.hero.regeneration = Rigenerazione
+vocab.hero.critchance = Probabilità di critico
+vocab.hero.income = Reddito
+
+# --- Frasi rango/rabbia eroe (HeroNavigator.AnnounceSubsection/AnnounceStat) ---
+vocab.hero.rank = Rango: {0}
+vocab.hero.rank_unranked = Rango: non classificato
+vocab.hero.rage_colon = Rabbia: {0} / {1}
+
+# --- Riepilogo statistiche eroe (HeroNavigator.ReadAllStats) ---
+vocab.hero.summary.health = Salute {0} di {1}
+vocab.hero.summary.gold = Oro {0}
+vocab.hero.summary.level = Livello {0}
+vocab.hero.summary.rage = Rabbia {0} / {1}
+vocab.hero.summary.shield = Scudo {0}
+
+# BazaarAccess - Passata finale di localizzazione (nuove chiavi)
+#
+# Queste sono NUOVE aggiunte dalla passata finale di chiusura residui su DetailLineBuilder.cs.
+# Non ancora unite in en-US.txt - il maintainer le integra a mano.
+#
+# Tutte e quattro le chiavi sotto prendono come argomento la parola di vocabolario del gioco
+# per la statistica (Cooldown/Damage/Heal/Shield...); solo il formato attorno ("seconds", "s",
+# la virgola, l'ordine delle parole) è la formulazione della mod.
+
+# --- Gameplay/CardReading/DetailLineBuilder.cs ---
+
+# Riga di dettaglio autonoma: "Cooldown 5.0 seconds" ({0} = etichetta, {1} = valore)
+card.stat.cooldownFull = {0} {1} secondi
+
+# Aggiunta in linea in una frase più lunga: ", Cooldown 5.0s" ({0} = etichetta, {1} = valore)
+card.stat.cooldownShort = , {0} {1}s
+
+# Valore secco + unità, senza etichetta (descrizione compatta del nemico): "5.0s"
+card.stat.secondsBare = {0}s
+
+# Aggiunta in linea per la dimensione oggetto: ", Size 2" ({0} = numero di slot)
+card.stat.sizeInline = , Dimensione {0}
+
+# Statistica compatta "valore etichetta" (es. "180 damage"). L'ordine degli argomenti è
+# INVERTITO rispetto a card.stat.inline ({0} = valore, {1} = etichetta) - tenuta come chiave
+# separata così ogni ordine può essere formulato naturalmente per ciascuna lingua.
+card.stat.compact = {0} {1}

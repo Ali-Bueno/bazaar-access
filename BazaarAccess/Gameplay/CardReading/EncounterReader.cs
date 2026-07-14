@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
+using BazaarAccess.Core;
 using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameShared.Domain.Cards.Encounter.Combat;
 using BazaarGameShared.Domain.Core.Types;
@@ -16,7 +17,7 @@ internal static class EncounterReader
 {
     public static string GetEncounterInfo(Card card)
     {
-        if (card == null) return "Empty";
+        if (card == null) return Loc.T("card.name.empty");
 
         string name = CardProperties.GetCardName(card);
         string type = GetEncounterTypeName(card.Type);
@@ -31,13 +32,13 @@ internal static class EncounterReader
                 string rank = GetPvpOpponentRank(pvpOpponent);
                 if (!string.IsNullOrEmpty(rank))
                 {
-                    return $"{pvpOpponent.Name}, {heroName}, {type}, {rank}";
+                    return Loc.T("card.encounter.pvp.withRank", pvpOpponent.Name, heroName, type, rank);
                 }
-                return $"{pvpOpponent.Name}, {heroName}, {type}, {tier}";
+                return Loc.T("card.encounter.pvp.withTier", pvpOpponent.Name, heroName, type, tier);
             }
         }
 
-        return $"{name}, {type}, {tier}";
+        return Loc.T("card.encounter.info", name, type, tier);
     }
 
     internal static List<string> GetCombatEncounterDetailLines(Card card)
@@ -50,9 +51,9 @@ internal static class EncounterReader
 
         if (TryGetCombatEncounterRewards(card, out uint monsterLevel, out int xpReward, out int goldReward))
         {
-            lines.Add($"Level: {monsterLevel}");
-            lines.Add($"XP: {xpReward}");
-            lines.Add($"Gold: {goldReward}");
+            lines.Add(Loc.T("card.encounter.level", monsterLevel));
+            lines.Add(Loc.T("card.encounter.xp", xpReward));
+            lines.Add(Loc.T("card.encounter.gold", goldReward));
         }
 
         string desc = CardProperties.GetDescription(card);
@@ -68,7 +69,7 @@ internal static class EncounterReader
 
     public static string GetEncounterDetailedInfo(Card card)
     {
-        if (card == null) return "Empty";
+        if (card == null) return Loc.T("card.name.empty");
 
         var sb = new StringBuilder();
 
@@ -89,13 +90,7 @@ internal static class EncounterReader
                     sb.Append(rank);
                 }
 
-                sb.Append(", Level ");
-                sb.Append(pvpOpponent.Level);
-                sb.Append(", ");
-                sb.Append(pvpOpponent.Victories);
-                sb.Append(" wins, ");
-                sb.Append(pvpOpponent.Prestige);
-                sb.Append(" prestige");
+                sb.Append(Loc.T("card.encounter.pvp.stats", pvpOpponent.Level, pvpOpponent.Victories, pvpOpponent.Prestige));
                 return sb.ToString();
             }
         }
@@ -107,13 +102,7 @@ internal static class EncounterReader
 
         if (TryGetCombatEncounterRewards(card, out uint monsterLevel, out int xpReward, out int goldReward))
         {
-            sb.Append(", Level ");
-            sb.Append(monsterLevel);
-            sb.Append(", ");
-            sb.Append(xpReward);
-            sb.Append(" XP, ");
-            sb.Append(goldReward);
-            sb.Append(" gold");
+            sb.Append(Loc.T("card.encounter.rewards", monsterLevel, xpReward, goldReward));
         }
 
         string desc = CardProperties.GetDescription(card);
@@ -144,7 +133,7 @@ internal static class EncounterReader
         if (pvpOpponent == null)
         {
             lines.Add(CardProperties.GetCardName(card));
-            lines.Add("PvP Encounter");
+            lines.Add(Loc.T("card.encounter.pvp.label"));
             return lines;
         }
 
@@ -152,42 +141,42 @@ internal static class EncounterReader
         {
             var type = pvpOpponent.GetType();
 
-            string name = GetPvpProperty<string>(pvpOpponent, type, "Name") ?? "Unknown";
-            lines.Add($"Player: {name}");
+            string name = GetPvpProperty<string>(pvpOpponent, type, "Name") ?? Loc.T("card.name.unknown");
+            lines.Add(Loc.T("card.encounter.pvp.player", name));
 
             string hero = GetPvpOpponentHeroName(pvpOpponent) ?? CardProperties.GetCardName(card);
-            lines.Add($"Hero: {hero}");
+            lines.Add(Loc.T("card.encounter.pvp.hero", hero));
 
             string rankName = GetPvpProperty<object>(pvpOpponent, type, "Rank")?.ToString();
             string division = GetPvpProperty<object>(pvpOpponent, type, "Division")?.ToString();
             if (!string.IsNullOrEmpty(rankName))
             {
                 lines.Add(!string.IsNullOrEmpty(division) && division != "0"
-                    ? $"Rank: {rankName} {division}"
-                    : $"Rank: {rankName}");
+                    ? Loc.T("card.encounter.pvp.rank.division", rankName, division)
+                    : Loc.T("card.encounter.pvp.rank", rankName));
             }
 
             var rating = GetPvpProperty<int?>(pvpOpponent, type, "Rating");
             if (rating.HasValue && rating.Value > 0)
-                lines.Add($"Rating: {rating.Value}");
+                lines.Add(Loc.T("card.encounter.pvp.rating", rating.Value));
 
             var level = GetPvpProperty<int?>(pvpOpponent, type, "Level");
             if (level.HasValue && level.Value > 0)
-                lines.Add($"Level: {level.Value}");
+                lines.Add(Loc.T("card.encounter.level", level.Value));
 
             var victories = GetPvpProperty<int?>(pvpOpponent, type, "Victories");
             if (victories.HasValue)
-                lines.Add($"Wins: {victories.Value}");
+                lines.Add(Loc.T("card.encounter.pvp.wins", victories.Value));
 
             var prestige = GetPvpProperty<int?>(pvpOpponent, type, "Prestige");
             if (prestige.HasValue && prestige.Value > 0)
-                lines.Add($"Prestige: {prestige.Value}");
+                lines.Add(Loc.T("card.encounter.pvp.prestige", prestige.Value));
         }
         catch (Exception ex)
         {
             Plugin.Logger.LogWarning($"GetPvpEncounterDetailLines error: {ex.Message}");
             lines.Add(CardProperties.GetCardName(card));
-            lines.Add("PvP Encounter");
+            lines.Add(Loc.T("card.encounter.pvp.label"));
         }
 
         return lines;
@@ -263,12 +252,12 @@ internal static class EncounterReader
     {
         return type switch
         {
-            ECardType.CombatEncounter => "Combat",
-            ECardType.EventEncounter => "Event",
-            ECardType.PedestalEncounter => "Upgrade",
-            ECardType.EncounterStep => "Path",
-            ECardType.PvpEncounter => "PvP",
-            _ => "Encounter"
+            ECardType.CombatEncounter => Loc.T("card.encounter.type.combat"),
+            ECardType.EventEncounter => Loc.T("card.encounter.type.event"),
+            ECardType.PedestalEncounter => Loc.T("card.encounter.type.upgrade"),
+            ECardType.EncounterStep => Loc.T("card.encounter.type.path"),
+            ECardType.PvpEncounter => Loc.T("card.encounter.type.pvp"),
+            _ => Loc.T("card.encounter.type.default")
         };
     }
 

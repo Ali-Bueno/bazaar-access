@@ -19,7 +19,7 @@ namespace BazaarAccess.Screens;
 /// </summary>
 public class BattlePassScreen : BaseScreen
 {
-    public override string ScreenName => "Season Pass";
+    public override string ScreenName => Loc.T("screen.battlepass.name");
 
     private BattlePassView _view;
 
@@ -51,27 +51,27 @@ public class BattlePassScreen : BaseScreen
     {
         // Back button
         Menu.AddOption(
-            () => "Back",
+            () => Loc.T("screen.battlepass.back"),
             () => HandleBack());
 
         // Challenges submenu
         Menu.AddOption(
-            () => "Challenges",
+            () => Loc.T("screen.battlepass.challenges"),
             () => EnterChallenges());
 
         // Tiers / Rewards submenu
         Menu.AddOption(
-            () => "Tiers and Rewards",
+            () => Loc.T("screen.battlepass.tiers"),
             () => EnterTiers());
 
         // Collect All button
         Menu.AddOption(
-            () => "Collect All Rewards",
+            () => Loc.T("screen.battlepass.collect_all"),
             () => CollectAll());
 
         // Open Chests
         Menu.AddOption(
-            () => "Open Chests",
+            () => Loc.T("screen.battlepass.open_chests"),
             () => OpenChests());
     }
 
@@ -109,7 +109,7 @@ public class BattlePassScreen : BaseScreen
         RefreshChallenges();
 
         string info = GetChallengesOverview();
-        TolkWrapper.Speak($"Challenges. {info}. Use up and down to navigate. Backspace to go back.");
+        TolkWrapper.Speak($"{Loc.T("screen.battlepass.challenges")}. {info}. {Loc.T("screen.battlepass.nav_hint")}");
 
         ReadCurrentChallenge();
     }
@@ -118,7 +118,9 @@ public class BattlePassScreen : BaseScreen
     {
         int daily = _dailyChallenges?.Length ?? 0;
         int weekly = _weeklyChallenges?.Length ?? 0;
-        return $"{daily} daily, {weekly} weekly";
+        string dailyText = Loc.Plural("screen.battlepass.daily", daily, daily);
+        string weeklyText = Loc.Plural("screen.battlepass.weekly", weekly, weekly);
+        return $"{dailyText}, {weeklyText}";
     }
 
     private void ReadCurrentChallenge()
@@ -126,11 +128,13 @@ public class BattlePassScreen : BaseScreen
         RefreshChallenges();
 
         var challenges = _inWeeklyChallenges ? _weeklyChallenges : _dailyChallenges;
-        string type = _inWeeklyChallenges ? "Weekly" : "Daily";
+        string type = _inWeeklyChallenges ? Loc.T("screen.battlepass.weekly_label") : Loc.T("screen.battlepass.daily_label");
 
         if (challenges == null || challenges.Length == 0)
         {
-            TolkWrapper.Speak($"No {type.ToLower()} challenges");
+            TolkWrapper.Speak(_inWeeklyChallenges
+                ? Loc.T("screen.battlepass.no_challenges_weekly")
+                : Loc.T("screen.battlepass.no_challenges_daily"));
             return;
         }
 
@@ -149,7 +153,7 @@ public class BattlePassScreen : BaseScreen
             var data = Data.GetStatic()?.GetChallengeById(challenge.Id);
             if (data != null)
             {
-                string title = data.Localization?.Title?.GetLocalizedText() ?? "Challenge";
+                string title = data.Localization?.Title?.GetLocalizedText() ?? Loc.T("screen.battlepass.challenge_fallback_title");
                 string desc = data.Localization?.Description?.GetLocalizedText() ?? "";
 
                 if (desc.Contains("{completionRequirement}"))
@@ -157,22 +161,24 @@ public class BattlePassScreen : BaseScreen
                     desc = desc.Replace("{completionRequirement}", data.CompletionRequirement.ToString());
                 }
 
-                string progress = $"{challenge.Progress} of {data.CompletionRequirement}";
+                string progress = Loc.T("screen.battlepass.progress", challenge.Progress, data.CompletionRequirement);
                 string status = challenge.Progress >= data.CompletionRequirement
-                    ? (challenge.Acknowledged ? "Claimed" : "Ready to claim")
-                    : "In progress";
+                    ? (challenge.Acknowledged ? Loc.T("screen.battlepass.status_claimed") : Loc.T("screen.battlepass.status_ready"))
+                    : Loc.T("screen.battlepass.status_inprogress");
+                string xp = Loc.T("screen.battlepass.xp_reward", data.XpReward);
 
-                return $"{type} {position} of {total}. {title}. {desc}. Progress: {progress}. {status}. {data.XpReward} XP.";
+                return Loc.T("screen.battlepass.challenge_summary",
+                    Loc.T("screen.battlepass.challenge_header", type, position, total), title, desc, progress, status, xp);
             }
             else
             {
-                return $"{type} {position} of {total}. Progress: {challenge.Progress}";
+                return $"{Loc.T("screen.battlepass.challenge_header", type, position, total)}. {Loc.T("screen.battlepass.progress_label_simple", challenge.Progress)}";
             }
         }
         catch (Exception e)
         {
             Plugin.Logger.LogError($"Error reading challenge: {e.Message}");
-            return $"{type} {position} of {total}";
+            return Loc.T("screen.battlepass.challenge_header", type, position, total);
         }
     }
 
@@ -204,8 +210,8 @@ public class BattlePassScreen : BaseScreen
                     TriggerAcknowledgeChallenge(challenge.Id);
 
                     // Announce what was received
-                    string reward = $"{data.XpReward} XP";
-                    TolkWrapper.Speak($"Claimed! You received {reward}");
+                    string reward = Loc.T("screen.battlepass.xp_reward", data.XpReward);
+                    TolkWrapper.Speak(Loc.T("screen.battlepass.claimed", reward));
 
                     // Refresh data
                     RefreshChallenges();
@@ -280,12 +286,12 @@ public class BattlePassScreen : BaseScreen
         {
             _inWeeklyChallenges = false;
             _currentChallengeIndex = _dailyChallenges.Length - 1;
-            TolkWrapper.Speak("Daily challenges");
+            TolkWrapper.Speak(Loc.T("screen.battlepass.daily_challenges_header"));
             ReadCurrentChallenge();
         }
         else
         {
-            TolkWrapper.Speak("First challenge");
+            TolkWrapper.Speak(Loc.T("screen.battlepass.first_challenge"));
         }
     }
 
@@ -304,12 +310,12 @@ public class BattlePassScreen : BaseScreen
         {
             _inWeeklyChallenges = true;
             _currentChallengeIndex = 0;
-            TolkWrapper.Speak("Weekly challenges");
+            TolkWrapper.Speak(Loc.T("screen.battlepass.weekly_challenges_header"));
             ReadCurrentChallenge();
         }
         else
         {
-            TolkWrapper.Speak("Last challenge");
+            TolkWrapper.Speak(Loc.T("screen.battlepass.last_challenge"));
         }
     }
 
@@ -325,13 +331,13 @@ public class BattlePassScreen : BaseScreen
         var tiersView = BattlePassTiersView.Instance;
         if (tiersView == null || !tiersView.Initialized)
         {
-            TolkWrapper.Speak("Tiers not loaded yet. Please wait.");
+            TolkWrapper.Speak(Loc.T("screen.battlepass.tiers_not_loaded"));
             _currentMode = MenuMode.Main;
             return;
         }
 
         int totalTiers = GetTotalTiers();
-        TolkWrapper.Speak($"Tiers. {totalTiers} total. Use up and down to navigate. Backspace to go back.");
+        TolkWrapper.Speak($"{Loc.T("screen.battlepass.tiers_total", totalTiers)} {Loc.T("screen.battlepass.nav_hint")}");
 
         ReadCurrentTier();
     }
@@ -391,7 +397,7 @@ public class BattlePassScreen : BaseScreen
             var tiersView = BattlePassTiersView.Instance;
             if (tiersView == null)
             {
-                TolkWrapper.Speak("Tiers not available");
+                TolkWrapper.Speak(Loc.T("screen.battlepass.tiers_unavailable"));
                 return;
             }
 
@@ -401,7 +407,7 @@ public class BattlePassScreen : BaseScreen
             var tierDataList = tierDataListField.GetValue(tiersView) as List<BattlePassTierData>;
             if (tierDataList == null || tierDataList.Count == 0)
             {
-                TolkWrapper.Speak("No tiers available");
+                TolkWrapper.Speak(Loc.T("screen.battlepass.no_tiers"));
                 return;
             }
 
@@ -418,7 +424,7 @@ public class BattlePassScreen : BaseScreen
         catch (Exception e)
         {
             Plugin.Logger.LogError($"Error reading tier: {e.Message}");
-            TolkWrapper.Speak($"Tier {_currentTierIndex + 1}");
+            TolkWrapper.Speak(Loc.T("screen.battlepass.tier_fallback", _currentTierIndex + 1));
         }
     }
 
@@ -426,16 +432,16 @@ public class BattlePassScreen : BaseScreen
     {
         var parts = new List<string>();
 
-        parts.Add($"Tier {tierData.tierNumber} of {total}");
+        parts.Add(Loc.T("screen.battlepass.tier_header", tierData.tierNumber, total));
 
         // Status
         string status = tierData.currentState switch
         {
-            BattlePassTierState.NotStarted => "locked",
-            BattlePassTierState.InProgress => "in progress",
-            BattlePassTierState.ReadyToClaim => "ready to claim",
-            BattlePassTierState.Claimed => "claimed",
-            _ => "unknown"
+            BattlePassTierState.NotStarted => Loc.T("screen.battlepass.tier_status_locked"),
+            BattlePassTierState.InProgress => Loc.T("screen.battlepass.tier_status_inprogress"),
+            BattlePassTierState.ReadyToClaim => Loc.T("screen.battlepass.tier_status_ready"),
+            BattlePassTierState.Claimed => Loc.T("screen.battlepass.tier_status_claimed"),
+            _ => Loc.T("screen.battlepass.tier_status_unknown")
         };
         parts.Add(status);
 
@@ -444,11 +450,11 @@ public class BattlePassScreen : BaseScreen
         {
             int currentXP = tierData.userXP - tierData.previousTierXPRequired;
             int neededXP = tierData.tierXPRequired - tierData.previousTierXPRequired;
-            parts.Add($"{currentXP} of {neededXP} XP");
+            parts.Add(Loc.T("screen.battlepass.tier_xp_progress", currentXP, neededXP));
         }
         else
         {
-            parts.Add($"{tierData.tierXPRequired} XP required");
+            parts.Add(Loc.T("screen.battlepass.tier_xp_required", tierData.tierXPRequired));
         }
 
         // Rewards
@@ -459,25 +465,25 @@ public class BattlePassScreen : BaseScreen
 
             if (rewards.chests > 0)
             {
-                rewardParts.Add($"{rewards.chests} chest{(rewards.chests > 1 ? "s" : "")}");
+                rewardParts.Add(Loc.Plural("screen.battlepass.chest_count", rewards.chests, rewards.chests));
             }
 
             if (rewards.currencies != null)
             {
                 foreach (var currency in rewards.currencies)
                 {
-                    rewardParts.Add($"{currency.Amount} {currency.CurrencyType}");
+                    rewardParts.Add(Loc.T("screen.battlepass.currency_amount", currency.Amount, currency.CurrencyType));
                 }
             }
 
             if (rewards.collectionItemIds != null && rewards.collectionItemIds.Length > 0)
             {
-                rewardParts.Add($"{rewards.collectionItemIds.Length} collection item{(rewards.collectionItemIds.Length > 1 ? "s" : "")}");
+                rewardParts.Add(Loc.Plural("screen.battlepass.collection_item_count", rewards.collectionItemIds.Length, rewards.collectionItemIds.Length));
             }
 
             if (rewardParts.Count > 0)
             {
-                parts.Add("Rewards: " + string.Join(", ", rewardParts));
+                parts.Add(Loc.T("screen.battlepass.rewards_prefix", string.Join(", ", rewardParts)));
             }
         }
 
@@ -493,7 +499,7 @@ public class BattlePassScreen : BaseScreen
         }
         else
         {
-            TolkWrapper.Speak("First tier");
+            TolkWrapper.Speak(Loc.T("screen.battlepass.first_tier"));
         }
     }
 
@@ -507,7 +513,7 @@ public class BattlePassScreen : BaseScreen
         }
         else
         {
-            TolkWrapper.Speak("Last tier");
+            TolkWrapper.Speak(Loc.T("screen.battlepass.last_tier"));
         }
     }
 
@@ -527,7 +533,7 @@ public class BattlePassScreen : BaseScreen
                 if (button != null && button.interactable)
                 {
                     button.onClick.Invoke();
-                    TolkWrapper.Speak("Collecting all rewards");
+                    TolkWrapper.Speak(Loc.T("screen.battlepass.collecting_all"));
                     return;
                 }
             }
@@ -537,7 +543,7 @@ public class BattlePassScreen : BaseScreen
             Plugin.Logger.LogError($"Error collecting rewards: {e.Message}");
         }
 
-        TolkWrapper.Speak("No rewards to collect");
+        TolkWrapper.Speak(Loc.T("screen.battlepass.no_rewards"));
     }
 
     private void OpenChests()
@@ -552,7 +558,7 @@ public class BattlePassScreen : BaseScreen
                 if (button != null)
                 {
                     button.onClick.Invoke();
-                    TolkWrapper.Speak("Opening chests");
+                    TolkWrapper.Speak(Loc.T("screen.battlepass.opening_chests"));
                     return;
                 }
             }
@@ -562,7 +568,7 @@ public class BattlePassScreen : BaseScreen
             Plugin.Logger.LogError($"Error opening chests: {e.Message}");
         }
 
-        TolkWrapper.Speak("Could not open chests");
+        TolkWrapper.Speak(Loc.T("screen.battlepass.chests_open_failed"));
     }
 
     private void HandleBack()
@@ -570,7 +576,7 @@ public class BattlePassScreen : BaseScreen
         if (_currentMode != MenuMode.Main)
         {
             _currentMode = MenuMode.Main;
-            TolkWrapper.Speak("Season Pass");
+            TolkWrapper.Speak(ScreenName);
         }
         else
         {
@@ -615,7 +621,7 @@ public class BattlePassScreen : BaseScreen
                     return;
                 case AccessibleKey.Back:
                     _currentMode = MenuMode.Main;
-                    TolkWrapper.Speak("Season Pass");
+                    TolkWrapper.Speak(ScreenName);
                     return;
                 case AccessibleKey.Confirm:
                     ClaimCurrentChallenge();
@@ -636,7 +642,7 @@ public class BattlePassScreen : BaseScreen
                     return;
                 case AccessibleKey.Back:
                     _currentMode = MenuMode.Main;
-                    TolkWrapper.Speak("Season Pass");
+                    TolkWrapper.Speak(ScreenName);
                     return;
                 case AccessibleKey.Confirm:
                     ReadCurrentTier();
