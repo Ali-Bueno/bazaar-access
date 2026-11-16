@@ -23,6 +23,23 @@
 
 # --- Avvio ---
 mod.loaded = Bazaar Access caricato
+gamepad.connected = Controller collegato
+gamepad.disconnected = Controller scollegato
+gamepad.mod_navigation = Navigazione della mod. Premi Visualizza per tornare alla navigazione del gioco.
+gamepad.game_navigation = Navigazione del gioco. Visualizza: navigazione della mod. Pressione levetta sinistra: dettagli oggetto. Pressione levetta destra: riepilogo eroe. Levetta destra: cronologia messaggi. Tenere il grilletto destro: info rapide.
+focus.stash.open = Riserva, aperta
+focus.stash.closed = Riserva, chiusa
+focus.opponent_card = Avversario: {0}
+focus.move.holding = Tieni {0}. {1}
+focus.move.board = Tabellone, {0}
+focus.move.stash_slot = Riserva, slot {0}
+focus.move.sell = Vendi per {0} oro
+focus.move.to_stash = Manda nella riserva
+focus.move.altar = Altare
+focus.move.slot = slot {0} di {1}
+focus.move.placed = Posizionato
+focus.move.cancelled = Spostamento annullato
+gamepad.help = Controller. Croce direzionale o levetta sinistra: muoversi. A: conferma. B: indietro. X: ispeziona. Y: info oggetto. LB: scelte. RB: tabellone. Visualizza: sezione successiva. Menu: pausa. Pressione levetta sinistra: info tabellone. Pressione levetta destra: info deposito. Levetta destra su o giù: cronologia messaggi; sinistra o destra: pagina su o giù. Tenendo il grilletto sinistro: la croce sposta o riordina gli oggetti, A potenzia, X rilancia, Y esci, B avversario, LB deposito, RB eroe, Visualizza apri o chiudi deposito, Menu questo aiuto. Tenendo il grilletto destro: croce su la tua salute, destra salute dell'avversario, giù danni inflitti, sinistra danni subiti, A riepilogo combattimento, X vittorie, Y modalità annunci di combattimento, B sposta oggetto, LB primo, RB ultimo.
 
 
 # Narrazione di combattimento: CombatDescriber.cs, Combat/EffectFormatter.cs, Combat/HealthTracker.cs
@@ -58,6 +75,10 @@ combat.poison_amount = {0} veleno
 combat.poison_applied = veleno applicato
 combat.regen_amount = {0} rigenerazione
 combat.regen_applied = rigenerazione applicata
+combat.tempo_gain_amount = +{0} {1}
+combat.tempo_remove_amount = -{0} {1}
+combat.tempo_gained = {0} ottenuto
+combat.tempo_removed = {0} rimosso
 combat.stole_gold = rubato {0} oro
 combat.gold_stolen = oro rubato
 combat.max_health_increase = salute massima +{0}
@@ -142,6 +163,8 @@ card.quest.progress = Missione {0}/{1}
 # --- Etichette delle righe di dettaglio (testo della mod, non vocabolario del gioco) ---
 card.state.label = Stato: {0}
 card.enchanted.label = Incantato: {0}
+card.socket_effect = Effetto slot: {0}
+card.socket_effect_described = Effetto slot, {0}: {1}
 card.buy.gold = Compra per {0} oro
 card.sell.gold = Vendi per {0} oro
 card.buy.info = {0}, {1} oro
@@ -152,6 +175,8 @@ card.sell.info = {0}, si vende per {1} oro
 # non tradotto (Damage, Shield, Cooldown...); solo il formato attorno è un modello.
 card.stat.line = {0}: {1}
 card.stat.inline = {0} {1}
+card.stat.seconds.one = {0} secondo
+card.stat.seconds.other = {0} secondi
 
 # --- Descrizioni di tag/parole chiave (tasto I) ---
 card.property.noDescription = Nessuna descrizione disponibile
@@ -281,7 +306,7 @@ nav.state.defeat = Sconfitta
 nav.section.board = Plancia
 nav.section.stash = Riserva
 nav.section.skills = Abilità
-nav.section.free_prefix = {0} disponibile
+nav.section.free_prefix = {0} (gratis)
 nav.section.count.one = {0}, {1} oggetto
 nav.section.count.other = {0}, {1} oggetti
 nav.action.exit = Esci
@@ -344,6 +369,7 @@ action.bought = Comprato {0} per {1} oro
 action.purchase.failed = Acquisto fallito
 action.cannot.sell.now = Impossibile vendere ora
 action.sold = Venduto {0} per {1} oro
+action.skill_learned = Abilità appresa: {0}
 action.sale.failed = Vendita fallita
 action.cannot.move.now = Impossibile spostare ora
 action.cannot.move.items.now = Impossibile spostare oggetti ora
@@ -420,7 +446,9 @@ action.cannot.reorder.right.now = Impossibile riordinare in questo momento
 action.combat.short = Combattimento
 action.stash.closed = Riserva chiusa
 action.stash.opened.empty = Riserva aperta, vuota. Premi Spazio per chiudere.
+action.stash.opened.empty_short = Riserva aperta, vuota
 action.combat.ended = Combattimento terminato. Invio per continuare.
+action.combat.ended_short = Combattimento terminato
 action.continuing = Continuazione in corso
 action.replaying.combat = Replay del combattimento
 action.recap.entered = Riepilogo. V eroe, F nemico, G plancia nemica, B la tua plancia.
@@ -504,6 +532,20 @@ action.skill.with.description = {0}: {1}
 
 # --- MainMenuScreen ---
 screen.mainmenu.name = Menu principale
+screen.mainmenu.hero = Eroe: {0}
+screen.mainmenu.unavailable = {0}, non disponibile
+screen.mainmenu.buy_full_game = Sblocca il gioco completo
+screen.mainmenu.prize_pass = Prize Pass
+screen.mainmenu.settings = Impostazioni
+screen.mainmenu.mode.unranked = Normale
+screen.mainmenu.mode.ranked = Classificata
+screen.mainmenu.mode.tournament = Torneo
+screen.mainmenu.option_selected = {0}, selezionato
+screen.mainmenu.with_rank = {0}. Grado: {1}
+screen.mainmenu.mode_selected = {0} selezionato
+screen.mainmenu.gems = Gemme: {0}
+screen.mainmenu.buy_chests = Compra forzieri
+screen.mainmenu.with_count = {0}, {1}
 
 # --- ChestSceneScreen ---
 screen.chestscene.name = Forzieri
@@ -528,6 +570,15 @@ screen.collection.category.cardskins = Skin carte
 screen.collection.category.carpets = Tappeti
 screen.collection.category.cardbacks = Retro carte
 screen.collection.category.albums = Album
+screen.collection.category.stash = Riserva
+screen.collection.category.bank = Banca
+screen.collection.category.toys = Giocattoli
+ui.loadout.title = Equipaggia collezionabili
+ui.loadout.randomize = Equipaggiamento casuale
+ui.loadout.category_equipped = {0}: {1}
+ui.loadout.equipped = {0}, equipaggiato
+ui.purchase.title = Negozio
+ui.purchase.confirm = Conferma
 screen.collection.item_unknown = Sconosciuto
 screen.collection.equipped = equipaggiato
 screen.collection.category_summary.one = {0}, {1} oggetto
@@ -540,29 +591,13 @@ screen.collection.equipping = Equipaggiamento di {0} in corso
 screen.collection.equipped_done = {0} equipaggiato
 screen.collection.equip_failed = Equipaggiamento dell'oggetto fallito
 
-# --- HeroSelectScreen ---
-screen.heroselect.name = Selezione eroe
-screen.heroselect.random = Eroe casuale: {0}
-screen.state.on = attivo
-screen.state.off = disattivato
-screen.heroselect.casual_selected_announce = Casual selezionato
-screen.heroselect.ranked_selected_announce_rank = Classificata selezionata. Rango: {0}
-screen.heroselect.ranked_selected_announce = Classificata selezionata
-screen.heroselect.casual_selected = Casual, selezionato
-screen.heroselect.casual = Casual
-screen.heroselect.ranked_selected_rank = Classificata, selezionata. Rango: {0}
-screen.heroselect.ranked_selected = Classificata, selezionata
-screen.heroselect.ranked = Classificata
-screen.heroselect.resume = Riprendi
-screen.heroselect.ready = Pronto
-screen.heroselect.back = Indietro
-screen.heroselect.unknown_hero = Eroe sconosciuto
-screen.heroselect.hero_selected_tag = selezionato
-screen.heroselect.hero_locked_tag = bloccato
-screen.heroselect.hero_is_locked = {0} è bloccato
-screen.heroselect.hero_selected = {0} selezionato
-screen.heroselect.random_enabled = Modalità eroe casuale attivata
-screen.heroselect.current_hero = Eroe attuale: {0}
+# --- HeroSelectUI (hero picker popup) ---
+ui.heroselect.name = Scegli eroe
+ui.heroselect.hint = Invio per scegliere. Freccia sinistra o destra include o esclude un eroe dalla scelta casuale.
+ui.heroselect.locked = {0}, bloccato
+ui.heroselect.excluded = {0}, escluso dal casuale
+ui.heroselect.excluded_announce = {0} escluso dal casuale
+ui.heroselect.included_announce = {0} incluso nel casuale
 
 # --- BattlePassScreen ---
 screen.battlepass.name = Pass stagionale
@@ -860,7 +895,8 @@ vocab.size.medium = Medio
 vocab.size.large = Grande
 vocab.size.unknown = Sconosciuto
 
-vocab.card.size_slots = Dimensione: {0} slot ({1})
+vocab.card.size_slots.one = Dimensione: {0} slot ({1})
+vocab.card.size_slots.other = Dimensione: {0} slot ({1})
 vocab.card.temperature_both = {0} e {1}
 
 # --- Etichette statistiche eroe (HeroNavigator.GetStatName) ---
@@ -887,6 +923,7 @@ vocab.hero.summary.health = Salute {0} di {1}
 vocab.hero.summary.gold = Oro {0}
 vocab.hero.summary.level = Livello {0}
 vocab.hero.summary.rage = Rabbia {0} / {1}
+vocab.tempo = Tempo
 vocab.hero.summary.shield = Scudo {0}
 
 # BazaarAccess - Passata finale di localizzazione (nuove chiavi)

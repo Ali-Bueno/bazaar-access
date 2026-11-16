@@ -164,3 +164,61 @@ the open. If double-open persists from hero select, pre-warm the dialog at main-
 step, which fired the game handler — the language dropdown re-localized / prompted a restart on
 every arrow press. Now dropdowns track a pending index (read from `options[index]`), speak it on
 arrow, and only commit (`dropdown.value = pending`, firing onValueChanged) on Enter.
+
+## November 16, 2026 — Game update (2026-11-07 build, patches 17–20.1)
+
+First update since v1.10.1 (Jul 14). `bazaar code/` re-decompiled from the 2026-11-07 DLLs; the previous decompile is kept in `bazaar code 2026-07-11/` (gitignored) for diffing.
+
+### What the game changed (Steam patch notes, app 1617400)
+- 17.0 (Aug 5): The Dragons (Rin & Jin) — Instrument items, Note skills, **Tempo** meter. New encounters/merchants.
+- 18.x (Aug–Sep): Tempo/Instrument follow-ups, balance.
+- 19.0 (Oct 7): controller support (alpha), Collections inspect info. 19.4 (Oct 28): Partner Portal event.
+- Oct 13 (PTR only): Tournament queue + lobby browser + encounter bans. Oct 15: hero DLC retired, free/demo accounts are Vanessa-only.
+- 20.0 (Nov 4): Tiny World expedition (**Tiny** items), Thieves Guild, prestige counter toggle, collection screen visuals.
+
+### Mod breakages and fixes
+- **Main menu + hero select merged** into one scene driven by `TheBazaar.UI.MainMenu.MainMenuBaseView` (a MonoBehaviour, not a `View`), so `ViewController.SwitchView` no longer fires for them. New `Patches/MainMenuPatch.cs` hooks `MainMenuBaseView.OnEnable`; `Screens/MainMenuScreen.cs` was rewritten (play-mode toggles from `PlaymodeSelectionViewComponent._playmodeOptions`, hero button, play button, demo unlock, prize pass, settings, and the supported scenes of `NavigationMenuController`'s list via `SceneSelectOptionContainer.HandleSceneChange`). `HeroSelectScreen.cs` deleted.
+- **Hero picker is a popup**: `TheBazaar.UI.Menu.HeroSelectPopupController` (`UIPopup`, pooled list of `HeroData`; Random = `EHero.Common`). `UI/HeroSelectUI.cs` reads `GetData()` instead of the pooled views; Enter mirrors `HeroOptionController.HeroClicked`, Left/Right toggles `PlayerPreferences.Data.SetHeroExcludedFromRandom` (the game's `HeroRandomExcludeController`).
+- **Popups**: almost every popup (incl. `GenericPopup`) now derives `UIScripts.UIPopup`, not `PopupBase`. New `Patches/UIPopupPatch.cs` hooks `UIPopup.Show`/`Hide` and maps instance → accessible UI; `PopupBase` patch kept only for legacy popups (`NotEnoughSpacePopup`).
+- Smaller: `MarketplaceScreenController.Awake` → `Initialize`; `BattlePassView._backButton/_chestButton` gone (back = `NavigationMenuController.HomeButton`, chests = `ChestsHUDViewComponent.PurchaseButton`); `BoardManager.IsPlayingUpgradeOrFuseOrEnchantAnimation` → `IsPlayingUpgradeOrFuseAnimation` + `EnchantManager.IsEnchanting`; `ResultComponent` now inherits `Show` from `SequencePopup` (postfix type-filtered); `BazaarConfirmationDialogController` is in the global namespace.
+- The game's native `TheBazaar.Inputs.Navigation` (MenuNavigator/GameplayNavigator) only runs for Gamepad/SteamDeck schemes — no conflict with the mod's keyboard.
+
+### New mechanics made readable
+- **Tempo**: `ActionType.PlayerTempoApply/Remove` narrated in both combat modes; Tempo row in hero/opponent stats when the player has Tempo or owns a card with `TempoCost/TempoApplyAmount/TempoRemoveAmount`; those attributes in item stats. Passive gain (attribute ticks) is deliberately not announced.
+- **Tiny**: `CardExtensions.IsTiny` → "Tiny" name prefix like the game's card title. Size is read from `card.Size`, which the game updates.
+- **Socket effects / music notes**: `CardReading/SocketEffectReader.cs` lists the socket-effect cards under an item's slots (same source as the game's socket legend, `CardTooltipData.AppendSocketEffectLegendTooltips`) in the item detail lines.
+
+### Controller support (mod-driven)
+- Decision: the mod owns the gamepad instead of following the game's alpha controller navigation (`TheBazaar.Inputs.Navigation`), because the game's navigation covers only runs and some menus and has no access to the mod's stats/history/recap features.
+- `Core/GamepadNavigator.cs` polls `Gamepad.current` (Unity Input System, referenced compile-only from the game) and dispatches the same `AccessibleKey`s as `KeyboardNavigator.Dispatch`. Layers: LT = action keys, RT = info keys. Hold-repeat and deadzone mirror the game's `NavInputRepeater` (0.4 s / 0.12 s / 0.5).
+- `Core/GamepadOwnership.cs` sets `InputManager.Actions.asset.devices` to every non-gamepad device, so the game's actions (and its UI input module, which uses the same asset) never see the controller and the input scheme stays KeyboardMouse. Re-applied on device changes; `ModControlsGamepad=false` clears it.
+- Menu (Start) = keyboard Escape: invokes `PopupManager.HandleEscape(true)`, the same path as the game's `OpenSettings` action for non-gamepad devices.
+
+### Controller: hybrid mode (supersedes "mod-driven" as the default)
+- User decision: follow the game's own controller navigation where it exists. Config `Controller.Mode` = Hybrid (default) / KeyboardEmulation / GameOnly.
+- Hybrid, phase 1: inside a run (GameplayScreen, no mod UI on top) the device filter is lifted so the game's `GameplayNavigator` drives. `FocusAnnouncer` postfixes `FocusController.SetFocus` and describes `IFocusable`s with the mod's existing texts (`SelectionNavigator.GetCardDescription`, enemy compact description, reroll/exit/stash strings). `MoveSessionAnnouncer` postfixes the internal `ItemMoveSession` (`Pickup/Move/Up/Down`, `Place/Cancel`) reading `_item/_area/_handSlot/_stashSlot`; board neighbours come from `Player.Hand` cards matched to `BoardManager.playerItemSockets[].SocketNumber`.
+- Free in-run buttons (unused by the game): View (toggle mod navigation), L3 (focused card details via `GameplayNavigator.CurrentFocus`), R3 (`HeroNavigator.SpeakSummary`), right stick (history). Holding RT hands the controller to the mod for its info layer.
+- Outside runs the mod still owns the controller (phase 2: use `MenuNavigator`/EventSystem selection with mod labels where the game supports it).
+
+### Developer test mode (Nov 16, 2026)
+- Config `Debug.TestMode` (default false): every spoken line is logged as `SPEECH:` and `Core/TestCommandRunner.cs` runs commands from `BepInEx/BazaarAccess-commands.txt` (`key <AccessibleKey>`, `nav <NavCommand>` = game's controller navigation via `GameplayNavigator.Dispatch`, `scheme Gamepad` = force the game's input scheme so its controller navigation runs without a real pad, `escape`, `wait <s>`, `where`). Lets the session be driven and verified from the log without a keyboard or controller.
+- Verified with it in-game: main menu labels (Settings, Gems, Chests with count), Collection open/back, Chests screen, and in a run the game's focus (encounters, board item, stash toy), item pickup/move/cancel narration, stash open/close, message history.
+- Found: chests now open inside the Collection scene (`ChestsHUDViewComponent.RequestChestScene`), not the navigation menu; the top-bar icon buttons carry a hidden "Button Large" placeholder text.
+
+### In-game test pass with the test mode (Nov 16, 2026)
+Played a ranked run (Pygmalien, days 1-3) driven from the log. Verified: main menu, Collection, Chests, Profile, Prize Pass, pause menu, options; shop buy/sell/reroll (mod and game nav), events, loot, rewards, level-up, PvE and PvP fights with narration, replay and recap, monster preview, controller pickup/move/cancel, stash.
+Root causes worth remembering:
+- Build 2026-11 never raises `Events.BoardTransitionFinished`; rewards raise no reveal event at all. New offers inside a state are detected in `StateChangePatch.TriggerRefresh` by comparing the offered cards' ids (`SelectionNavigator.Signature`); only fully new offers in the same state are announced (`GameplayScreen.AnnounceNewOffer`).
+- Event merchants/loot keep `ERunState.Encounter`, and level-up rewards keep `LevelUp` while showing paths then items: `GameplayAnnouncer.VerifyStateMatchesContent` maps by content.
+- Choosing an encounter/path is reported as `CardPurchased`: purchase announcements are limited to items and skills. Sales arrive after the card is gone: names are remembered (`CardEventHandler.RememberName`).
+- Resuming a run re-equips skills (~3 s after the board loads): learned-skill notices are ignored for 10 s (`GameplayPatch.EnteredGameplayAt`).
+- Haste/Slow/Freeze/Charge attributes are milliseconds.
+- The game's Y inspect is the `Gameplay/LockTooltip` action (`GameplayNavigator.OnInspect`), not a `NavCommand`.
+- `GamepadNavigator.GameNavigationActive` requires the game's input scheme to be Gamepad/SteamDeck; focus and move narration only speak then.
+
+### Menus made accessible (Nov 16, 2026)
+- Gem / chest stores: `PurchaseGemsView` / `PurchaseChestsView` (`PurchaseBaseView : SequencePopup : UIPopup`) -> `UI/PurchasePanelUI.cs` (packs = `BundlePurchaseInfoContainer`, Enter = `PrimaryButton.onClick`); "not enough gems" prompt `GemPurchasePromptComponent` -> `GemPromptUI`. Opened from the main menu (`GemHUDViewComponent.OnGemButtonClick`, `ChestsHUDViewComponent.ShowPurchaseChestsPrompt`).
+- Challenges: its own scene with no View; the main menu option clicks the game's button then attaches `BattlePassScreen(challengesOnly: true)` to `PrizePassChallengesView` once `SceneLoader.ActiveScene == SceneID.Challenges`.
+- Equip Collectibles: `LoadoutPopupController` (UIPopup) -> `UI/LoadoutUI.cs` (categories from `CosmeticsPanelController._cosmeticsButton`, equipped via `CollectionManager.GetEquippedSaleItem`; items = active `CosmeticItem`s, equip = `_buttonComponent.OnMouseClickCustom`). The game hides its button while a run is in progress.
+- `BazaarButtonController.onClick` also raises `MouseClickEvent` (OnEnable wires it), so `onClick.Invoke()` is enough for those buttons.
+- Test mode gained `click <GameObject name>` (presses any game button, even hidden ones).

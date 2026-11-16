@@ -23,6 +23,23 @@
 
 # --- Startup ---
 mod.loaded = Bazaar Access loaded
+gamepad.connected = Controller connected
+gamepad.disconnected = Controller disconnected
+gamepad.mod_navigation = Mod navigation. Press View to return to the game's navigation.
+gamepad.game_navigation = Game navigation. View: mod navigation. Left stick click: item details. Right stick click: hero summary. Right stick: message history. Hold right trigger: quick info.
+focus.stash.open = Stash, open
+focus.stash.closed = Stash, closed
+focus.opponent_card = Opponent: {0}
+focus.move.holding = Holding {0}. {1}
+focus.move.board = Board, {0}
+focus.move.stash_slot = Stash, slot {0}
+focus.move.sell = Sell for {0} gold
+focus.move.to_stash = Send to stash
+focus.move.altar = Altar
+focus.move.slot = slot {0} of {1}
+focus.move.placed = Placed
+focus.move.cancelled = Move cancelled
+gamepad.help = Controller. D-pad or left stick: move. A: confirm. B: back. X: inspect. Y: item info. LB: choices. RB: board. View: next section. Menu: pause. Left stick click: board info. Right stick click: stash info. Right stick up or down: message history; left or right: page up or down. Hold left trigger: D-pad moves or reorders items, A upgrade, X reroll, Y leave, B opponent, LB stash, RB hero, View toggle stash, Menu this help. Hold right trigger: D-pad up your health, right enemy health, down damage dealt, left damage taken, A combat summary, X wins, Y combat announcement mode, B move item, LB first, RB last.
 
 
 # Combat narration: CombatDescriber.cs, Combat/EffectFormatter.cs, Combat/HealthTracker.cs
@@ -58,6 +75,10 @@ combat.poison_amount = {0} poison
 combat.poison_applied = poison applied
 combat.regen_amount = {0} regen
 combat.regen_applied = regen applied
+combat.tempo_gain_amount = +{0} {1}
+combat.tempo_remove_amount = -{0} {1}
+combat.tempo_gained = {0} gained
+combat.tempo_removed = {0} removed
 combat.stole_gold = stole {0} gold
 combat.gold_stolen = gold stolen
 combat.max_health_increase = max health +{0}
@@ -142,6 +163,8 @@ card.quest.progress = Quest {0}/{1}
 # --- Detail line labels (mod-authored, not game attribute vocabulary) ---
 card.state.label = State: {0}
 card.enchanted.label = Enchanted: {0}
+card.socket_effect = Slot effect: {0}
+card.socket_effect_described = Slot effect, {0}: {1}
 card.buy.gold = Buy {0} gold
 card.sell.gold = Sell {0} gold
 card.buy.info = {0}, {1} gold
@@ -152,6 +175,8 @@ card.sell.info = {0}, sells for {1} gold
 # vocabulary (Damage, Shield, Cooldown...); only the surrounding format is a template.
 card.stat.line = {0}: {1}
 card.stat.inline = {0} {1}
+card.stat.seconds.one = {0} second
+card.stat.seconds.other = {0} seconds
 
 # --- Tag/keyword property descriptions (I key) ---
 card.property.noDescription = No description available
@@ -344,6 +369,7 @@ action.bought = Bought {0} for {1} gold
 action.purchase.failed = Purchase failed
 action.cannot.sell.now = Cannot sell now
 action.sold = Sold {0} for {1} gold
+action.skill_learned = Skill learned: {0}
 action.sale.failed = Sale failed
 action.cannot.move.now = Cannot move now
 action.cannot.move.items.now = Cannot move items now
@@ -420,7 +446,9 @@ action.cannot.reorder.right.now = Cannot reorder right now
 action.combat.short = Combat
 action.stash.closed = Stash closed
 action.stash.opened.empty = Stash opened, empty. Press Space to close.
+action.stash.opened.empty_short = Stash opened, empty
 action.combat.ended = Combat ended. Enter to continue.
+action.combat.ended_short = Combat ended
 action.continuing = Continuing
 action.replaying.combat = Replaying combat
 action.recap.entered = Recap. V hero, F enemy, G enemy board, B your board.
@@ -504,6 +532,20 @@ action.skill.with.description = {0}: {1}
 
 # --- MainMenuScreen ---
 screen.mainmenu.name = Main Menu
+screen.mainmenu.hero = Hero: {0}
+screen.mainmenu.unavailable = {0}, unavailable
+screen.mainmenu.buy_full_game = Unlock full game
+screen.mainmenu.prize_pass = Prize Pass
+screen.mainmenu.settings = Settings
+screen.mainmenu.mode.unranked = Casual
+screen.mainmenu.mode.ranked = Ranked
+screen.mainmenu.mode.tournament = Tournament
+screen.mainmenu.option_selected = {0}, selected
+screen.mainmenu.with_rank = {0}. Rank: {1}
+screen.mainmenu.mode_selected = {0} selected
+screen.mainmenu.gems = Gems: {0}
+screen.mainmenu.buy_chests = Buy chests
+screen.mainmenu.with_count = {0}, {1}
 
 # --- ChestSceneScreen ---
 screen.chestscene.name = Chests
@@ -528,6 +570,15 @@ screen.collection.category.cardskins = Card Skins
 screen.collection.category.carpets = Carpets
 screen.collection.category.cardbacks = Card Backs
 screen.collection.category.albums = Albums
+screen.collection.category.stash = Stash
+screen.collection.category.bank = Bank
+screen.collection.category.toys = Toys
+ui.loadout.title = Equip Collectibles
+ui.loadout.randomize = Random loadout
+ui.loadout.category_equipped = {0}: {1}
+ui.loadout.equipped = {0}, equipped
+ui.purchase.title = Store
+ui.purchase.confirm = Confirm
 screen.collection.item_unknown = Unknown
 screen.collection.equipped = equipped
 screen.collection.category_summary.one = {0}, {1} item
@@ -540,29 +591,13 @@ screen.collection.equipping = Equipping {0}
 screen.collection.equipped_done = {0} equipped
 screen.collection.equip_failed = Failed to equip item
 
-# --- HeroSelectScreen ---
-screen.heroselect.name = Hero Select
-screen.heroselect.random = Random Hero: {0}
-screen.state.on = on
-screen.state.off = off
-screen.heroselect.casual_selected_announce = Casual selected
-screen.heroselect.ranked_selected_announce_rank = Ranked selected. Rank: {0}
-screen.heroselect.ranked_selected_announce = Ranked selected
-screen.heroselect.casual_selected = Casual, selected
-screen.heroselect.casual = Casual
-screen.heroselect.ranked_selected_rank = Ranked, selected. Rank: {0}
-screen.heroselect.ranked_selected = Ranked, selected
-screen.heroselect.ranked = Ranked
-screen.heroselect.resume = Resume
-screen.heroselect.ready = Ready
-screen.heroselect.back = Back
-screen.heroselect.unknown_hero = Unknown Hero
-screen.heroselect.hero_selected_tag = selected
-screen.heroselect.hero_locked_tag = locked
-screen.heroselect.hero_is_locked = {0} is locked
-screen.heroselect.hero_selected = {0} selected
-screen.heroselect.random_enabled = Random hero mode enabled
-screen.heroselect.current_hero = Current hero: {0}
+# --- HeroSelectUI (hero picker popup) ---
+ui.heroselect.name = Choose hero
+ui.heroselect.hint = Enter to choose. Left or right arrow includes or excludes a hero from random picks.
+ui.heroselect.locked = {0}, locked
+ui.heroselect.excluded = {0}, excluded from random
+ui.heroselect.excluded_announce = {0} excluded from random
+ui.heroselect.included_announce = {0} included in random
 
 # --- BattlePassScreen ---
 screen.battlepass.name = Season Pass
@@ -859,7 +894,8 @@ vocab.size.medium = Medium
 vocab.size.large = Large
 vocab.size.unknown = Unknown
 
-vocab.card.size_slots = Size: {0} slots ({1})
+vocab.card.size_slots.one = Size: {0} slot ({1})
+vocab.card.size_slots.other = Size: {0} slots ({1})
 vocab.card.temperature_both = {0} and {1}
 
 # --- Hero stat labels (HeroNavigator.GetStatName) ---
@@ -886,6 +922,7 @@ vocab.hero.summary.health = Health {0} of {1}
 vocab.hero.summary.gold = Gold {0}
 vocab.hero.summary.level = Level {0}
 vocab.hero.summary.rage = Rage {0} / {1}
+vocab.tempo = Tempo
 vocab.hero.summary.shield = Shield {0}
 
 # BazaarAccess - Final localization pass (new keys)

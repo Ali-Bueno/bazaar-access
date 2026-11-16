@@ -21,7 +21,7 @@ internal static class RankReader
             if (!ClientCache.Rank.HasData) return null;
 
             var rank = ClientCache.Rank.Value;
-            string rankName = rank.Rank.ToString();
+            string rankName = TheBazaar.Utilities.LocalizableShared.GetLocalizedRank((int)rank.Rank);
             if (string.IsNullOrEmpty(rankName)) return null;
 
             if (rank.Rank == ERank.Legendary) return rankName;

@@ -113,10 +113,13 @@ public class CollectionScreen : BaseScreen
         Plugin.Logger.LogInfo($"CollectionScreen: Loaded {_currentItems.Length} items for {collectionType}");
     }
 
-    private string GetCategoryName(BazaarInventoryTypes.ECollectionType type)
+    internal static string GetCategoryName(BazaarInventoryTypes.ECollectionType type)
     {
         return type switch
         {
+            BazaarInventoryTypes.ECollectionType.Stash => Loc.T("screen.collection.category.stash"),
+            BazaarInventoryTypes.ECollectionType.Bank => Loc.T("screen.collection.category.bank"),
+            BazaarInventoryTypes.ECollectionType.Toys => Loc.T("screen.collection.category.toys"),
             BazaarInventoryTypes.ECollectionType.HeroSkins => Loc.T("screen.collection.category.heroskins"),
             BazaarInventoryTypes.ECollectionType.Boards => Loc.T("screen.collection.category.boards"),
             BazaarInventoryTypes.ECollectionType.CardSkins => Loc.T("screen.collection.category.cardskins"),
@@ -143,8 +146,12 @@ public class CollectionScreen : BaseScreen
             parts.Add(Loc.T("screen.collection.item_unknown"));
 
         // Rarity
+        // The server sends the rarity in English ("Gold"): use the localized tier name when it matches.
         if (item.Rarity.Name != null)
-            parts.Add(item.Rarity.Name);
+        {
+            bool isTier = System.Enum.IsDefined(typeof(ETier), item.Rarity.Name);
+            parts.Add(isTier ? Gameplay.ItemReader.GetTierName((ETier)System.Enum.Parse(typeof(ETier), item.Rarity.Name)) : item.Rarity.Name);
+        }
 
         // Equipped status
         if (_collectionManager != null && _collectionManager.IsCollectibleOfIDEquipped(item))
@@ -359,7 +366,10 @@ public class CollectionScreen : BaseScreen
             return;
         }
 
-        // Try to click the back button via reflection on CollectionUIController
+        if (NavigationMenuHelper.TryGoHome())
+            return;
+
+        // Older builds: the collection's own back button
         if (ClickBackButtonViaReflection())
             return;
 

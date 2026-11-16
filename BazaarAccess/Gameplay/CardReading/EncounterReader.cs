@@ -38,7 +38,15 @@ internal static class EncounterReader
             }
         }
 
-        return Loc.T("card.encounter.info", name, type, tier);
+        string info = Loc.T("card.encounter.info", name, type, tier);
+
+        // Event choices (paths) are only useful with what they do: "Grab the Loot, Path, Bronze. Get 3 Loot items".
+        if (card.Type == ECardType.EncounterStep)
+        {
+            string description = CardProperties.GetDescription(card);
+            if (!string.IsNullOrEmpty(description)) info += ". " + description;
+        }
+        return info;
     }
 
     internal static List<string> GetCombatEncounterDetailLines(Card card)
@@ -223,7 +231,9 @@ internal static class EncounterReader
             if (rankProp != null)
             {
                 var value = rankProp.GetValue(pvpOpponent);
-                if (value != null) rankName = value.ToString();
+                // Rank is an enum: use the game's localized name ("Bronce" in Spanish), not the enum name.
+                if (value is Enum) rankName = TheBazaar.Utilities.LocalizableShared.GetLocalizedRank(Convert.ToInt32(value));
+                else if (value != null) rankName = value.ToString();
             }
 
             var divProp = type.GetProperty("Division", BindingFlags.Public | BindingFlags.Instance);

@@ -134,6 +134,43 @@ A BepInEx plugin that makes The Bazaar accessible for blind players using screen
 
 ---
 
+## Controller
+
+Xbox names; on PlayStation A = Cross, B = Circle, X = Square, Y = Triangle, LB/RB = L1/R1, LT/RT = L2/R2, View = Share/Create, Menu = Options. The mod announces when a controller is connected or disconnected.
+
+### During a run: the game's own controller navigation (default)
+Move with the D-pad as the game intends; the mod reads whatever gets focus (encounters, shop items with price, your board and stash, skills, reroll/leave, the stash chest, opponent items in combat). Moving an item (A on a board/stash item) is narrated: where it would land ("Board, between X and Y", stash slot, "Sell for N gold", altar), then "Placed" or "Move cancelled". Buttons the game leaves free:
+
+| Button | Action |
+|---|---|
+| View | Switch to the mod's navigation (below) and back |
+| Left stick click | Full details of the focused item |
+| Right stick click | Hero summary (health, gold, level...) |
+| Right stick up/down | Message history |
+| Hold RT | Quick info layer (see the RT column below) |
+
+### Menus, and the mod's navigation in a run
+Every button does the same as a keyboard key, so all keyboard instructions apply; the game ignores the controller meanwhile. **Hold LT and press Menu** to hear this layout.
+
+| Button | Alone | Holding LT | Holding RT |
+|---|---|---|---|
+| D-pad / left stick | Arrows | Shift+arrows (move / reorder items) | Up: your health (1), Right: enemy health (2), Down: damage dealt (3), Left: damage taken (4) |
+| A | Enter | U (upgrade) | H (combat summary) |
+| B | Backspace | F (opponent) | M (move item) |
+| X | X (inspect) | R (reroll) | W (wins) |
+| Y | I (item info) | E (leave) | Ctrl+M (combat announcement mode) |
+| LB | C (choices) | G (stash) | Home |
+| RB | B (board) | V (hero) | End |
+| View | Tab (in a run: back to the game's navigation) | Space (toggle stash) | |
+| Menu | Escape (pause) | Spoken controller help | |
+| Left stick click | T (board info) | | |
+| Right stick click | S (stash info) | | |
+| Right stick | Up/Down: message history (comma / period), Left/Right: Page Up / Page Down | | |
+
+`Controller.Mode` in `BepInEx/config`: `Hybrid` (default, described above), `KeyboardEmulation` (always the mod's navigation, View = Tab), `GameOnly` (the mod never handles the controller but still reads the game's focus in runs). Typing (login fields) still needs a keyboard.
+
+---
+
 ## Login Screens
 
 * **Up/Down:** Navigate fields and buttons.

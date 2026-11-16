@@ -28,6 +28,7 @@ internal sealed class CombatEncounterPreviewNavigator
     private CardTooltipController _visualTooltipController;
     private bool _visualPending;
     private bool _tooltipUnlockObserved;
+    private bool _visualShown;
     private object _tooltipUnlockEvent;
     private CombatEncounterPreviewSection _section = CombatEncounterPreviewSection.Stats;
     private int _skillIndex;
@@ -49,12 +50,14 @@ internal sealed class CombatEncounterPreviewNavigator
         _sourceEncounterCard = card;
         _visualPending = true;
         _tooltipUnlockObserved = false;
+        _visualShown = false;
         _section = CombatEncounterPreviewSection.Stats;
         _skillIndex = 0;
         _itemIndex = 0;
         _detailReader.Clear();
 
-        TolkWrapper.Speak(Loc.T("action.loadout", _model.EnemyName));
+        // Starts on the stats section: read it right away instead of a bare title.
+        TolkWrapper.Speak(Loc.T("action.loadout", _model.EnemyName) + ". " + Loc.T("action.stats.health", _model.Health));
         return true;
     }
 
@@ -107,11 +110,11 @@ internal sealed class CombatEncounterPreviewNavigator
         SetCursorOverCard(encounterController, true);
         SubscribeTooltipEvents();
 
+        // The preview reads its own model: without the game's tooltip it keeps working, just with no visual.
         if (!TryShowEncounterTooltip(encounterController))
         {
             SetCursorOverCard(encounterController, false);
             _visualPending = false;
-            Exit(announce: false);
             yield break;
         }
 
@@ -151,6 +154,7 @@ internal sealed class CombatEncounterPreviewNavigator
             if (IsVisualActive())
             {
                 _visualPending = false;
+                _visualShown = IsVisualActive();
                 SyncVisualFocus();
                 yield break;
             }
@@ -160,7 +164,6 @@ internal sealed class CombatEncounterPreviewNavigator
         }
 
         _visualPending = false;
-        Exit(announce: false);
     }
 
     public IEnumerator MonitorVisualState()
@@ -173,7 +176,8 @@ internal sealed class CombatEncounterPreviewNavigator
                 yield break;
             }
 
-            if (!_visualPending && !IsVisualActive())
+            // Closing the game's locked tooltip (mouse) ends the preview; a tooltip that never showed does not.
+            if (_visualShown && !_visualPending && !IsVisualActive())
             {
                 Exit(announce: false);
                 yield break;

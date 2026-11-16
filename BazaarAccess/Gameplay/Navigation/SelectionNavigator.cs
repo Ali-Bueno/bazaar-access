@@ -69,6 +69,9 @@ public class SelectionNavigator
         return _selectionItems[index];
     }
 
+    /// <summary>Ids of the offered cards, to notice when the offer changes without a state change.</summary>
+    public string Signature => string.Join(",", _selectionItems.Where(i => i.Type == NavItemType.Card && i.Card != null).Select(i => i.Card.InstanceId.Value));
+
     public Card GetCard(int index)
     {
         if (index < _selectionItems.Count)
@@ -83,12 +86,12 @@ public class SelectionNavigator
     // DESCRIPTION HELPERS
     // ===============================================
 
-    public static bool IsEncounterCard(Card card) =>
+    public static bool IsEncounterCard(Card card) => card != null && (
         card.Type == ECardType.CombatEncounter ||
         card.Type == ECardType.EventEncounter ||
         card.Type == ECardType.PedestalEncounter ||
         card.Type == ECardType.EncounterStep ||
-        card.Type == ECardType.PvpEncounter;
+        card.Type == ECardType.PvpEncounter);
 
     public static bool IsSelectionFree()
     {

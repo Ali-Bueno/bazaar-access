@@ -40,6 +40,24 @@ public static class TolkWrapper
         }
     }
 
+    // Test mode: log each spoken line with the methods that produced it, to trace stray announcements.
+    private const int SpeechCallerFrames = 4;
+
+    private static void LogSpeech(string text)
+    {
+        if (Plugin.TestMode == null || !Plugin.TestMode.Value) return;
+        var frames = new System.Diagnostics.StackTrace(2, false).GetFrames() ?? new System.Diagnostics.StackFrame[0];
+        var callers = new System.Collections.Generic.List<string>();
+        foreach (var frame in frames)
+        {
+            var method = frame.GetMethod();
+            if (method == null) continue;
+            callers.Add($"{method.DeclaringType?.Name}.{method.Name}");
+            if (callers.Count >= SpeechCallerFrames) break;
+        }
+        Plugin.Logger.LogInfo($"SPEECH: {text}   <= {string.Join(" < ", callers)}");
+    }
+
     public static void Speak(string text, bool interrupt = true)
     {
         if (!_isInitialized || string.IsNullOrWhiteSpace(text)) return;
@@ -54,6 +72,8 @@ public static class TolkWrapper
 
         _lastSpokenText = text;
         _lastSpokenTime = currentTime;
+
+        LogSpeech(text);
 
         try
         {
@@ -81,6 +101,8 @@ public static class TolkWrapper
 
         _lastSpokenText = text;
         _lastSpokenTime = Time.realtimeSinceStartup;
+
+        LogSpeech(text);
 
         try
         {

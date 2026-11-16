@@ -114,12 +114,12 @@ public static class BattlePassTierUnlockPatch
 /// <summary>
 /// Detects when marketplace screen is shown.
 /// </summary>
-[HarmonyPatch(typeof(MarketplaceScreenController), "Awake")]
+[HarmonyPatch(typeof(MarketplaceScreenController), nameof(MarketplaceScreenController.Initialize))]
 public static class MarketplaceScreenAwakePatch
 {
     static void Postfix(MarketplaceScreenController __instance)
     {
-        Plugin.Logger.LogInfo("MarketplaceScreenController.Awake - Marketplace opened");
+        Plugin.Logger.LogInfo("MarketplaceScreenController.Initialize - Marketplace opened");
         // TODO: Create MarketplaceScreen when implemented
         TolkWrapper.Speak(Loc.T("patch.menu.marketplace"));
     }
@@ -136,8 +136,18 @@ public static class ProfileCareerAwakePatch
     static void Postfix(ProfileCareerViewController __instance)
     {
         Plugin.Logger.LogInfo("ProfileCareerViewController.Awake - Profile opened");
-        // TODO: Create ProfileScreen when implemented
-        TolkWrapper.Speak(Loc.T("patch.menu.player_profile"));
+        // The screen itself is TextPanelScreen (ViewControllerPatch, view "Career"); its data arrives later.
+        ProfileCareerViewController.OnPlayerProfileLoaded -= RebuildProfileScreen;
+        ProfileCareerViewController.OnPlayerProfileLoaded += RebuildProfileScreen;
+    }
+
+    private static void RebuildProfileScreen()
+    {
+        if (AccessibilityMgr.GetCurrentScreen() is Screens.TextPanelScreen screen)
+        {
+            screen.Rebuild();
+            screen.OnFocus(); // re-reads the title and the first line now that the data is there
+        }
     }
 }
 

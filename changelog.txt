@@ -2,6 +2,69 @@
 
 ---
 
+## November 16, 2026 (v1.11.0)
+
+### Works again with the current game
+- The game merged the main menu and hero select into one screen. The mod's main menu was rebuilt
+  for it: play mode (Casual / Ranked, with your rank / Tournament when available), your hero, the
+  Play button, Equip Collectibles, Settings, your gems, Buy chests, Challenges, Prize Pass,
+  Collection, Chests (with how many you have), Profile and Exit. The top-bar icon buttons no
+  longer read as "Button Large"
+- New accessible menus: Challenges (daily and weekly, with progress; Enter claims), Equip
+  Collectibles (each category with what is equipped, then its collectibles; Enter equips), and the
+  gem and chest stores (each pack with amount, price and bonus)
+- Jumping to a section (B, C, G, Tab) also reads the first item, so the first Right arrow no
+  longer skips it
+- Choosing a hero is now a list: Enter picks a hero (or Random); Left / Right arrow includes or
+  excludes the hero from random picks
+- Game popups (messages, confirmations) are read again after the game changed how they are built
+- Fixed the Season Pass back / chests options, the Marketplace screen, and "Done" being said too
+  early after enchanting
+- Backspace leaves the Collection screen again
+
+### Controller support
+- During a run you use the game's own controller navigation and the mod reads what gets focus
+  (encounters, shop items with price, your board and stash, skills, reroll / leave, opponent
+  items). Moving an item with the controller is narrated: where it would land (between which
+  items, stash slot, sell price, altar) and when it is placed or cancelled
+- Free buttons in a run: View switches to the mod's own navigation and back, left stick click
+  reads the focused item in full, right stick click the hero summary, right stick up / down the
+  message history, and holding RT gives quick info (health, damage, combat summary). Buying and
+  selling with the game's controller navigation is announced
+- When moving an item to an empty part of the board it says the slot out of 10 ("slot 5 of 10")
+- The message history (comma / period, or the right stick) now also keeps purchases, sales,
+  combat results and day / hour changes
+- In menus (and in the mod's navigation) every button does the same as a keyboard key; hold LT
+  and press Menu to hear the layout. "Controller.Mode" in the config chooses Hybrid (default),
+  KeyboardEmulation or GameOnly
+
+### Fixes found by playing a full run
+- New offers that appear without leaving the event are announced again: loot after "Grab the
+  Loot", rewards, a rerolled shop. Merchants inside events are called a shop, item rewards loot
+- Level-ups now give path choices: they are announced as a level-up without "choose a skill"
+- Event paths say what they do when you reach them ("Grab the Loot, Path, Bronze. Get 3 Loot
+  items"); encounters no longer list a board size
+- Learning a skill from a Skill Coupon is announced; no false "skill learned" when resuming a run
+- The monster loadout preview (X on a combat) no longer closes by itself and starts by reading
+  the monster's health
+- After a fight, H and 1-4 work on the replay screen; health never reads below 0
+- Selecting a PvP fight names the opponent; selecting any encounter is said once
+- No more stray "Hero stats" at the start of each fight, or "Combat ended" said twice
+- Haste, Slow, Freeze and Charge are read in seconds (they were read as 1000); Multicast 1 is no
+  longer listed; "1 slot" instead of "1 slots"; "free" is translated correctly
+- Ranks and collection rarities are read in your language ("Bronce 5")
+- Player Profile is readable (stats as "Games Played: 39"); Backspace returns to the menu
+- Options: the language selector and the new key bindings have their names; the unlabeled close
+  button and the pause menu's close button are no longer listed
+
+### New game content
+- Tempo (The Dragons): combat says when Tempo is gained or removed, your Tempo appears in your hero
+  stats (and the opponent's), and items show their Tempo cost / Tempo given / Tempo removed
+- Tiny items are called "Tiny" like on the card
+- Slot effects such as music notes are read in the item details
+
+---
+
 ## July 14, 2026 (v1.10.1)
 
 ### Translation fixes

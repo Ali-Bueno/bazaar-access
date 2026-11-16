@@ -8,6 +8,7 @@ using BazaarGameShared.Domain.Cards.Enchantments;
 using BazaarGameShared.Domain.Cards.Item;
 using BazaarGameShared.Domain.Core;
 using BazaarGameShared.Domain.Core.Types;
+using TheBazaar;
 using TheBazaar.Localization;
 using TheBazaar.Utilities;
 
@@ -65,14 +66,22 @@ internal static class CardProperties
             baseName = template?.InternalName ?? Loc.T("card.name.unknown");
         }
 
+        if (!(card is ItemCard itemCard)) return baseName;
+
         // Prepend enchantment name if enchanted
-        if (card is ItemCard itemCard && itemCard.Enchantment.HasValue)
+        if (itemCard.Enchantment.HasValue)
         {
             string enchantName = GetEnchantmentName(itemCard.Enchantment.Value);
             if (!string.IsNullOrEmpty(enchantName))
             {
-                return $"{enchantName} {baseName}";
+                baseName = $"{enchantName} {baseName}";
             }
+        }
+
+        // Tiny items get the same "Tiny" prefix the game puts in the card title
+        if (itemCard.IsTiny() && itemCard.Enchantment != EEnchantmentType.Tiny)
+        {
+            baseName = $"{GetEnchantmentName(EEnchantmentType.Tiny)} {baseName}";
         }
 
         return baseName;

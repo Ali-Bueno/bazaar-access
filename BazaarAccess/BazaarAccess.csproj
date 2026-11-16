@@ -4,7 +4,7 @@
     <TargetFramework>net46</TargetFramework>
     <AssemblyName>BazaarAccess</AssemblyName>
     <Product>BazaarAccess</Product>
-    <Version>1.10.1</Version>
+    <Version>1.11.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
     <RestoreAdditionalProjectSources>
@@ -58,6 +58,10 @@
     </Reference>
     <Reference Include="Unity.ResourceManager">
       <HintPath>$(GameManagedPath)\Unity.ResourceManager.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.InputSystem">
+      <HintPath>$(GameManagedPath)\Unity.InputSystem.dll</HintPath>
+      <Private>false</Private>
     </Reference>
     <Reference Include="netstandard">
       <HintPath>$(GameManagedPath)\netstandard.dll</HintPath>

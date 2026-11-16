@@ -184,6 +184,27 @@ public class ReplayInputHandler
                 TolkWrapper.Speak(Loc.T("action.replay.post.combat.help"));
                 break;
 
+            // The fight's totals stay readable right after it, as during combat.
+            case AccessibleKey.CombatSummary:
+                TolkWrapper.Speak(CombatDescriber.GetCombatSummary());
+                break;
+
+            case AccessibleKey.PlayerHealth:
+                TolkWrapper.Speak(CombatDescriber.GetPlayerHealth());
+                break;
+
+            case AccessibleKey.EnemyHealth:
+                TolkWrapper.Speak(CombatDescriber.GetEnemyHealth());
+                break;
+
+            case AccessibleKey.DamageDealt:
+                TolkWrapper.Speak(CombatDescriber.GetDamageDealt());
+                break;
+
+            case AccessibleKey.DamageTaken:
+                TolkWrapper.Speak(CombatDescriber.GetDamageTaken());
+                break;
+
             default:
                 break;
         }

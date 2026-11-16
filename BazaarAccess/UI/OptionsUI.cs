@@ -1,3 +1,4 @@
+using HarmonyLib;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -247,6 +248,11 @@ public class OptionsUI : BaseUI
 
     private void AddButtonOption(Button button)
     {
+        // The unlabeled close (X) button only does what Escape / Backspace already do.
+        var buttonText = button.GetComponentInChildren<TMP_Text>();
+        if ((buttonText == null || string.IsNullOrWhiteSpace(buttonText.text)) && button.gameObject.name.Contains("Close"))
+            return;
+
         Menu.AddOption(
             () => GetButtonText(button),
             () =>
@@ -283,8 +289,19 @@ public class OptionsUI : BaseUI
     private string GetDropdownText(TMP_Dropdown dropdown, int index)
     {
         string value = GetDropdownOptionText(dropdown, index);
-        string label = LabelFromParent(dropdown.transform, exclude: value) ?? dropdown.gameObject.name;
+        string label = LabelFromParent(dropdown.transform, exclude: value) ?? LanguageHeader(dropdown) ?? dropdown.gameObject.name;
         return $"{label}: {value}";
+    }
+
+    // The language dropdown's label is a separate header (OptionsDialogController._languageHeader).
+    private string LanguageHeader(TMP_Dropdown dropdown)
+    {
+        var controllerType = AccessTools.TypeByName("OptionsDialogController");
+        var controller = controllerType != null ? dropdown.GetComponentInParent(controllerType) : null;
+        if (controller == null) return null;
+        if (!ReferenceEquals(AccessTools.Field(controllerType, "_languageSetting")?.GetValue(controller), dropdown)) return null;
+        var header = AccessTools.Field(controllerType, "_languageHeader")?.GetValue(controller) as TMP_Text;
+        return string.IsNullOrWhiteSpace(header?.text) ? null : header.text.Trim();
     }
 
     private string GetDropdownOptionText(TMP_Dropdown dropdown, int index)
@@ -373,6 +390,15 @@ public class OptionsUI : BaseUI
             keyText = tmpText.text?.Trim() ?? "";
         }
 
+        // The row's own (localized) label beats the action name: new actions like SellItem have no mod text.
+        var warning = ctrlType.GetField("_warningText", PrivateInstance)?.GetValue(keybindController) as TMP_Text;
+        var keyLabel = textField?.GetValue(keybindController) as TMP_Text;
+        string rowLabel = keybindController.GetComponentsInChildren<TMP_Text>(true)
+            .Where(t => t != keyLabel && t != warning && !string.IsNullOrWhiteSpace(t.text))
+            .Select(t => t.text.Trim())
+            .FirstOrDefault();
+        if (!string.IsNullOrEmpty(rowLabel)) actionName = rowLabel;
+
         return string.IsNullOrEmpty(keyText) ? actionName : $"{actionName}: {keyText}";
     }
 
@@ -383,6 +409,8 @@ public class OptionsUI : BaseUI
             "ToggleStash" => Loc.T("ui.keybind.toggle_stash"),
             "Settings" => Loc.T("ui.keybind.access_settings"),
             "Lock" => Loc.T("ui.keybind.access_locked_tooltip"),
+            "LockTooltip" => Loc.T("ui.keybind.access_locked_tooltip"),
+            "OpenSettings" => Loc.T("ui.keybind.access_settings"),
             "Playlist" => Loc.T("ui.keybind.playlist"),
             "Atlas" => Loc.T("ui.keybind.atlas"),
             _ => actionEnum

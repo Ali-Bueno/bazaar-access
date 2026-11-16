@@ -1,6 +1,7 @@
 # Carpetas con código/referencias que no son nuestras
 references/
 bazaar code/
+bazaar code */
 
 # Claude Code
 .claude/

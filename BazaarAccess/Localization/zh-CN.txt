@@ -20,6 +20,23 @@
 
 # --- Startup ---
 mod.loaded = Bazaar Access 已加载
+gamepad.connected = 手柄已连接
+gamepad.disconnected = 手柄已断开
+gamepad.mod_navigation = 模组导航。按视图键返回游戏导航。
+gamepad.game_navigation = 游戏导航。视图键：模组导航。按下左摇杆：物品详情。按下右摇杆：英雄概要。右摇杆：消息记录。按住右扳机：快速信息。
+focus.stash.open = 仓库，已打开
+focus.stash.closed = 仓库，已关闭
+focus.opponent_card = 对手：{0}
+focus.move.holding = 拿着{0}。{1}
+focus.move.board = 棋盘，{0}
+focus.move.stash_slot = 仓库，第{0}格
+focus.move.sell = 以{0}金币出售
+focus.move.to_stash = 放入仓库
+focus.move.altar = 祭坛
+focus.move.slot = 第{0}格，共{1}格
+focus.move.placed = 已放置
+focus.move.cancelled = 已取消移动
+gamepad.help = 手柄。十字键或左摇杆：移动。A：确认。B：返回。X：检视。Y：物品信息。LB：选项。RB：棋盘。视图键：下一个区域。菜单键：暂停。按下左摇杆：棋盘信息。按下右摇杆：储藏信息。右摇杆上下：消息记录；左右：上一页或下一页。按住左扳机：十字键移动或重排物品，A 升级，X 刷新，Y 离开，B 对手，LB 储藏，RB 英雄，视图键 开关储藏，菜单键 本帮助。按住右扳机：十字键上 你的生命，右 对手生命，下 造成伤害，左 承受伤害，A 战斗总结，X 胜场，Y 战斗播报模式，B 移动物品，LB 第一个，RB 最后一个。
 
 
 # 战斗播报：CombatDescriber.cs, Combat/EffectFormatter.cs, Combat/HealthTracker.cs
@@ -55,6 +72,10 @@ combat.poison_amount = {0} 中毒
 combat.poison_applied = 施加中毒
 combat.regen_amount = {0} 再生
 combat.regen_applied = 施加再生
+combat.tempo_gain_amount = {1} +{0}
+combat.tempo_remove_amount = {1} -{0}
+combat.tempo_gained = 获得{0}
+combat.tempo_removed = 移除{0}
 combat.stole_gold = 偷取 {0} 金币
 combat.gold_stolen = 金币被偷取
 combat.max_health_increase = 最大生命值 +{0}
@@ -139,6 +160,8 @@ card.quest.progress = 任务 {0}/{1}
 # --- 详情行标签（模组自定义，非游戏属性词汇）---
 card.state.label = 状态：{0}
 card.enchanted.label = 附魔：{0}
+card.socket_effect = 槽位效果：{0}
+card.socket_effect_described = 槽位效果，{0}：{1}
 card.buy.gold = 购买，{0} 金币
 card.sell.gold = 出售，{0} 金币
 card.buy.info = {0}，{1} 金币
@@ -149,6 +172,8 @@ card.sell.info = {0}，售价 {1} 金币
 # 只有周围的格式需要翻译。
 card.stat.line = {0}：{1}
 card.stat.inline = {0} {1}
+card.stat.seconds.one = {0}秒
+card.stat.seconds.other = {0}秒
 
 # --- 标签/关键词属性描述（I 键）---
 card.property.noDescription = 没有可用描述
@@ -277,7 +302,7 @@ nav.state.defeat = 失败
 nav.section.board = 棋盘
 nav.section.stash = 仓库
 nav.section.skills = 技能
-nav.section.free_prefix = 空闲 {0}
+nav.section.free_prefix = 免费{0}
 nav.section.count.one = {0}，{1} 件物品
 nav.section.count.other = {0}，{1} 件物品
 nav.action.exit = 退出
@@ -340,6 +365,7 @@ action.bought = 以 {1} 金币购买了{0}
 action.purchase.failed = 购买失败
 action.cannot.sell.now = 当前无法出售
 action.sold = 以 {1} 金币出售了{0}
+action.skill_learned = 习得技能：{0}
 action.sale.failed = 出售失败
 action.cannot.move.now = 当前无法移动
 action.cannot.move.items.now = 当前无法移动物品
@@ -416,7 +442,9 @@ action.cannot.reorder.right.now = 当前无法重新排序
 action.combat.short = 战斗
 action.stash.closed = 仓库已关闭
 action.stash.opened.empty = 仓库已打开，为空。按空格键关闭。
+action.stash.opened.empty_short = 仓库已打开，为空
 action.combat.ended = 战斗结束。按回车继续。
+action.combat.ended_short = 战斗结束
 action.continuing = 正在继续
 action.replaying.combat = 正在回放战斗
 action.recap.entered = 总结模式。V 查看英雄，F 查看敌方，G 查看敌方棋盘，B 查看你的棋盘。
@@ -499,6 +527,20 @@ action.skill.with.description = {0}：{1}
 
 # --- MainMenuScreen ---
 screen.mainmenu.name = 主菜单
+screen.mainmenu.hero = 英雄：{0}
+screen.mainmenu.unavailable = {0}，不可用
+screen.mainmenu.buy_full_game = 解锁完整版
+screen.mainmenu.prize_pass = 奖励通行证
+screen.mainmenu.settings = 设置
+screen.mainmenu.mode.unranked = 休闲
+screen.mainmenu.mode.ranked = 排位
+screen.mainmenu.mode.tournament = 锦标赛
+screen.mainmenu.option_selected = {0}，已选中
+screen.mainmenu.with_rank = {0}。段位：{1}
+screen.mainmenu.mode_selected = 已选择{0}
+screen.mainmenu.gems = 宝石：{0}
+screen.mainmenu.buy_chests = 购买宝箱
+screen.mainmenu.with_count = {0}，{1}
 
 # --- ChestSceneScreen ---
 screen.chestscene.name = 宝箱
@@ -523,6 +565,15 @@ screen.collection.category.cardskins = 卡牌皮肤
 screen.collection.category.carpets = 地毯
 screen.collection.category.cardbacks = 卡背
 screen.collection.category.albums = 相册
+screen.collection.category.stash = 仓库
+screen.collection.category.bank = 银行
+screen.collection.category.toys = 玩具
+ui.loadout.title = 装备收藏品
+ui.loadout.randomize = 随机配置
+ui.loadout.category_equipped = {0}：{1}
+ui.loadout.equipped = {0}，已装备
+ui.purchase.title = 商店
+ui.purchase.confirm = 确认
 screen.collection.item_unknown = 未知
 screen.collection.equipped = 已装备
 screen.collection.category_summary.one = {0}，{1} 件
@@ -535,29 +586,13 @@ screen.collection.equipping = 正在装备{0}
 screen.collection.equipped_done = {0}已装备
 screen.collection.equip_failed = 装备物品失败
 
-# --- HeroSelectScreen ---
-screen.heroselect.name = 英雄选择
-screen.heroselect.random = 随机英雄：{0}
-screen.state.on = 开
-screen.state.off = 关
-screen.heroselect.casual_selected_announce = 已选择休闲模式
-screen.heroselect.ranked_selected_announce_rank = 已选择排位模式。段位：{0}
-screen.heroselect.ranked_selected_announce = 已选择排位模式
-screen.heroselect.casual_selected = 休闲模式，已选中
-screen.heroselect.casual = 休闲模式
-screen.heroselect.ranked_selected_rank = 排位模式，已选中。段位：{0}
-screen.heroselect.ranked_selected = 排位模式，已选中
-screen.heroselect.ranked = 排位模式
-screen.heroselect.resume = 继续
-screen.heroselect.ready = 准备
-screen.heroselect.back = 返回
-screen.heroselect.unknown_hero = 未知英雄
-screen.heroselect.hero_selected_tag = 已选中
-screen.heroselect.hero_locked_tag = 已锁定
-screen.heroselect.hero_is_locked = {0}已锁定
-screen.heroselect.hero_selected = 已选择{0}
-screen.heroselect.random_enabled = 随机英雄模式已开启
-screen.heroselect.current_hero = 当前英雄：{0}
+# --- HeroSelectUI (hero picker popup) ---
+ui.heroselect.name = 选择英雄
+ui.heroselect.hint = 按回车选择。左右方向键可将英雄加入或移出随机选择。
+ui.heroselect.locked = {0}，未解锁
+ui.heroselect.excluded = {0}，已排除出随机
+ui.heroselect.excluded_announce = 已将{0}排除出随机
+ui.heroselect.included_announce = 已将{0}加入随机
 
 # --- BattlePassScreen ---
 screen.battlepass.name = 赛季通行证
@@ -852,7 +887,8 @@ vocab.size.medium = 中
 vocab.size.large = 大
 vocab.size.unknown = 未知
 
-vocab.card.size_slots = 尺寸：{0} 格（{1}）
+vocab.card.size_slots.one = 尺寸：{0} 格（{1}）
+vocab.card.size_slots.other = 尺寸：{0} 格（{1}）
 vocab.card.temperature_both = {0}和{1}
 
 # --- 英雄属性标签（HeroNavigator.GetStatName）---
@@ -879,6 +915,7 @@ vocab.hero.summary.health = 生命值 {0}/{1}
 vocab.hero.summary.gold = 金币 {0}
 vocab.hero.summary.level = 等级 {0}
 vocab.hero.summary.rage = 怒气 {0}/{1}
+vocab.tempo = 节奏
 vocab.hero.summary.shield = 护盾 {0}
 
 # BazaarAccess - 最终本地化补充（新增键）

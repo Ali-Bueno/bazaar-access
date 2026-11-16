@@ -12,7 +12,7 @@ using UnityEngine;
 namespace BazaarAccess.Patches;
 
 /// <summary>
-/// Hook en PopupBase.Show para detectar cuando se abre un popup.
+/// Hook on PopupBase.Show for the remaining legacy popups (e.g. NotEnoughSpacePopup).
 /// </summary>
 [HarmonyPatch(typeof(PopupBase), nameof(PopupBase.Show))]
 public static class PopupShowPatch
@@ -26,23 +26,14 @@ public static class PopupShowPatch
 
         try
         {
-            // Crear UI accesible según el tipo de popup
-            if (__instance is GenericPopup genericPopup)
-            {
-                _currentPopupUI = GenericPopupUI.CreateFromPopup(genericPopup);
-                AccessibilityMgr.ShowUI(_currentPopupUI);
-            }
-            else
-            {
-                // Para otros tipos de popup, intentar extraer texto genérico
-                string title = ExtractTextFromChild(__instance.transform, "_titleLabel", "Title", "TitleText");
-                string message = ExtractTextFromChild(__instance.transform, "_messageLabel", "Message", "MessageText", "Text");
+            // GenericPopup and most others are UIPopups now (see UIPopupPatch); only legacy PopupBase popups land here.
+            string title = ExtractTextFromChild(__instance.transform, "_titleLabel", "Title", "TitleText");
+            string message = ExtractTextFromChild(__instance.transform, "_messageLabel", "Message", "MessageText", "Text");
 
-                if (!string.IsNullOrEmpty(title) || !string.IsNullOrEmpty(message))
-                {
-                    _currentPopupUI = new GenericPopupUI(__instance.transform, title, message);
-                    AccessibilityMgr.ShowUI(_currentPopupUI);
-                }
+            if (!string.IsNullOrEmpty(title) || !string.IsNullOrEmpty(message))
+            {
+                _currentPopupUI = new GenericPopupUI(__instance.transform, title, message);
+                AccessibilityMgr.ShowUI(_currentPopupUI);
             }
         }
         catch (Exception ex)
@@ -81,8 +72,10 @@ public static class PopupShowPatch
         return "";
     }
 
-    public static void ClearCurrentUI()
+    public static void CloseCurrentUI()
     {
+        if (_currentPopupUI == null) return;
+        AccessibilityMgr.HideUI(_currentPopupUI);
         _currentPopupUI = null;
     }
 }
@@ -98,9 +91,7 @@ public static class PopupHidePatch
         string popupName = __instance.GetType().Name;
         Plugin.Logger.LogInfo($"PopupBase.Hide: {popupName}");
 
-        // Pop de la UI si había una
-        AccessibilityMgr.PopUI();
-        PopupShowPatch.ClearCurrentUI();
+        PopupShowPatch.CloseCurrentUI();
     }
 }
 
@@ -269,14 +260,11 @@ public static class ResultComponentPatch
     {
         try
         {
-            // ResultComponent está en TheBazaar.Store namespace
-            var type = typeof(PopupBase).Assembly.GetType("TheBazaar.Store.ResultComponent");
-            if (type == null)
-                type = typeof(PopupBase).Assembly.GetType("TheBazaar.ResultComponent");
-
-            if (type != null)
+            // ResultComponent inherits Show from SequencePopup, so this resolves to SequencePopup.Show;
+            // the postfix filters by instance type.
+            var resultType = typeof(TheBazaar.Store.ResultComponent);
             {
-                _targetMethod = type.GetMethod("Show", BindingFlags.NonPublic | BindingFlags.Instance);
+                _targetMethod = resultType.GetMethod("Show", BindingFlags.NonPublic | BindingFlags.Instance);
                 if (_targetMethod != null)
                 {
                     Plugin.Logger.LogInfo($"ResultComponentPatch: Found {_targetMethod.Name}");
@@ -298,6 +286,9 @@ public static class ResultComponentPatch
     {
         try
         {
+            // The patched method is shared by every SequencePopup
+            if (!(__instance is TheBazaar.Store.ResultComponent)) return;
+
             var monoBehaviour = __instance as MonoBehaviour;
             if (monoBehaviour == null) return;
 
@@ -364,10 +355,11 @@ public static class ConfirmationDialogPatch
     {
         try
         {
-            var type = typeof(PopupBase).Assembly.GetType("TheBazaar.BazaarConfirmationDialogController");
-            if (type != null)
+            // Lives in the global namespace
+            var dialogType = AccessTools.TypeByName("BazaarConfirmationDialogController");
+            if (dialogType != null)
             {
-                _targetMethod = type.GetMethod("Open", BindingFlags.Public | BindingFlags.Instance);
+                _targetMethod = dialogType.GetMethod("Open", BindingFlags.Public | BindingFlags.Instance);
                 if (_targetMethod != null)
                 {
                     Plugin.Logger.LogInfo("ConfirmationDialogPatch: Found BazaarConfirmationDialogController.Open");

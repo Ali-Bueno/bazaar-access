@@ -23,6 +23,23 @@
 
 # --- Startup ---
 mod.loaded = Bazaar Access 로드됨
+gamepad.connected = 컨트롤러 연결됨
+gamepad.disconnected = 컨트롤러 연결 끊김
+gamepad.mod_navigation = 모드 탐색. 보기 버튼을 누르면 게임 탐색으로 돌아갑니다.
+gamepad.game_navigation = 게임 탐색. 보기: 모드 탐색. 왼쪽 스틱 누르기: 아이템 상세. 오른쪽 스틱 누르기: 영웅 요약. 오른쪽 스틱: 메시지 기록. 오른쪽 트리거 누른 채: 빠른 정보.
+focus.stash.open = 창고, 열림
+focus.stash.closed = 창고, 닫힘
+focus.opponent_card = 상대: {0}
+focus.move.holding = {0} 들고 있음. {1}
+focus.move.board = 보드, {0}
+focus.move.stash_slot = 창고, {0}번 칸
+focus.move.sell = {0} 골드에 판매
+focus.move.to_stash = 창고로 보내기
+focus.move.altar = 제단
+focus.move.slot = {1}칸 중 {0}번 칸
+focus.move.placed = 배치됨
+focus.move.cancelled = 이동 취소됨
+gamepad.help = 컨트롤러. 방향 패드 또는 왼쪽 스틱: 이동. A: 확인. B: 뒤로. X: 살펴보기. Y: 아이템 정보. LB: 선택지. RB: 보드. 보기: 다음 섹션. 메뉴: 일시 정지. 왼쪽 스틱 누르기: 보드 정보. 오른쪽 스틱 누르기: 보관함 정보. 오른쪽 스틱 위아래: 메시지 기록, 좌우: 페이지 이동. 왼쪽 트리거를 누른 채: 방향 패드로 아이템 이동 또는 순서 변경, A 강화, X 새로고침, Y 나가기, B 상대, LB 보관함, RB 영웅, 보기 보관함 열기/닫기, 메뉴 이 도움말. 오른쪽 트리거를 누른 채: 방향 패드 위 내 체력, 오른쪽 상대 체력, 아래 준 피해, 왼쪽 받은 피해, A 전투 요약, X 승리, Y 전투 안내 모드, B 아이템 이동, LB 처음, RB 마지막.
 
 
 # Combat narration: CombatDescriber.cs, Combat/EffectFormatter.cs, Combat/HealthTracker.cs
@@ -58,6 +75,10 @@ combat.poison_amount = {0} 중독
 combat.poison_applied = 중독 적용
 combat.regen_amount = {0} 재생
 combat.regen_applied = 재생 적용
+combat.tempo_gain_amount = {1} +{0}
+combat.tempo_remove_amount = {1} -{0}
+combat.tempo_gained = {0} 획득
+combat.tempo_removed = {0} 제거
 combat.stole_gold = 골드 {0} 훔침
 combat.gold_stolen = 골드 훔침
 combat.max_health_increase = 최대 체력 +{0}
@@ -142,6 +163,8 @@ card.quest.progress = 퀘스트 {0}/{1}
 # --- 상세 정보 라벨 (모드에서 만든 것으로, 게임 자체 용어는 아님) ---
 card.state.label = 상태: {0}
 card.enchanted.label = 인챈트: {0}
+card.socket_effect = 슬롯 효과: {0}
+card.socket_effect_described = 슬롯 효과, {0}: {1}
 card.buy.gold = 구매 {0} 골드
 card.sell.gold = 판매 {0} 골드
 card.buy.info = {0}, {1} 골드
@@ -152,6 +175,8 @@ card.sell.info = {0}, 판매가 {1} 골드
 # (Damage, Shield, Cooldown...). 여기서는 형식만 번역 대상입니다.
 card.stat.line = {0}: {1}
 card.stat.inline = {0} {1}
+card.stat.seconds.one = {0}초
+card.stat.seconds.other = {0}초
 
 # --- 태그/키워드 속성 설명 (I 키) ---
 card.property.noDescription = 설명 없음
@@ -343,6 +368,7 @@ action.bought = {1} 골드에 {0} 구매
 action.purchase.failed = 구매 실패
 action.cannot.sell.now = 지금은 판매할 수 없음
 action.sold = {1} 골드에 {0} 판매
+action.skill_learned = 스킬 습득: {0}
 action.sale.failed = 판매 실패
 action.cannot.move.now = 지금은 이동할 수 없음
 action.cannot.move.items.now = 지금은 아이템을 이동할 수 없음
@@ -419,7 +445,9 @@ action.cannot.reorder.right.now = 지금은 순서를 바꿀 수 없음
 action.combat.short = 전투
 action.stash.closed = 창고 닫힘
 action.stash.opened.empty = 창고 열림, 비어 있음. 닫으려면 스페이스.
+action.stash.opened.empty_short = 창고 열림, 비어 있음
 action.combat.ended = 전투 종료. 계속하려면 Enter.
+action.combat.ended_short = 전투 종료
 action.continuing = 계속하는 중
 action.replaying.combat = 전투 다시 보기
 action.recap.entered = 요약. V 영웅, F 적, G 적 보드, B 내 보드.
@@ -503,6 +531,20 @@ action.skill.with.description = {0}: {1}
 
 # --- MainMenuScreen ---
 screen.mainmenu.name = 메인 메뉴
+screen.mainmenu.hero = 영웅: {0}
+screen.mainmenu.unavailable = {0}, 사용 불가
+screen.mainmenu.buy_full_game = 정식 버전 잠금 해제
+screen.mainmenu.prize_pass = 프라이즈 패스
+screen.mainmenu.settings = 설정
+screen.mainmenu.mode.unranked = 일반
+screen.mainmenu.mode.ranked = 랭크
+screen.mainmenu.mode.tournament = 토너먼트
+screen.mainmenu.option_selected = {0}, 선택됨
+screen.mainmenu.with_rank = {0}. 랭크: {1}
+screen.mainmenu.mode_selected = {0} 선택됨
+screen.mainmenu.gems = 보석: {0}
+screen.mainmenu.buy_chests = 상자 구매
+screen.mainmenu.with_count = {0}, {1}
 
 # --- ChestSceneScreen ---
 screen.chestscene.name = 상자
@@ -527,6 +569,15 @@ screen.collection.category.cardskins = 카드 스킨
 screen.collection.category.carpets = 카펫
 screen.collection.category.cardbacks = 카드 뒷면
 screen.collection.category.albums = 앨범
+screen.collection.category.stash = 창고
+screen.collection.category.bank = 은행
+screen.collection.category.toys = 장난감
+ui.loadout.title = 수집품 장착
+ui.loadout.randomize = 무작위 장착
+ui.loadout.category_equipped = {0}: {1}
+ui.loadout.equipped = {0}, 장착됨
+ui.purchase.title = 상점
+ui.purchase.confirm = 확인
 screen.collection.item_unknown = 알 수 없음
 screen.collection.equipped = 장착됨
 screen.collection.category_summary.one = {0}, 아이템 {1}개
@@ -539,29 +590,13 @@ screen.collection.equipping = {0} 장착 중
 screen.collection.equipped_done = {0} 장착됨
 screen.collection.equip_failed = 아이템 장착 실패
 
-# --- HeroSelectScreen ---
-screen.heroselect.name = 영웅 선택
-screen.heroselect.random = 무작위 영웅: {0}
-screen.state.on = 켜짐
-screen.state.off = 꺼짐
-screen.heroselect.casual_selected_announce = 캐주얼 선택됨
-screen.heroselect.ranked_selected_announce_rank = 랭크전 선택됨. 랭크: {0}
-screen.heroselect.ranked_selected_announce = 랭크전 선택됨
-screen.heroselect.casual_selected = 캐주얼, 선택됨
-screen.heroselect.casual = 캐주얼
-screen.heroselect.ranked_selected_rank = 랭크전, 선택됨. 랭크: {0}
-screen.heroselect.ranked_selected = 랭크전, 선택됨
-screen.heroselect.ranked = 랭크전
-screen.heroselect.resume = 이어하기
-screen.heroselect.ready = 준비
-screen.heroselect.back = 뒤로
-screen.heroselect.unknown_hero = 알 수 없는 영웅
-screen.heroselect.hero_selected_tag = 선택됨
-screen.heroselect.hero_locked_tag = 잠김
-screen.heroselect.hero_is_locked = {0}은(는) 잠겨 있음
-screen.heroselect.hero_selected = {0} 선택됨
-screen.heroselect.random_enabled = 무작위 영웅 모드 켜짐
-screen.heroselect.current_hero = 현재 영웅: {0}
+# --- HeroSelectUI (hero picker popup) ---
+ui.heroselect.name = 영웅 선택
+ui.heroselect.hint = Enter로 선택. 왼쪽 또는 오른쪽 화살표로 무작위 선택에 영웅을 포함하거나 제외합니다.
+ui.heroselect.locked = {0}, 잠김
+ui.heroselect.excluded = {0}, 무작위에서 제외됨
+ui.heroselect.excluded_announce = {0} 무작위에서 제외됨
+ui.heroselect.included_announce = {0} 무작위에 포함됨
 
 # --- BattlePassScreen ---
 screen.battlepass.name = 시즌 패스
@@ -858,7 +893,8 @@ vocab.size.medium = 중형
 vocab.size.large = 대형
 vocab.size.unknown = 알 수 없음
 
-vocab.card.size_slots = 크기: {0}칸 ({1})
+vocab.card.size_slots.one = 크기: {0}칸 ({1})
+vocab.card.size_slots.other = 크기: {0}칸 ({1})
 vocab.card.temperature_both = {0}와(과) {1}
 
 # --- 영웅 스탯 라벨 (HeroNavigator.GetStatName) ---
@@ -885,6 +921,7 @@ vocab.hero.summary.health = 체력 {1} 중 {0}
 vocab.hero.summary.gold = 골드 {0}
 vocab.hero.summary.level = 레벨 {0}
 vocab.hero.summary.rage = 분노 {0} / {1}
+vocab.tempo = 템포
 vocab.hero.summary.shield = 보호막 {0}
 
 # BazaarAccess - 최종 로컬라이제이션 작업 (신규 키)

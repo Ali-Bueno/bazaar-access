@@ -34,7 +34,7 @@ public class GameplayAnnouncer
     /// </summary>
     public ERunState VerifyStateMatchesContent(ERunState reportedState)
     {
-        if (reportedState != ERunState.Choice)
+        if (reportedState != ERunState.Choice && reportedState != ERunState.Encounter && reportedState != ERunState.LevelUp)
         {
             return reportedState;
         }
@@ -47,6 +47,20 @@ public class GameplayAnnouncer
         // Check first card to detect actual content type
         var firstCard = _nav.GetCardAtSelectionIndex(0);
         if (firstCard == null) return reportedState;
+
+        // Events that sell or give items (merchants, "Grab the Loot") keep the Encounter state, and a
+        // level-up reward (build 2026-11: path choices, then items) keeps the LevelUp state.
+        if (reportedState == ERunState.LevelUp)
+        {
+            if (SelectionNavigator.IsEncounterCard(firstCard) || firstCard.Type == ECardType.Skill) return reportedState;
+            return SelectionNavigator.IsSelectionFree() ? ERunState.Loot : ERunState.Choice;
+        }
+
+        if (reportedState == ERunState.Encounter)
+        {
+            if (SelectionNavigator.IsEncounterCard(firstCard)) return reportedState;
+            return SelectionNavigator.IsSelectionFree() ? ERunState.Loot : ERunState.Choice;
+        }
 
         if (SelectionNavigator.IsEncounterCard(firstCard))
         {
@@ -92,7 +106,8 @@ public class GameplayAnnouncer
             case ERunState.LevelUp:
                 int level = Data.Run?.Player?.GetAttributeValue(EPlayerAttributeType.Level) ?? 0;
                 int skillCount = _nav.GetSelectionCardCount();
-                announcement = skillCount > 0
+                bool choosingSkills = _nav.GetCardAtSelectionIndex(0)?.Type == ECardType.Skill;
+                announcement = skillCount > 0 && choosingSkills
                     ? Loc.Plural("nav.state.levelup_choose", skillCount, level, skillCount)
                     : Loc.T("nav.state.levelup", level);
                 break;
@@ -164,16 +179,18 @@ public class GameplayAnnouncer
         // (Compares the run state directly rather than the now-localized "rewards" display name.)
         if (_nav.CurrentSection == NavigationSection.Selection
             && SelectionNavigator.IsSelectionFree()
-            && _nav.GetCurrentState() != ERunState.Loot)
+            && _nav.GetCurrentState() != ERunState.Loot
+            && !SelectionNavigator.IsEncounterCard(_nav.GetCardAtSelectionIndex(0)))
         {
             name = Loc.T("nav.section.free_prefix", name);
         }
 
         TolkWrapper.Speak(Loc.Plural("nav.section.count", count, name, count));
+        if (_nav.CurrentSection == NavigationSection.Selection) Patches.StateChangePatch.MarkAnnounced(_nav.GetSelectionSignature());
         _nav.TriggerVisualSelection();
     }
 
-    public void AnnounceCurrentItem()
+    public void AnnounceCurrentItem(bool interrupt = true)
     {
         if (_nav.CurrentSection == NavigationSection.Hero)
         {
@@ -207,19 +224,19 @@ public class GameplayAnnouncer
                     break;
             }
 
-            TolkWrapper.Speak(desc);
+            TolkWrapper.Speak(desc, interrupt);
             return;
         }
 
         var card = _nav.GetCurrentCard();
         if (card == null)
         {
-            TolkWrapper.Speak(Loc.T("nav.empty"));
+            TolkWrapper.Speak(Loc.T("nav.empty"), interrupt);
             return;
         }
 
         string cardDesc = SelectionNavigator.GetCardDescription(card, _nav.CurrentSection, false);
-        TolkWrapper.Speak(cardDesc);
+        TolkWrapper.Speak(cardDesc, interrupt);
     }
 
     public void ReadDetailedInfo()

@@ -61,8 +61,7 @@ public class FightMenuUI : BaseUI
         // Salir del juego
         AddButtonIfActive("Btn_Exit_Desktop");
 
-        // Botón de cerrar (X)
-        AddButtonIfActive("Btn_Close_Menu");
+        // The close (X) button has no label and does the same as Resume / Escape: not listed.
     }
 
     private void AddButtonIfActive(string name)

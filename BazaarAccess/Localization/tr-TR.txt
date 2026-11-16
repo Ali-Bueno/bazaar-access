@@ -24,6 +24,23 @@
 
 # --- Başlangıç ---
 mod.loaded = Bazaar Access yüklendi
+gamepad.connected = Oyun kumandası bağlandı
+gamepad.disconnected = Oyun kumandası bağlantısı kesildi
+gamepad.mod_navigation = Mod gezinmesi. Oyunun gezinmesine dönmek için Görünüm'e bas.
+gamepad.game_navigation = Oyun gezinmesi. Görünüm: mod gezinmesi. Sol çubuğa bas: eşya ayrıntıları. Sağ çubuğa bas: kahraman özeti. Sağ çubuk: mesaj geçmişi. Sağ tetiği basılı tut: hızlı bilgi.
+focus.stash.open = Depo, açık
+focus.stash.closed = Depo, kapalı
+focus.opponent_card = Rakip: {0}
+focus.move.holding = {0} tutuluyor. {1}
+focus.move.board = Tahta, {0}
+focus.move.stash_slot = Depo, {0}. yuva
+focus.move.sell = {0} altına sat
+focus.move.to_stash = Depoya gönder
+focus.move.altar = Sunak
+focus.move.slot = {1} yuvadan {0}.
+focus.move.placed = Yerleştirildi
+focus.move.cancelled = Taşıma iptal edildi
+gamepad.help = Kumanda. Yön tuşları veya sol çubuk: hareket. A: onayla. B: geri. X: incele. Y: eşya bilgisi. LB: seçenekler. RB: tahta. Görünüm: sonraki bölüm. Menü: duraklat. Sol çubuğa bas: tahta bilgisi. Sağ çubuğa bas: depo bilgisi. Sağ çubuk yukarı veya aşağı: mesaj geçmişi; sol veya sağ: sayfa yukarı veya aşağı. Sol tetik basılıyken: yön tuşları eşyaları taşır veya sıralar, A yükselt, X yenile, Y ayrıl, B rakip, LB depo, RB kahraman, Görünüm depoyu aç veya kapat, Menü bu yardım. Sağ tetik basılıyken: yukarı canın, sağ rakibin canı, aşağı verilen hasar, sol alınan hasar, A savaş özeti, X galibiyetler, Y savaş duyuru modu, B eşyayı taşı, LB ilk, RB son.
 
 
 # Savaş anlatımı: CombatDescriber.cs, Combat/EffectFormatter.cs, Combat/HealthTracker.cs
@@ -59,6 +76,10 @@ combat.poison_amount = {0} zehir
 combat.poison_applied = zehir uygulandı
 combat.regen_amount = {0} yenilenme
 combat.regen_applied = yenilenme uygulandı
+combat.tempo_gain_amount = +{0} {1}
+combat.tempo_remove_amount = -{0} {1}
+combat.tempo_gained = {0} kazanıldı
+combat.tempo_removed = {0} kaldırıldı
 combat.stole_gold = {0} altın çaldı
 combat.gold_stolen = altın çalındı
 combat.max_health_increase = maksimum can +{0}
@@ -143,6 +164,8 @@ card.quest.progress = Görev {0}/{1}
 # --- Ayrıntı satırı etiketleri (mod tarafından yazılmıştır, oyunun kelime dağarcığı değildir) ---
 card.state.label = Durum: {0}
 card.enchanted.label = Büyülü: {0}
+card.socket_effect = Yuva etkisi: {0}
+card.socket_effect_described = Yuva etkisi, {0}: {1}
 card.buy.gold = {0} altına satın al
 card.sell.gold = {0} altına sat
 card.buy.info = {0}, {1} altın
@@ -153,6 +176,8 @@ card.sell.info = {0}, {1} altına satılır
 # terimidir (Damage, Shield, Cooldown...); yalnızca çevresindeki biçim bir şablondur.
 card.stat.line = {0}: {1}
 card.stat.inline = {0} {1}
+card.stat.seconds.one = {0} saniye
+card.stat.seconds.other = {0} saniye
 
 # --- Etiket/anahtar kelime özellik açıklamaları (I tuşu) ---
 card.property.noDescription = Açıklama mevcut değil
@@ -282,7 +307,7 @@ nav.state.defeat = Yenilgi
 nav.section.board = Pano
 nav.section.stash = Depo
 nav.section.skills = Yetenekler
-nav.section.free_prefix = Boş {0}
+nav.section.free_prefix = Ücretsiz {0}
 nav.section.count.one = {0}, {1} eşya
 nav.section.count.other = {0}, {1} eşya
 nav.action.exit = Çıkış
@@ -345,6 +370,7 @@ action.bought = {0}, {1} altına satın alındı
 action.purchase.failed = Satın alma başarısız
 action.cannot.sell.now = Şu anda satılamıyor
 action.sold = {0}, {1} altına satıldı
+action.skill_learned = Yetenek öğrenildi: {0}
 action.sale.failed = Satış başarısız
 action.cannot.move.now = Şu anda taşınamıyor
 action.cannot.move.items.now = Şu anda eşyalar taşınamıyor
@@ -421,7 +447,9 @@ action.cannot.reorder.right.now = Şu anda yeniden sıralanamıyor
 action.combat.short = Savaş
 action.stash.closed = Depo kapatıldı
 action.stash.opened.empty = Depo açıldı, boş. Kapatmak için Boşluk tuşuna bas.
+action.stash.opened.empty_short = Depo açıldı, boş
 action.combat.ended = Savaş bitti. Devam etmek için Enter.
+action.combat.ended_short = Savaş bitti
 action.continuing = Devam ediliyor
 action.replaying.combat = Savaş tekrar oynatılıyor
 action.recap.entered = Özet. V kahraman, F düşman, G düşman panosu, B kendi panon.
@@ -505,6 +533,20 @@ action.skill.with.description = {0}: {1}
 
 # --- MainMenuScreen ---
 screen.mainmenu.name = Ana Menü
+screen.mainmenu.hero = Kahraman: {0}
+screen.mainmenu.unavailable = {0}, kullanılamaz
+screen.mainmenu.buy_full_game = Tam oyunun kilidini aç
+screen.mainmenu.prize_pass = Ödül Kartı
+screen.mainmenu.settings = Ayarlar
+screen.mainmenu.mode.unranked = Normal
+screen.mainmenu.mode.ranked = Dereceli
+screen.mainmenu.mode.tournament = Turnuva
+screen.mainmenu.option_selected = {0}, seçili
+screen.mainmenu.with_rank = {0}. Rütbe: {1}
+screen.mainmenu.mode_selected = {0} seçildi
+screen.mainmenu.gems = Mücevher: {0}
+screen.mainmenu.buy_chests = Sandık satın al
+screen.mainmenu.with_count = {0}, {1}
 
 # --- ChestSceneScreen ---
 screen.chestscene.name = Sandıklar
@@ -529,6 +571,15 @@ screen.collection.category.cardskins = Kart Görünümleri
 screen.collection.category.carpets = Halılar
 screen.collection.category.cardbacks = Kart Arkaları
 screen.collection.category.albums = Albümler
+screen.collection.category.stash = Depo
+screen.collection.category.bank = Banka
+screen.collection.category.toys = Oyuncaklar
+ui.loadout.title = Koleksiyon Eşyalarını Kuşan
+ui.loadout.randomize = Rastgele donanım
+ui.loadout.category_equipped = {0}: {1}
+ui.loadout.equipped = {0}, kuşanıldı
+ui.purchase.title = Mağaza
+ui.purchase.confirm = Onayla
 screen.collection.item_unknown = Bilinmiyor
 screen.collection.equipped = takılı
 screen.collection.category_summary.one = {0}, {1} eşya
@@ -541,29 +592,13 @@ screen.collection.equipping = {0} takılıyor
 screen.collection.equipped_done = {0} takıldı
 screen.collection.equip_failed = Eşya takılamadı
 
-# --- HeroSelectScreen ---
-screen.heroselect.name = Kahraman Seçimi
-screen.heroselect.random = Rastgele Kahraman: {0}
-screen.state.on = açık
-screen.state.off = kapalı
-screen.heroselect.casual_selected_announce = Gündelik seçildi
-screen.heroselect.ranked_selected_announce_rank = Dereceli seçildi. Rütbe: {0}
-screen.heroselect.ranked_selected_announce = Dereceli seçildi
-screen.heroselect.casual_selected = Gündelik, seçili
-screen.heroselect.casual = Gündelik
-screen.heroselect.ranked_selected_rank = Dereceli, seçili. Rütbe: {0}
-screen.heroselect.ranked_selected = Dereceli, seçili
-screen.heroselect.ranked = Dereceli
-screen.heroselect.resume = Devam Et
-screen.heroselect.ready = Hazır
-screen.heroselect.back = Geri
-screen.heroselect.unknown_hero = Bilinmeyen Kahraman
-screen.heroselect.hero_selected_tag = seçili
-screen.heroselect.hero_locked_tag = kilitli
-screen.heroselect.hero_is_locked = {0} kilitli
-screen.heroselect.hero_selected = {0} seçildi
-screen.heroselect.random_enabled = Rastgele kahraman modu etkin
-screen.heroselect.current_hero = Mevcut kahraman: {0}
+# --- HeroSelectUI (hero picker popup) ---
+ui.heroselect.name = Kahraman seç
+ui.heroselect.hint = Seçmek için Enter. Sol veya sağ ok, bir kahramanı rastgele seçime dahil eder veya hariç tutar.
+ui.heroselect.locked = {0}, kilitli
+ui.heroselect.excluded = {0}, rastgeleden hariç
+ui.heroselect.excluded_announce = {0} rastgeleden hariç tutuldu
+ui.heroselect.included_announce = {0} rastgeleye dahil edildi
 
 # --- BattlePassScreen ---
 screen.battlepass.name = Sezon Bileti
@@ -862,7 +897,8 @@ vocab.size.medium = Orta
 vocab.size.large = Büyük
 vocab.size.unknown = Bilinmiyor
 
-vocab.card.size_slots = Boyut: {0} yuva ({1})
+vocab.card.size_slots.one = Boyut: {0} yuva ({1})
+vocab.card.size_slots.other = Boyut: {0} yuva ({1})
 vocab.card.temperature_both = {0} ve {1}
 
 # --- Kahraman istatistik etiketleri (HeroNavigator.GetStatName) ---
@@ -889,6 +925,7 @@ vocab.hero.summary.health = Can {1} üzerinden {0}
 vocab.hero.summary.gold = Altın {0}
 vocab.hero.summary.level = Seviye {0}
 vocab.hero.summary.rage = Öfke {0} / {1}
+vocab.tempo = Tempo
 vocab.hero.summary.shield = Kalkan {0}
 
 # BazaarAccess - Son yerelleştirme geçişi (yeni anahtarlar)

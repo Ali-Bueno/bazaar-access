@@ -155,6 +155,7 @@ public class GameplayNavigator
     public bool HasBoardContent() => Board.BoardCount > 0;
     public bool HasSelectionContent() => Selection.HasContent;
     public int GetSelectionCardCount() => Selection.CardCount;
+    public string GetSelectionSignature() => Selection.Signature;
 
     public int GetCurrentBoardSlot()
     {
@@ -231,6 +232,20 @@ public class GameplayNavigator
         Hero.Reset();
         Detail.Clear();
         AnnounceSection();
+        AnnounceFirstItemAfterJump();
+    }
+
+    // A jump the user asked for (B / C / G / Tab) also reads the item it lands on, queued after the section.
+    private void AnnounceFirstItemAfterJump()
+    {
+        if (_currentSection != NavigationSection.Hero && GetCurrentSectionCount() > 0)
+            _announcer.AnnounceCurrentItem(interrupt: false);
+    }
+
+    private void JumpToSection(NavigationSection section)
+    {
+        GoToSection(section);
+        AnnounceFirstItemAfterJump();
     }
 
     public void GoToSection(NavigationSection section)
@@ -252,7 +267,7 @@ public class GameplayNavigator
     public void GoToChoices()
     {
         if (Selection.Count > 0)
-            GoToSection(NavigationSection.Selection);
+            JumpToSection(NavigationSection.Selection);
         else
             TolkWrapper.Speak(Loc.T("nav.no_choices"));
     }
@@ -260,10 +275,10 @@ public class GameplayNavigator
     public void GoToBoard()
     {
         if (Board.BoardCount > 0)
-            GoToSection(NavigationSection.Board);
+            JumpToSection(NavigationSection.Board);
         else if (Board.StashCount > 0)
         {
-            GoToSection(NavigationSection.Stash);
+            JumpToSection(NavigationSection.Stash);
             TolkWrapper.Speak(Loc.T("nav.board.empty_showing_stash"));
         }
         else
@@ -281,7 +296,7 @@ public class GameplayNavigator
         }
 
         if (Board.StashCount > 0)
-            GoToSection(NavigationSection.Stash);
+            JumpToSection(NavigationSection.Stash);
         else
             TolkWrapper.Speak(Loc.T("nav.stash.empty"));
     }
@@ -293,7 +308,7 @@ public class GameplayNavigator
     public void SetCombatMode(bool inCombat)
     {
         _inCombat = inCombat;
-        if (inCombat) GoToSection(NavigationSection.Hero);
+        if (inCombat) SetSectionSilent(NavigationSection.Hero); // "Combat" is announced by the screen
     }
 
     public void SetReplayMode(bool inReplayMode)

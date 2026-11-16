@@ -30,7 +30,7 @@ public class KeyboardNavigator : MonoBehaviour
         }
     }
 
-    private void ClearUISelection()
+    private static void ClearUISelection()
     {
         var eventSystem = EventSystem.current;
         if (eventSystem != null && eventSystem.currentSelectedGameObject != null)
@@ -58,6 +58,15 @@ public class KeyboardNavigator : MonoBehaviour
         AccessibleKey key = MapKey(e);
         if (key == AccessibleKey.None) return;
 
+        Dispatch(key);
+        e.Use();
+    }
+
+    /// <summary>
+    /// Sends a mapped key to the focused accessible screen/UI (shared by keyboard and gamepad input).
+    /// </summary>
+    public static void Dispatch(AccessibleKey key)
+    {
         // Don't clear selection if editing (keep focus on input field)
         if (!IsAnyTextFieldEditing())
         {
@@ -65,13 +74,12 @@ public class KeyboardNavigator : MonoBehaviour
         }
 
         AccessibilityMgr.HandleInput(key);
-        e.Use();
     }
 
     /// <summary>
     /// Checks if any text field is in edit mode.
     /// </summary>
-    private bool IsAnyTextFieldEditing()
+    public static bool IsAnyTextFieldEditing()
     {
         var focusedUI = AccessibilityMgr.GetFocusedUI();
         if (focusedUI is LoginBaseUI loginUI)

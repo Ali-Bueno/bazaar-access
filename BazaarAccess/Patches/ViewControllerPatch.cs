@@ -1,4 +1,5 @@
 using BazaarAccess.Accessibility;
+using BazaarAccess.Core;
 using BazaarAccess.Screens;
 using HarmonyLib;
 using TheBazaar.UI;
@@ -39,13 +40,8 @@ public static class ViewControllerPatch
     {
         switch (viewName.ToLower())
         {
-            case "heroselect":
-            case "heroselectview":
-                return new HeroSelectScreen(root);
-
-            case "mainmenu":
-            case "mainmenuview":
-                return new MainMenuScreen(root);
+            case "career":
+                return new Screens.TextPanelScreen(root, Loc.T("patch.menu.player_profile"));
 
             default:
                 Plugin.Logger.LogInfo($"Vista sin pantalla accesible: {viewName}");

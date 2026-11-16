@@ -449,8 +449,8 @@ public static class StateChangePatch
     private static void OnItemCardsRevealed()
     {
         Plugin.Logger.LogInfo("ItemCardsRevealed - Cards ready");
-        // Only refresh, BoardTransitionFinished will announce
-        TriggerRefresh();
+        // Game build 2026-11 no longer raises BoardTransitionFinished: new choices (shop, loot) are announced here.
+        TriggerRefreshAndAnnounce();
     }
 
     /// <summary>
@@ -459,8 +459,7 @@ public static class StateChangePatch
     private static void OnSkillCardsRevealed()
     {
         Plugin.Logger.LogInfo("SkillCardsRevealed - Skills ready");
-        // Only refresh, BoardTransitionFinished will announce
-        TriggerRefresh();
+        TriggerRefreshAndAnnounce();
     }
 
     /// <summary>
@@ -551,14 +550,18 @@ public static class StateChangePatch
             // Announce day change (takes priority over hour)
             if (currentDay > 0 && currentDay != _lastDay)
             {
-                TolkWrapper.Speak(Loc.T("patch.state.day", currentDay));
+                string dayText = Loc.T("patch.state.day", currentDay);
+                TolkWrapper.Speak(dayText);
+                MessageBuffer.Add(dayText);
                 _lastDay = currentDay;
                 _lastHour = currentHour;
             }
             // Announce hour change (only if day didn't change)
             else if (currentHour > 0 && currentHour != _lastHour)
             {
-                TolkWrapper.Speak(Loc.T("patch.state.hour", currentHour));
+                string hourText = Loc.T("patch.state.hour", currentHour);
+                TolkWrapper.Speak(hourText);
+                MessageBuffer.Add(hourText);
                 _lastHour = currentHour;
             }
         }
@@ -585,12 +588,44 @@ public static class StateChangePatch
     /// <summary>
     /// Triggers a refresh of the gameplay screen (without announcing).
     /// </summary>
+    /// <summary>Counts a section announcement made elsewhere, so the debounced state announcement doesn't repeat it.</summary>
+    public static void MarkAnnounced(string selectionSignature) => _announcedSignature = selectionSignature;
+
+    // The offer a section announcement already read: the reveal animation that ends later must not
+    // announce the same cards again as a state.
+    private static string _announcedSignature;
+
     public static void TriggerRefresh()
     {
         if (AccessibilityMgr.GetFocusedUI() != null) return;
 
         var screen = AccessibilityMgr.GetCurrentScreen() as GameplayScreen;
-        screen?.RefreshNavigator();
+        if (screen == null) return;
+        screen.RefreshNavigator();
+
+        // A new offer inside the same state (loot after an event choice, rewards, a rerolled shop) raises
+        // no state change: announce it when every offered card is new (buying one only removes a card).
+        string signature = screen.GetSelectionSignature();
+        if (signature == _lastSelectionSignature) return;
+        var previous = new HashSet<string>((_lastSelectionSignature ?? string.Empty).Split(','));
+        bool sameState = _lastState == _signatureState; // a state change announces its own offer
+        _lastSelectionSignature = signature;
+        _signatureState = _lastState;
+        if (sameState && !string.IsNullOrEmpty(signature) && !previous.Overlaps(signature.Split(',')))
+            Plugin.Instance.StartCoroutine(AnnounceNewOffer(signature));
+    }
+
+    private static string _lastSelectionSignature;
+    private static ERunState _signatureState;
+
+    // Lets the cards' reveal animation finish before reading them.
+    private const float NewOfferAnnounceDelay = 1.0f;
+
+    private static System.Collections.IEnumerator AnnounceNewOffer(string signature)
+    {
+        yield return new UnityEngine.WaitForSeconds(NewOfferAnnounceDelay);
+        if (AccessibilityMgr.GetFocusedUI() != null || signature == _announcedSignature) yield break;
+        (AccessibilityMgr.GetCurrentScreen() as GameplayScreen)?.AnnounceNewOffer();
     }
 
     /// <summary>
@@ -645,6 +680,9 @@ public static class StateChangePatch
         }
 
         var screen = AccessibilityMgr.GetCurrentScreen() as GameplayScreen;
+        string offer = screen?.GetSelectionSignature();
+        if (!string.IsNullOrEmpty(offer) && offer == _announcedSignature) yield break;
+
         if (screen != null)
         {
             // Final refresh before announcing

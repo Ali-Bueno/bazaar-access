@@ -50,6 +50,8 @@ public static class EffectFormatter
             ActionType.PlayerBurnApply => amount > 0 ? Loc.T("combat.burn_amount", amount) : Loc.T("combat.burn_applied"),
             ActionType.PlayerPoisonApply => amount > 0 ? Loc.T("combat.poison_amount", amount) : Loc.T("combat.poison_applied"),
             ActionType.PlayerRegenApply => amount > 0 ? Loc.T("combat.regen_amount", amount) : Loc.T("combat.regen_applied"),
+            ActionType.PlayerTempoApply => FormatTempoText(gained: true, amount),
+            ActionType.PlayerTempoRemove => FormatTempoText(gained: false, amount),
             ActionType.PlayerGoldSteal => amount > 0 ? Loc.T("combat.stole_gold", amount) : Loc.T("combat.gold_stolen"),
             ActionType.PlayerMaxHealthIncrease => amount > 0 ? Loc.T("combat.max_health_increase", amount) : Loc.T("combat.max_health_increased"),
             ActionType.PlayerMaxHealthDecrease => amount > 0 ? Loc.T("combat.max_health_decrease", amount) : Loc.T("combat.max_health_decreased"),
@@ -265,10 +267,30 @@ public static class EffectFormatter
             "Lifesteal" => "lifesteal",
             "Multicast" => "multicast",
             "RegenApplyAmount" => "regen",
+            "TempoApplyAmount" => "tempo",
+            "TempoRemoveAmount" => "tempo removal",
+            "TempoCost" => "tempo cost",
             "Counter" => "counter",
             "RepairTargets" => "repair targets",
             _ => attrType.ToLower().Replace("amount", "").Trim()
         };
+    }
+
+    /// <summary>
+    /// "+3 tempo" / "-3 tempo", using the game's own word for Tempo.
+    /// </summary>
+    public static string FormatTempoText(bool gained, int amount)
+    {
+        string tempo = TempoWord();
+        if (amount <= 0) return Loc.T(gained ? "combat.tempo_gained" : "combat.tempo_removed", tempo);
+        return Loc.T(gained ? "combat.tempo_gain_amount" : "combat.tempo_remove_amount", amount, tempo);
+    }
+
+    /// <summary>The game's localized word for Tempo, falling back to the mod catalogue.</summary>
+    public static string TempoWord()
+    {
+        string word = GameVocabulary.Keyword("Tempo");
+        return string.IsNullOrEmpty(word) || word == "Tempo" ? Loc.T("vocab.tempo") : word;
     }
 
     /// <summary>
@@ -284,6 +306,8 @@ public static class EffectFormatter
             ActionType.PlayerBurnApply => true,
             ActionType.PlayerPoisonApply => true,
             ActionType.PlayerRegenApply => true,
+            ActionType.PlayerTempoApply => true,
+            ActionType.PlayerTempoRemove => true,
             ActionType.PlayerGoldSteal => true,
             ActionType.PlayerMaxHealthIncrease => true,
             ActionType.PlayerMaxHealthDecrease => true,
@@ -347,6 +371,8 @@ public static class EffectFormatter
             ActionType.PlayerBurnApply => card.GetAttributeValue(ECardAttributeType.BurnApplyAmount) ?? 0,
             ActionType.PlayerPoisonApply => card.GetAttributeValue(ECardAttributeType.PoisonApplyAmount) ?? 0,
             ActionType.PlayerRegenApply => card.GetAttributeValue(ECardAttributeType.RegenApplyAmount) ?? 0,
+            ActionType.PlayerTempoApply => card.GetAttributeValue(ECardAttributeType.TempoApplyAmount) ?? 0,
+            ActionType.PlayerTempoRemove => card.GetAttributeValue(ECardAttributeType.TempoRemoveAmount) ?? 0,
             ActionType.CardReload => card.GetAttributeValue(ECardAttributeType.ReloadAmount) ?? 1,
             ActionType.CardHaste => card.GetAttributeValue(ECardAttributeType.HasteAmount) ?? 0,
             _ => 0

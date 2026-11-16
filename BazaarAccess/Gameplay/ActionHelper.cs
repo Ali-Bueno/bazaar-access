@@ -17,6 +17,12 @@ namespace BazaarAccess.Gameplay;
 /// </summary>
 public static class ActionHelper
 {
+    // Buys/sells the mod sent itself (already spoken); the game's event for them only goes to the history.
+    private static readonly HashSet<string> SentTransactions = new HashSet<string>();
+
+    /// <summary>True (once) if the mod itself sent the buy/sell for this card.</summary>
+    internal static bool ConsumeSentTransaction(string id) => SentTransactions.Remove(id);
+
     /// <summary>
     /// Compra un item del merchant.
     /// </summary>
@@ -45,6 +51,7 @@ public static class ActionHelper
         {
             var section = toStash ? EInventorySection.Stash : EInventorySection.Hand;
             state.BuyItemCommand(card, section);
+            SentTransactions.Add(card.InstanceId.Value);
 
             string name = ItemReader.GetCardName(card);
 
@@ -101,7 +108,9 @@ public static class ActionHelper
             string name = ItemReader.GetCardName(card);
             int price = ItemReader.GetSellPrice(card);
 
+            Patches.CardEventHandler.RememberName(card);
             state.SellCardCommand(card);
+            SentTransactions.Add(card.InstanceId.Value);
 
             TolkWrapper.Speak(Loc.T("action.sold", name, price));
 
@@ -251,6 +260,7 @@ public static class ActionHelper
         try
         {
             state.SelectSkillCommand(card);
+            SentTransactions.Add(card.InstanceId.Value); // in case the game reports it as a purchase
 
             string name = ItemReader.GetCardName(card);
             TolkWrapper.Speak(Loc.T("action.selected", name));
@@ -289,7 +299,10 @@ public static class ActionHelper
         {
             state.SelectEncounterCommand(card.InstanceId);
 
-            string name = ItemReader.GetCardName(card);
+            // A PvP card's own name is a placeholder ("Viper"): name the opponent instead.
+            string name = card.Type == ECardType.PvpEncounter && !string.IsNullOrEmpty(Data.SimPvpOpponent?.Name)
+                ? Data.SimPvpOpponent.Name
+                : ItemReader.GetCardName(card);
             TolkWrapper.Speak(Loc.T("action.selected", name));
 
             Plugin.Logger.LogInfo($"SelectEncounter: {card.InstanceId}");

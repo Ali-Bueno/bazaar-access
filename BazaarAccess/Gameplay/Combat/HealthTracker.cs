@@ -225,7 +225,7 @@ public static class HealthTracker
 
             if (player != null)
             {
-                int reportedHealth = player.GetAttributeValue(EPlayerAttributeType.Health) ?? 0;
+                int reportedHealth = Math.Max(0, player.GetAttributeValue(EPlayerAttributeType.Health) ?? 0); // overkill goes below 0
                 int shield = player.GetAttributeValue(EPlayerAttributeType.Shield) ?? 0;
                 // Game may include shield in health, so subtract to get actual health
                 int actualHealth = reportedHealth - shield;
@@ -243,6 +243,7 @@ public static class HealthTracker
             {
                 opponent.Attributes.TryGetValue(EPlayerAttributeType.Health, out int reportedEnemyHealth);
                 opponent.Attributes.TryGetValue(EPlayerAttributeType.Shield, out int enemyShield);
+                reportedEnemyHealth = Math.Max(0, reportedEnemyHealth);
                 // Game may include shield in health, so subtract to get actual health
                 int actualEnemyHealth = reportedEnemyHealth - enemyShield;
                 if (actualEnemyHealth < 0) actualEnemyHealth = reportedEnemyHealth; // Fallback if assumption is wrong

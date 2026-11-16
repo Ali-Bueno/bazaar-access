@@ -11,6 +11,7 @@ using BazaarGameShared.Domain.Core.Types;
 using BazaarGameShared.Domain.Runs;
 using TheBazaar;
 using TheBazaar.AppFramework;
+using TheBazaar.Managers;
 using UnityEngine;
 
 namespace BazaarAccess.Gameplay;
@@ -451,8 +452,8 @@ public class GameplayScreen : IAccessibleScreen
             AutoFocusForState(state);
         }
 
-        // Anunciar el primer item si hay contenido
-        if (_navigator.HasContent())
+        // Anunciar el primer item si hay contenido (the game's controller focus reads it itself)
+        if (_navigator.HasContent() && !GamepadNavigator.GameNavigationActive)
         {
             _navigator.AnnounceCurrentItem();
         }
@@ -489,8 +490,10 @@ public class GameplayScreen : IAccessibleScreen
                 break;
 
             case ERunState.LevelUp:
-                // En level up, ir a la selección
+                // En level up, ir a la selección; the level-up itself is queued after the section.
                 _navigator.GoToSection(NavigationSection.Selection);
+                int level = Data.Run?.Player?.GetAttributeValue(EPlayerAttributeType.Level) ?? 0;
+                if (level > 0) TolkWrapper.Speak(Loc.T("nav.state.levelup", level), interrupt: false);
                 break;
 
             case ERunState.Pedestal:
@@ -719,12 +722,7 @@ public class GameplayScreen : IAccessibleScreen
 
     private void SelectEncounterDirect(Card card)
     {
-        // Use encounter info for PvP (includes hero name + rank), card name for others
-        string name = card.Type == ECardType.PvpEncounter
-            ? ItemReader.GetEncounterInfo(card)
-            : ItemReader.GetCardName(card);
-        TolkWrapper.Speak(name);
-
+        // ActionHelper.SelectEncounter announces "<name> selected" (the opponent's name for PvP).
         ActionHelper.SelectEncounter(card);
 
         // StateChangePatch se encargará del anuncio con debounce
@@ -941,6 +939,17 @@ public class GameplayScreen : IAccessibleScreen
         _navigator.Refresh();
     }
 
+    public string GetSelectionSignature() => _navigator.GetSelectionSignature();
+
+    /// <summary>A new offer appeared without a state change: move to it and read it like a state change does.</summary>
+    public void AnnounceNewOffer()
+    {
+        _navigator.Refresh();
+        _navigator.GoToSection(NavigationSection.Selection);
+        // With the game's controller navigation, its focus already reads the first card.
+        if (!GamepadNavigator.GameNavigationActive) _navigator.AnnounceCurrentItem();
+    }
+
     /// <summary>
     /// Clears the detail line cache (called when cards are enchanted/upgraded).
     /// This ensures the next Ctrl+Up/Down read shows updated stats.
@@ -1014,14 +1023,11 @@ public class GameplayScreen : IAccessibleScreen
             var boardManager = Singleton<BoardManager>.Instance;
             if (boardManager != null)
             {
-                // Check if animation is done using reflection
-                var isProcessingProp = boardManager.GetType().GetProperty("IsProcessingUpgradeOrFuseOrEnchant",
-                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-                var isAnimatingProp = boardManager.GetType().GetProperty("IsPlayingUpgradeOrFuseOrEnchantAnimation",
-                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-
-                bool isProcessing = isProcessingProp != null && (bool)isProcessingProp.GetValue(boardManager);
-                bool isAnimating = isAnimatingProp != null && (bool)isAnimatingProp.GetValue(boardManager);
+                // Upgrade/fuse animation and enchanting are tracked separately by the game
+                var enchantManager = Services.Get<EnchantManager>();
+                bool isProcessing = boardManager.IsProcessingUpgradeOrFuseOrEnchant;
+                bool isAnimating = boardManager.IsPlayingUpgradeOrFuseAnimation
+                    || (enchantManager != null && enchantManager.IsEnchanting);
 
                 if (!isProcessing && !isAnimating)
                 {
@@ -1107,15 +1113,22 @@ public class GameplayScreen : IAccessibleScreen
         }
         else
         {
-            TolkWrapper.Speak(Loc.T("action.stash.opened.empty"));
+            // The "press Space" hint is wrong when the game's controller navigation opened it.
+            TolkWrapper.Speak(Loc.T(GamepadNavigator.GameNavigationActive ? "action.stash.opened.empty_short" : "action.stash.opened.empty"));
         }
     }
+
+    private bool _inReplayState;
 
     /// <summary>
     /// Llamado cuando entramos/salimos del ReplayState (post-combat).
     /// </summary>
     public void OnReplayStateChanged(bool inReplayState)
     {
+        // Both the state change and ReplayStateEnterPatch report entering the replay: handle it once.
+        if (inReplayState == _inReplayState) return;
+        _inReplayState = inReplayState;
+
         _itemInspect.Exit();
         _combatEncounterPreview.Exit(announce: false);
         _shopItemMenu.Exit(announce: false);
@@ -1124,8 +1137,8 @@ public class GameplayScreen : IAccessibleScreen
 
         if (inReplayState)
         {
-            // Mensaje corto - el usuario aprenderá los controles
-            TolkWrapper.Speak(Loc.T("action.combat.ended"));
+            // With the game's controller navigation the focus is already on its Continue button.
+            TolkWrapper.Speak(Loc.T(GamepadNavigator.GameNavigationActive ? "action.combat.ended_short" : "action.combat.ended"));
         }
         else
         {

@@ -1,5 +1,7 @@
+using System.Linq;
 using System.Collections.Generic;
 using BazaarAccess.Core;
+using BazaarAccess.Gameplay.Combat;
 using BazaarGameClient.Domain.Models;
 using BazaarGameClient.Domain.Models.Cards;
 using BazaarGameShared.Domain.Core.Types;
@@ -12,8 +14,6 @@ namespace BazaarAccess.Gameplay.Navigation;
 /// </summary>
 public class HeroNavigator
 {
-    private const int ShieldStatIndex = 6;
-
     public static readonly EPlayerAttributeType[] HeroStats = new[]
     {
         EPlayerAttributeType.Health,
@@ -155,15 +155,73 @@ public class HeroNavigator
 
     private int GetStatCountInternal(Player player, bool includeRank)
     {
-        int count = HeroStats.Length;
-        if (SupportsRage(player)) count++;
-        if (includeRank) count++;
-        return count;
+        return BuildStatRows(player, includeRank).Count;
     }
 
     public static bool SupportsRage(Player player)
     {
         return (player?.GetAttributeValue(EPlayerAttributeType.RageMax) ?? 0) > 0;
+    }
+
+    private static readonly ECardAttributeType[] TempoCardAttributes =
+    {
+        ECardAttributeType.TempoCost,
+        ECardAttributeType.TempoApplyAmount,
+        ECardAttributeType.TempoRemoveAmount
+    };
+
+    /// <summary>
+    /// True when the player has Tempo or owns an item/skill that costs, gives or removes it.
+    /// </summary>
+    public static bool SupportsTempo(Player player)
+    {
+        if (player == null) return false;
+        if ((player.GetAttributeValue(EPlayerAttributeType.Tempo) ?? 0) > 0) return true;
+
+        var cards = new List<Card>();
+        cards.AddRange(player.Skills);
+        cards.AddRange(player.Hand.GetItemsAsEnumerable().OfType<Card>());
+        foreach (var card in cards)
+        {
+            foreach (var attr in TempoCardAttributes)
+            {
+                if ((card?.GetAttributeValue(attr) ?? 0) > 0) return true;
+            }
+        }
+        return false;
+    }
+
+    private enum StatRowKind { Attribute, Rage, Tempo, Rank }
+
+    private readonly struct StatRow
+    {
+        public readonly StatRowKind Kind;
+        public readonly EPlayerAttributeType Attribute;
+
+        public StatRow(StatRowKind kind, EPlayerAttributeType attribute = default)
+        {
+            Kind = kind;
+            Attribute = attribute;
+        }
+    }
+
+    /// <summary>
+    /// The navigable stat rows for this player: base stats, with Rage/Tempo before Shield and rank last.
+    /// </summary>
+    private static List<StatRow> BuildStatRows(Player player, bool includeRank)
+    {
+        var rows = new List<StatRow>();
+        foreach (var type in HeroStats)
+        {
+            if (type == EPlayerAttributeType.Shield)
+            {
+                if (SupportsRage(player)) rows.Add(new StatRow(StatRowKind.Rage));
+                if (SupportsTempo(player)) rows.Add(new StatRow(StatRowKind.Tempo));
+            }
+            rows.Add(new StatRow(StatRowKind.Attribute, type));
+        }
+        if (includeRank) rows.Add(new StatRow(StatRowKind.Rank));
+        return rows;
     }
 
     /// <summary>
@@ -275,7 +333,12 @@ public class HeroNavigator
     /// <summary>
     /// Reads all hero stats as a summary announcement.
     /// </summary>
-    public void ReadAllStats()
+    public void ReadAllStats() => SpeakSummary();
+
+    /// <summary>
+    /// Speaks the hero summary (health, gold, level, rage/tempo, shield) for the current run.
+    /// </summary>
+    public static void SpeakSummary()
     {
         var player = Data.Run?.Player;
         if (player == null) { TolkWrapper.Speak(Loc.T("nav.hero.no_data")); return; }
@@ -298,6 +361,12 @@ public class HeroNavigator
             int rageMax = player.GetAttributeValue(EPlayerAttributeType.RageMax) ?? 0;
             int rage = player.GetAttributeValue(EPlayerAttributeType.Rage) ?? 0;
             parts.Add(Loc.T("vocab.hero.summary.rage", rage, rageMax));
+        }
+
+        if (SupportsTempo(player))
+        {
+            int tempo = player.GetAttributeValue(EPlayerAttributeType.Tempo) ?? 0;
+            parts.Add(Loc.T("nav.hero.stat_value", EffectFormatter.TempoWord(), tempo));
         }
 
         var shield = player.GetAttributeValue(EPlayerAttributeType.Shield);
@@ -323,57 +392,32 @@ public class HeroNavigator
     {
         if (player == null) { TolkWrapper.Speak(Loc.T("nav.hero.no_data")); return; }
 
-        bool isRageStat;
-        bool isRankStat;
-        int baseStatIndex = GetBaseStatIndex(player, statIndex, includeRank, out isRageStat, out isRankStat);
+        var rows = BuildStatRows(player, includeRank);
+        if (statIndex < 0 || statIndex >= rows.Count) return;
+        var row = rows[statIndex];
 
-        if (isRankStat)
+        switch (row.Kind)
         {
-            TolkWrapper.Speak(!string.IsNullOrEmpty(rankText) ? Loc.T("vocab.hero.rank", rankText) : Loc.T("vocab.hero.rank_unranked"));
-            return;
+            case StatRowKind.Rank:
+                TolkWrapper.Speak(!string.IsNullOrEmpty(rankText) ? Loc.T("vocab.hero.rank", rankText) : Loc.T("vocab.hero.rank_unranked"));
+                return;
+
+            case StatRowKind.Rage:
+                int rage = player.GetAttributeValue(EPlayerAttributeType.Rage) ?? 0;
+                int rageMax = player.GetAttributeValue(EPlayerAttributeType.RageMax) ?? 0;
+                TolkWrapper.Speak(Loc.T("vocab.hero.rage_colon", rage, rageMax));
+                return;
+
+            case StatRowKind.Tempo:
+                int tempo = player.GetAttributeValue(EPlayerAttributeType.Tempo) ?? 0;
+                TolkWrapper.Speak(Loc.T("nav.hero.stat_value", EffectFormatter.TempoWord(), tempo));
+                return;
         }
 
-        if (isRageStat)
-        {
-            int rage = player.GetAttributeValue(EPlayerAttributeType.Rage) ?? 0;
-            int rageMax = player.GetAttributeValue(EPlayerAttributeType.RageMax) ?? 0;
-            TolkWrapper.Speak(Loc.T("vocab.hero.rage_colon", rage, rageMax));
-            return;
-        }
-
-        var type = HeroStats[baseStatIndex];
-        var value = player.GetAttributeValue(type);
-        string name = GetStatName(type);
+        var value = player.GetAttributeValue(row.Attribute);
+        string name = GetStatName(row.Attribute);
 
         TolkWrapper.Speak(value.HasValue ? Loc.T("nav.hero.stat_value", name, value.Value) : Loc.T("nav.hero.stat_none", name));
-    }
-
-    private static int GetBaseStatIndex(Player player, int statIndex, bool includeRank, out bool isRageStat, out bool isRankStat)
-    {
-        isRageStat = false;
-        isRankStat = false;
-
-        bool shouldShowRage = SupportsRage(player);
-        int rankIndex = HeroStats.Length + (shouldShowRage ? 1 : 0);
-
-        if (shouldShowRage && statIndex == ShieldStatIndex)
-        {
-            isRageStat = true;
-            return -1;
-        }
-
-        if (includeRank && statIndex == rankIndex)
-        {
-            isRankStat = true;
-            return -1;
-        }
-
-        if (shouldShowRage && statIndex > ShieldStatIndex)
-        {
-            return statIndex - 1;
-        }
-
-        return statIndex;
     }
 
     /// <summary>

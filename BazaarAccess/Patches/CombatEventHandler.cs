@@ -152,6 +152,7 @@ public static class CombatEventHandler
             }
 
             TolkWrapper.Speak(message);
+            MessageBuffer.Add(message);
         }
         catch (Exception ex)
         {

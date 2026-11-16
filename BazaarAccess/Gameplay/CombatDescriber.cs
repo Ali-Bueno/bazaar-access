@@ -200,7 +200,11 @@ public static class CombatDescriber
     /// </summary>
     public static string GetCombatSummary()
     {
-        if (!_active) return Loc.T("combat.summary.not_in_combat");
+        // Right after a fight (replay screen) its damage totals are still meaningful.
+        if (!_active)
+            return _totalPlayerDamageDealt > 0 || _totalPlayerDamageTaken > 0
+                ? Loc.T("combat.summary.dealt_took", _totalPlayerDamageDealt, _totalPlayerDamageTaken)
+                : Loc.T("combat.summary.not_in_combat");
 
         try
         {
@@ -421,6 +425,14 @@ public static class CombatDescriber
 
             case ActionType.PlayerRegenApply:
                 wave.TotalHeal += amount;
+                break;
+
+            case ActionType.PlayerTempoApply:
+                wave.StatusEffects.Add(EffectFormatter.FormatTempoText(gained: true, amount));
+                break;
+
+            case ActionType.PlayerTempoRemove:
+                wave.StatusEffects.Add(EffectFormatter.FormatTempoText(gained: false, amount));
                 break;
 
             case ActionType.PlayerGoldSteal:

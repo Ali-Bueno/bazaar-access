@@ -4,6 +4,7 @@ using System.Reflection;
 using BazaarAccess.Accessibility;
 using BazaarAccess.Core;
 using BazaarGameShared.TempoNet.Responses;
+using HarmonyLib;
 using TheBazaar;
 using TheBazaar.AppFramework;
 using TheBazaar.Tooltips;
@@ -19,7 +20,9 @@ namespace BazaarAccess.Screens;
 /// </summary>
 public class BattlePassScreen : BaseScreen
 {
-    public override string ScreenName => Loc.T("screen.battlepass.name");
+    public override string ScreenName => Loc.T(_challengesOnly ? "screen.battlepass.challenges" : "screen.battlepass.name");
+
+    private const BindingFlags AnyInstance = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
     private BattlePassView _view;
 
@@ -41,9 +44,13 @@ public class BattlePassScreen : BaseScreen
     // For tier navigation
     private int _currentTierIndex = 0;
 
-    public BattlePassScreen(Transform root, BattlePassView view) : base(root)
+    // The Challenges scene (main menu) shows only the challenges: the screen stays in that mode.
+    private readonly bool _challengesOnly;
+
+    public BattlePassScreen(Transform root, BattlePassView view, bool challengesOnly = false) : base(root)
     {
         _view = view;
+        _challengesOnly = challengesOnly;
         RefreshChallenges();
     }
 
@@ -550,17 +557,15 @@ public class BattlePassScreen : BaseScreen
     {
         try
         {
-            // Access the private _chestButton field via reflection
-            var chestButtonField = typeof(BattlePassView).GetField("_chestButton", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (chestButtonField != null)
+            // The chest purchase button now lives in the chests HUD component (internal property)
+            var chestsHud = _view.GetComponentInChildren<ChestsHUDViewComponent>(true);
+            var purchaseProp = typeof(ChestsHUDViewComponent).GetProperty("PurchaseButton", AnyInstance);
+            var button = chestsHud != null ? purchaseProp?.GetValue(chestsHud, null) as BazaarButtonController : null;
+            if (button != null)
             {
-                var button = chestButtonField.GetValue(_view) as BazaarButtonController;
-                if (button != null)
-                {
-                    button.onClick.Invoke();
-                    TolkWrapper.Speak(Loc.T("screen.battlepass.opening_chests"));
-                    return;
-                }
+                button.onClick.Invoke();
+                TolkWrapper.Speak(Loc.T("screen.battlepass.opening_chests"));
+                return;
             }
         }
         catch (Exception e)
@@ -584,26 +589,7 @@ public class BattlePassScreen : BaseScreen
         }
     }
 
-    private void GoBack()
-    {
-        try
-        {
-            var backButtonField = typeof(BattlePassView).GetField("_backButton", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (backButtonField != null)
-            {
-                var button = backButtonField.GetValue(_view) as BazaarButtonController;
-                if (button != null)
-                {
-                    button.onClick.Invoke();
-                    return;
-                }
-            }
-        }
-        catch (Exception e)
-        {
-            Plugin.Logger.LogError($"Error going back: {e.Message}");
-        }
-    }
+    private void GoBack() => NavigationMenuHelper.TryGoHome();
 
     #endregion
 
@@ -620,6 +606,11 @@ public class BattlePassScreen : BaseScreen
                     NavigateChallengeDown();
                     return;
                 case AccessibleKey.Back:
+                    if (_challengesOnly)
+                    {
+                        NavigationMenuHelper.TryGoHome();
+                        return;
+                    }
                     _currentMode = MenuMode.Main;
                     TolkWrapper.Speak(ScreenName);
                     return;
@@ -664,6 +655,11 @@ public class BattlePassScreen : BaseScreen
 
     public override void OnFocus()
     {
+        if (_challengesOnly)
+        {
+            EnterChallenges();
+            return;
+        }
         _currentMode = MenuMode.Main;
         TolkWrapper.Speak(ScreenName);
     }

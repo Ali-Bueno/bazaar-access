@@ -112,6 +112,44 @@ POST-COMBAT
   F                  View enemy stats
 
 
+CONTROLLER
+----------
+Xbox names (PlayStation: A=Cross, B=Circle, X=Square, Y=Triangle, LB/RB=L1/R1,
+LT/RT=L2/R2, View=Share, Menu=Options).
+
+DURING A RUN (default): use the game's own controller navigation; the mod reads
+the focused item, encounter or button, and narrates moving items (where it would
+land, sell price, placed / cancelled). Free buttons:
+  View                Switch to the mod's navigation and back
+  Left stick click    Full details of the focused item
+  Right stick click   Hero summary
+  Right stick up/down Message history
+  Hold RT             Quick info layer (see below)
+
+MENUS, AND THE MOD'S NAVIGATION IN A RUN: each button works like a keyboard key
+and the game ignores the controller. Hold LT and press Menu to hear this layout.
+
+  D-pad / left stick  Arrows
+  A / B               Enter / Backspace
+  X / Y               X (inspect) / I (item info)
+  LB / RB             C (choices) / B (board)
+  View / Menu         Tab / Escape (pause)
+  Stick clicks        T (board info) / S (stash info)
+  Right stick         Up/Down message history, Left/Right Page Up/Down
+
+  Holding LT: D-pad = Shift+arrows (move / reorder), A = U (upgrade),
+  X = R (reroll), Y = E (leave), B = F (opponent), LB = G (stash),
+  RB = V (hero), View = Space (toggle stash), Menu = controller help
+
+  Holding RT: D-pad Up/Right/Down/Left = 1/2/3/4 (health, enemy health,
+  damage dealt, damage taken), A = H (combat summary), X = W (wins),
+  Y = Ctrl+M (combat mode), B = M (move item), LB / RB = Home / End
+
+Controller.Mode in BepInEx/config: Hybrid (default), KeyboardEmulation
+(always the mod's navigation), GameOnly (mod never handles the controller).
+Typing in login fields still needs a keyboard.
+
+
 LOGIN SCREENS
 -------------
 - Up/Down to navigate fields and buttons

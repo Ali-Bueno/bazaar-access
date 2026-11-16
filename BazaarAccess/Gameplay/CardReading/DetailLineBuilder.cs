@@ -37,6 +37,9 @@ internal static class DetailLineBuilder
         new StatEntry(ECardAttributeType.Lifesteal, "Lifesteal"),
         new StatEntry(ECardAttributeType.Multicast, "Multicast"),
         new StatEntry(ECardAttributeType.RepairTargets, "Repair Targets"),
+        new StatEntry(ECardAttributeType.TempoCost, "Tempo Cost"),
+        new StatEntry(ECardAttributeType.TempoApplyAmount, "Tempo"),
+        new StatEntry(ECardAttributeType.TempoRemoveAmount, "Tempo Removal"),
     };
 
     private static readonly StatEntry[] EnemyCombatStats =
@@ -57,6 +60,9 @@ internal static class DetailLineBuilder
         new StatEntry(ECardAttributeType.Lifesteal, "Lifesteal"),
         new StatEntry(ECardAttributeType.Multicast, "Multicast"),
         new StatEntry(ECardAttributeType.RepairTargets, "Repair Targets"),
+        new StatEntry(ECardAttributeType.TempoCost, "Tempo Cost"),
+        new StatEntry(ECardAttributeType.TempoApplyAmount, "Tempo"),
+        new StatEntry(ECardAttributeType.TempoRemoveAmount, "Tempo Removal"),
     };
 
     // --- Public description methods ---
@@ -129,6 +135,9 @@ internal static class DetailLineBuilder
         AppendStatIfPresent(sb, card, ECardAttributeType.Lifesteal, "Lifesteal");
         AppendStatIfPresent(sb, card, ECardAttributeType.Multicast, "Multicast");
         AppendStatIfPresent(sb, card, ECardAttributeType.RepairTargets, "Repair Targets");
+        AppendStatIfPresent(sb, card, ECardAttributeType.TempoCost, "Tempo Cost");
+        AppendStatIfPresent(sb, card, ECardAttributeType.TempoApplyAmount, "Tempo");
+        AppendStatIfPresent(sb, card, ECardAttributeType.TempoRemoveAmount, "Tempo Removal");
 
         string fullDesc = CardProperties.GetFullDescription(card);
         if (!string.IsNullOrEmpty(fullDesc))
@@ -321,6 +330,8 @@ internal static class DetailLineBuilder
                 lines.Add(Loc.T("card.enchanted.label", enchantName));
             }
 
+            lines.AddRange(SocketEffectReader.GetSocketEffectLines(card));
+
             string sizeText = GetSizeText(card);
             if (sizeText != null) lines.Add(sizeText);
 
@@ -355,21 +366,43 @@ internal static class DetailLineBuilder
     private static void AppendStatIfPresent(StringBuilder sb, Card card, ECardAttributeType type, string label)
     {
         var value = card.GetAttributeValue(type);
-        if (value.HasValue && value.Value > 0)
+        if (value.HasValue && value.Value > 0 && !IsDefaultStat(type, value.Value))
         {
             sb.Append(", ");
-            sb.Append(Loc.T("card.stat.inline", ResolveStatLabel(type, label), value.Value));
+            sb.Append(Loc.T("card.stat.inline", ResolveStatLabel(type, label), FormatStatValue(type, value.Value)));
         }
     }
 
     private static void AddStatLine(List<string> lines, Card card, ECardAttributeType type, string label)
     {
         var value = card.GetAttributeValue(type);
-        if (value.HasValue && value.Value != 0)
+        if (value.HasValue && value.Value != 0 && !IsDefaultStat(type, value.Value))
         {
-            lines.Add(Loc.T("card.stat.line", ResolveStatLabel(type, label), value.Value));
+            lines.Add(Loc.T("card.stat.line", ResolveStatLabel(type, label), FormatStatValue(type, value.Value)));
         }
     }
+
+    // The game stores these durations in milliseconds (Haste 1000 = "Haste an item for 1 second").
+    private const float MillisecondsPerSecond = 1000f;
+
+    private static readonly HashSet<ECardAttributeType> MillisecondStats = new HashSet<ECardAttributeType>
+    {
+        ECardAttributeType.HasteAmount, ECardAttributeType.SlowAmount,
+        ECardAttributeType.FreezeAmount, ECardAttributeType.ChargeAmount,
+    };
+
+    private static string FormatStatValue(ECardAttributeType type, float value)
+    {
+        if (!MillisecondStats.Contains(type)) return value.ToString();
+        float seconds = value / MillisecondsPerSecond;
+        return Loc.Plural("card.stat.seconds", seconds == 1f ? 1 : 2, seconds.ToString("0.#"));
+    }
+
+    // Every item casts once: Multicast is only worth reading above that.
+    private const int DefaultMulticast = 1;
+
+    private static bool IsDefaultStat(ECardAttributeType type, float value)
+        => type == ECardAttributeType.Multicast && value <= DefaultMulticast;
 
     private static void AddAllCombatStats(List<string> lines, Card card, StatEntry[] stats)
     {
@@ -408,11 +441,11 @@ internal static class DetailLineBuilder
     private static string GetSizeText(Card card)
     {
         var template = card?.Template;
-        if (template == null) return null;
+        if (template == null || card.Type != ECardType.Item) return null; // encounters and skills have no board size
 
         int size = (int)template.Size;
         string sizeName = CardProperties.GetSizeName(template.Size);
-        return Loc.T("vocab.card.size_slots", size, sizeName);
+        return Loc.Plural("vocab.card.size_slots", size, size, sizeName);
     }
 
     private static void AddDescriptionLines(List<string> lines, Card card)

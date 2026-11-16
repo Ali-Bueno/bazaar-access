@@ -18,10 +18,14 @@ public static class GameplayPatch
     private static GameplayScreen _gameplayScreen;
     private static bool _stateSubscribed = false;
 
+    /// <summary>When the board scene loaded (realtime), to tell run-load events from live ones.</summary>
+    public static float EnteredGameplayAt { get; private set; }
+
     [HarmonyPostfix]
     public static void Postfix(BoardManager __instance)
     {
         Plugin.Logger.LogInfo("BoardManager.OnAwake - Entering gameplay");
+        EnteredGameplayAt = Time.realtimeSinceStartup;
 
         // Suscribir a cambios de estado (solo una vez)
         if (!_stateSubscribed)

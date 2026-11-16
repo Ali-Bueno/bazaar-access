@@ -886,3 +886,13 @@ The game updated **again** on 2026-07-11 (only `TheBazaarRuntime.dll` + `Assembl
 - `UI/ConfirmActionUI.cs` **deleted** — upgrade/enchant/buy/sell confirm menus removed; upgrade & enchant previews (which were unreliable) removed in favor of the item inspect panel.
 - Confirmation menus that remain now cycle with **Up/Down** (was Left/Right) for consistency.
 - Rage/enrage: hero + opponent rage stat is readable; gaining/losing enrage is announced.
+
+---
+
+## Game Update 2026-11-07 (Nov 16, 2026) — supersedes the hero-select notes above
+
+- Main menu + hero select are ONE scene (`MainMenuBaseView`, not a `View`): hooked in `Patches/MainMenuPatch.cs`, screen `Screens/MainMenuScreen.cs`. `HeroSelectScreen.cs`/`HeroSelectButtonsView` path is gone.
+- Hero picker = `HeroSelectPopupController` (`UIPopup`) → `UI/HeroSelectUI.cs`.
+- Most popups (incl. `GenericPopup`) derive `UIScripts.UIPopup`: register new popup UIs in `Patches/UIPopupPatch.cs` (`Create` switch), not `PopupPatch.cs`.
+- Tempo / Tiny / socket effects (music notes): see Progress.md "November 16, 2026".
+- **In-game testing without the user**: config `Debug.TestMode = true` logs every spoken line as `SPEECH: text <= callers` and runs commands from `BepInEx/BazaarAccess-commands.txt` (`key <AccessibleKey>`, `nav <NavCommand>`, `scheme Gamepad`, `click <button name>`, `escape`, `wait <s>`, `where`). Launch with `steam://rungameid/1617400`; write the file atomically (temp + rename). Check focus with `where` before any irreversible `Confirm`/`nav Interact` — it plays on the user's real account.

@@ -14,6 +14,8 @@ public class Plugin : BaseUnityPlugin
     internal static Plugin Instance { get; private set; }
     private static Harmony _harmony;
     internal static ConfigEntry<bool> UseBatchedCombatMode;
+    internal static ConfigEntry<ControllerMode> ControllerMode;
+    internal static ConfigEntry<bool> TestMode;
 
     private void Awake()
     {
@@ -28,6 +30,20 @@ public class Plugin : BaseUnityPlugin
             "True = batched wave announcements with auto health. False = individual per-card announcements."
         );
 
+        ControllerMode = Config.Bind(
+            "Controller",
+            "Mode",
+            Core.ControllerMode.Hybrid,
+            "Hybrid = in a run the game's own controller navigation is used and the mod reads the focus (View switches to the mod's navigation, hold RT for quick info); menus use the mod's navigation. KeyboardEmulation = the controller always drives the mod's navigation. GameOnly = the mod never handles the controller."
+        );
+
+        TestMode = Config.Bind(
+            "Debug",
+            "TestMode",
+            false,
+            "Developer testing: logs every spoken line and runs commands from BepInEx/BazaarAccess-commands.txt."
+        );
+
         // Load the mod's texts before anything can speak.
         Loc.Initialize();
 
@@ -39,6 +55,8 @@ public class Plugin : BaseUnityPlugin
 
         // Create keyboard navigator
         KeyboardNavigator.Create(gameObject);
+        GamepadNavigator.Create(gameObject);
+        TestCommandRunner.Create(gameObject);
 
         // Apply Harmony patches. Patch each class individually so that a single failing
         // patch (e.g. a game type removed/renamed by an update) only disables that one hook
@@ -68,6 +86,7 @@ public class Plugin : BaseUnityPlugin
     private void OnDestroy()
     {
         KeyboardNavigator.Destroy();
+        GamepadNavigator.Destroy();
         _harmony?.UnpatchSelf();
         Loc.Shutdown();
         TolkWrapper.Shutdown();

@@ -23,6 +23,23 @@
 
 # --- Startup ---
 mod.loaded = Bazaar Access geladen
+gamepad.connected = Controller verbunden
+gamepad.disconnected = Controller getrennt
+gamepad.mod_navigation = Mod-Navigation. Drücke Ansicht, um zur Navigation des Spiels zurückzukehren.
+gamepad.game_navigation = Spiel-Navigation. Ansicht: Mod-Navigation. Linken Stick drücken: Gegenstandsdetails. Rechten Stick drücken: Heldenübersicht. Rechter Stick: Nachrichtenverlauf. Rechten Trigger halten: Schnellinfo.
+focus.stash.open = Lager, offen
+focus.stash.closed = Lager, geschlossen
+focus.opponent_card = Gegner: {0}
+focus.move.holding = {0} gehalten. {1}
+focus.move.board = Spielfeld, {0}
+focus.move.stash_slot = Lager, Feld {0}
+focus.move.sell = Für {0} Gold verkaufen
+focus.move.to_stash = Ins Lager schicken
+focus.move.altar = Altar
+focus.move.slot = Feld {0} von {1}
+focus.move.placed = Platziert
+focus.move.cancelled = Verschieben abgebrochen
+gamepad.help = Controller. Steuerkreuz oder linker Stick: bewegen. A: bestätigen. B: zurück. X: untersuchen. Y: Gegenstandsinfo. LB: Auswahl. RB: Spielfeld. Ansicht: nächster Bereich. Menü: Pause. Linken Stick drücken: Spielfeld-Info. Rechten Stick drücken: Lager-Info. Rechter Stick hoch oder runter: Nachrichtenverlauf; links oder rechts: Seite hoch oder runter. Linken Trigger halten: Steuerkreuz verschiebt oder sortiert Gegenstände, A verbessern, X neu würfeln, Y verlassen, B Gegner, LB Lager, RB Held, Ansicht Lager öffnen oder schließen, Menü diese Hilfe. Rechten Trigger halten: Steuerkreuz hoch deine Gesundheit, rechts Gesundheit des Gegners, runter verursachter Schaden, links erlittener Schaden, A Kampfzusammenfassung, X Siege, Y Kampfansagemodus, B Gegenstand bewegen, LB erster, RB letzter.
 
 
 # Combat narration: CombatDescriber.cs, Combat/EffectFormatter.cs, Combat/HealthTracker.cs
@@ -58,6 +75,10 @@ combat.poison_amount = {0} Gift
 combat.poison_applied = Gift angewendet
 combat.regen_amount = {0} Regeneration
 combat.regen_applied = Regeneration angewendet
+combat.tempo_gain_amount = +{0} {1}
+combat.tempo_remove_amount = -{0} {1}
+combat.tempo_gained = {0} erhalten
+combat.tempo_removed = {0} entfernt
 combat.stole_gold = {0} Gold gestohlen
 combat.gold_stolen = Gold gestohlen
 combat.max_health_increase = Maximales Leben +{0}
@@ -142,6 +163,8 @@ card.quest.progress = Quest {0}/{1}
 # --- Detail line labels (mod-authored, not game attribute vocabulary) ---
 card.state.label = Zustand: {0}
 card.enchanted.label = Verzaubert: {0}
+card.socket_effect = Feldeffekt: {0}
+card.socket_effect_described = Feldeffekt, {0}: {1}
 card.buy.gold = Kaufen für {0} Gold
 card.sell.gold = Verkaufen für {0} Gold
 card.buy.info = {0}, {1} Gold
@@ -152,6 +175,8 @@ card.sell.info = {0}, verkauft für {1} Gold
 # vocabulary (Damage, Shield, Cooldown...); only the surrounding format is a template.
 card.stat.line = {0}: {1}
 card.stat.inline = {0} {1}
+card.stat.seconds.one = {0} Sekunde
+card.stat.seconds.other = {0} Sekunden
 
 # --- Tag/keyword property descriptions (I key) ---
 card.property.noDescription = Keine Beschreibung verfügbar
@@ -281,7 +306,7 @@ nav.state.defeat = Niederlage
 nav.section.board = Spielfeld
 nav.section.stash = Lager
 nav.section.skills = Fähigkeiten
-nav.section.free_prefix = {0} frei
+nav.section.free_prefix = {0}, kostenlos
 nav.section.count.one = {0}, {1} Gegenstand
 nav.section.count.other = {0}, {1} Gegenstände
 nav.action.exit = Verlassen
@@ -344,6 +369,7 @@ action.bought = {0} für {1} Gold gekauft
 action.purchase.failed = Kauf fehlgeschlagen
 action.cannot.sell.now = Kann jetzt nicht verkaufen
 action.sold = {0} für {1} Gold verkauft
+action.skill_learned = Fähigkeit erlernt: {0}
 action.sale.failed = Verkauf fehlgeschlagen
 action.cannot.move.now = Kann jetzt nicht bewegt werden
 action.cannot.move.items.now = Gegenstände können jetzt nicht bewegt werden
@@ -420,7 +446,9 @@ action.cannot.reorder.right.now = Kann jetzt nicht neu angeordnet werden
 action.combat.short = Kampf
 action.stash.closed = Lager geschlossen
 action.stash.opened.empty = Lager geöffnet, leer. Leertaste zum Schließen.
+action.stash.opened.empty_short = Lager geöffnet, leer
 action.combat.ended = Kampf beendet. Eingabetaste zum Fortfahren.
+action.combat.ended_short = Kampf beendet
 action.continuing = Wird fortgesetzt
 action.replaying.combat = Kampf wird wiederholt
 action.recap.entered = Zusammenfassung. V Held, F Gegner, G gegnerisches Spielfeld, B dein Spielfeld.
@@ -502,6 +530,20 @@ action.skill.with.description = {0}: {1}
 
 # --- MainMenuScreen ---
 screen.mainmenu.name = Hauptmenü
+screen.mainmenu.hero = Held: {0}
+screen.mainmenu.unavailable = {0}, nicht verfügbar
+screen.mainmenu.buy_full_game = Vollversion freischalten
+screen.mainmenu.prize_pass = Prize Pass
+screen.mainmenu.settings = Einstellungen
+screen.mainmenu.mode.unranked = Gelegenheitsspiel
+screen.mainmenu.mode.ranked = Gewertet
+screen.mainmenu.mode.tournament = Turnier
+screen.mainmenu.option_selected = {0}, ausgewählt
+screen.mainmenu.with_rank = {0}. Rang: {1}
+screen.mainmenu.mode_selected = {0} ausgewählt
+screen.mainmenu.gems = Edelsteine: {0}
+screen.mainmenu.buy_chests = Truhen kaufen
+screen.mainmenu.with_count = {0}, {1}
 
 # --- ChestSceneScreen ---
 screen.chestscene.name = Truhen
@@ -526,6 +568,15 @@ screen.collection.category.cardskins = Karten-Skins
 screen.collection.category.carpets = Teppiche
 screen.collection.category.cardbacks = Kartenrückseiten
 screen.collection.category.albums = Alben
+screen.collection.category.stash = Lager
+screen.collection.category.bank = Bank
+screen.collection.category.toys = Spielzeuge
+ui.loadout.title = Sammelobjekte ausrüsten
+ui.loadout.randomize = Zufällige Ausrüstung
+ui.loadout.category_equipped = {0}: {1}
+ui.loadout.equipped = {0}, ausgerüstet
+ui.purchase.title = Shop
+ui.purchase.confirm = Bestätigen
 screen.collection.item_unknown = Unbekannt
 screen.collection.equipped = ausgerüstet
 screen.collection.category_summary.one = {0}, {1} Gegenstand
@@ -538,29 +589,13 @@ screen.collection.equipping = Rüste {0} aus
 screen.collection.equipped_done = {0} ausgerüstet
 screen.collection.equip_failed = Ausrüsten des Gegenstands fehlgeschlagen
 
-# --- HeroSelectScreen ---
-screen.heroselect.name = Heldenauswahl
-screen.heroselect.random = Zufälliger Held: {0}
-screen.state.on = an
-screen.state.off = aus
-screen.heroselect.casual_selected_announce = Normal ausgewählt
-screen.heroselect.ranked_selected_announce_rank = Gewertet ausgewählt. Rang: {0}
-screen.heroselect.ranked_selected_announce = Gewertet ausgewählt
-screen.heroselect.casual_selected = Normal, ausgewählt
-screen.heroselect.casual = Normal
-screen.heroselect.ranked_selected_rank = Gewertet, ausgewählt. Rang: {0}
-screen.heroselect.ranked_selected = Gewertet, ausgewählt
-screen.heroselect.ranked = Gewertet
-screen.heroselect.resume = Fortsetzen
-screen.heroselect.ready = Bereit
-screen.heroselect.back = Zurück
-screen.heroselect.unknown_hero = Unbekannter Held
-screen.heroselect.hero_selected_tag = ausgewählt
-screen.heroselect.hero_locked_tag = gesperrt
-screen.heroselect.hero_is_locked = {0} ist gesperrt
-screen.heroselect.hero_selected = {0} ausgewählt
-screen.heroselect.random_enabled = Zufälliger-Held-Modus aktiviert
-screen.heroselect.current_hero = Aktueller Held: {0}
+# --- HeroSelectUI (hero picker popup) ---
+ui.heroselect.name = Held wählen
+ui.heroselect.hint = Eingabe zum Auswählen. Pfeil links oder rechts nimmt einen Helden in die Zufallsauswahl auf oder schließt ihn aus.
+ui.heroselect.locked = {0}, gesperrt
+ui.heroselect.excluded = {0}, von Zufall ausgeschlossen
+ui.heroselect.excluded_announce = {0} von Zufall ausgeschlossen
+ui.heroselect.included_announce = {0} in Zufall aufgenommen
 
 # --- BattlePassScreen ---
 screen.battlepass.name = Season Pass
@@ -843,7 +878,8 @@ vocab.size.medium = Mittel
 vocab.size.large = Groß
 vocab.size.unknown = Unbekannt
 
-vocab.card.size_slots = Größe: {0} Plätze ({1})
+vocab.card.size_slots.one = Größe: {0} Platz ({1})
+vocab.card.size_slots.other = Größe: {0} Plätze ({1})
 vocab.card.temperature_both = {0} und {1}
 
 # --- Hero stat labels (HeroNavigator.GetStatName) ---
@@ -870,6 +906,7 @@ vocab.hero.summary.health = Leben {0} von {1}
 vocab.hero.summary.gold = Gold {0}
 vocab.hero.summary.level = Stufe {0}
 vocab.hero.summary.rage = Wut {0} / {1}
+vocab.tempo = Tempo
 vocab.hero.summary.shield = Schild {0}
 
 # BazaarAccess - Final localization pass (new keys)

@@ -23,6 +23,23 @@
 
 # --- Démarrage ---
 mod.loaded = Bazaar Access chargé
+gamepad.connected = Manette connectée
+gamepad.disconnected = Manette déconnectée
+gamepad.mod_navigation = Navigation du mod. Appuie sur Affichage pour revenir à la navigation du jeu.
+gamepad.game_navigation = Navigation du jeu. Affichage : navigation du mod. Clic stick gauche : détails de l'objet. Clic stick droit : résumé du héros. Stick droit : historique des messages. Gâchette droite maintenue : infos rapides.
+focus.stash.open = Réserve, ouverte
+focus.stash.closed = Réserve, fermée
+focus.opponent_card = Adversaire : {0}
+focus.move.holding = {0} en main. {1}
+focus.move.board = Plateau, {0}
+focus.move.stash_slot = Réserve, emplacement {0}
+focus.move.sell = Vendre pour {0} or
+focus.move.to_stash = Envoyer dans la réserve
+focus.move.altar = Autel
+focus.move.slot = emplacement {0} sur {1}
+focus.move.placed = Placé
+focus.move.cancelled = Déplacement annulé
+gamepad.help = Manette. Croix directionnelle ou stick gauche : se déplacer. A : valider. B : retour. X : inspecter. Y : infos de l'objet. LB : choix. RB : plateau. Affichage : section suivante. Menu : pause. Clic stick gauche : infos du plateau. Clic stick droit : infos de la réserve. Stick droit haut ou bas : historique des messages ; gauche ou droite : page précédente ou suivante. Gâchette gauche maintenue : la croix déplace ou réordonne les objets, A améliorer, X relancer, Y quitter, B adversaire, LB réserve, RB héros, Affichage ouvrir ou fermer la réserve, Menu cette aide. Gâchette droite maintenue : croix haut ta vie, droite vie de l'adversaire, bas dégâts infligés, gauche dégâts subis, A résumé du combat, X victoires, Y mode d'annonce du combat, B déplacer l'objet, LB premier, RB dernier.
 
 
 # Narration de combat : CombatDescriber.cs, Combat/EffectFormatter.cs, Combat/HealthTracker.cs
@@ -58,6 +75,10 @@ combat.poison_amount = {0} poison
 combat.poison_applied = poison appliqué
 combat.regen_amount = {0} régénération
 combat.regen_applied = régénération appliquée
+combat.tempo_gain_amount = +{0} {1}
+combat.tempo_remove_amount = -{0} {1}
+combat.tempo_gained = {0} gagné
+combat.tempo_removed = {0} retiré
 combat.stole_gold = a volé {0} or
 combat.gold_stolen = or volé
 combat.max_health_increase = santé max +{0}
@@ -142,6 +163,8 @@ card.quest.progress = Quête {0}/{1}
 # --- Libellés de ligne de détail (rédigés par le mod, pas le vocabulaire du jeu) ---
 card.state.label = État : {0}
 card.enchanted.label = Enchanté : {0}
+card.socket_effect = Effet d'emplacement : {0}
+card.socket_effect_described = Effet d'emplacement, {0} : {1}
 card.buy.gold = Acheter {0} or
 card.sell.gold = Vendre {0} or
 card.buy.info = {0}, {1} or
@@ -152,6 +175,8 @@ card.sell.info = {0}, se vend {1} or
 # (Dégâts, Bouclier, Temps de recharge...) ; seul le format autour est un modèle.
 card.stat.line = {0} : {1}
 card.stat.inline = {0} {1}
+card.stat.seconds.one = {0} seconde
+card.stat.seconds.other = {0} secondes
 
 # --- Descriptions de tag/mot-clé (touche I) ---
 card.property.noDescription = Aucune description disponible
@@ -281,7 +306,7 @@ nav.state.defeat = Défaite
 nav.section.board = Plateau
 nav.section.stash = Réserve
 nav.section.skills = Compétences
-nav.section.free_prefix = {0} libre
+nav.section.free_prefix = {0} (gratuit)
 nav.section.count.one = {0}, {1} objet
 nav.section.count.other = {0}, {1} objets
 nav.action.exit = Quitter
@@ -344,6 +369,7 @@ action.bought = {0} acheté pour {1} or
 action.purchase.failed = Échec de l'achat
 action.cannot.sell.now = Impossible de vendre maintenant
 action.sold = {0} vendu pour {1} or
+action.skill_learned = Compétence apprise : {0}
 action.sale.failed = Échec de la vente
 action.cannot.move.now = Impossible de déplacer maintenant
 action.cannot.move.items.now = Impossible de déplacer des objets maintenant
@@ -420,7 +446,9 @@ action.cannot.reorder.right.now = Impossible de réordonner maintenant
 action.combat.short = Combat
 action.stash.closed = Réserve fermée
 action.stash.opened.empty = Réserve ouverte, vide. Appuyez sur Espace pour fermer.
+action.stash.opened.empty_short = Réserve ouverte, vide
 action.combat.ended = Combat terminé. Entrée pour continuer.
+action.combat.ended_short = Combat terminé
 action.continuing = Poursuite
 action.replaying.combat = Rediffusion du combat
 action.recap.entered = Récapitulatif. V héros, F ennemi, G plateau ennemi, B votre plateau.
@@ -504,6 +532,20 @@ action.skill.with.description = {0} : {1}
 
 # --- MainMenuScreen ---
 screen.mainmenu.name = Menu principal
+screen.mainmenu.hero = Héros : {0}
+screen.mainmenu.unavailable = {0}, indisponible
+screen.mainmenu.buy_full_game = Débloquer le jeu complet
+screen.mainmenu.prize_pass = Prize Pass
+screen.mainmenu.settings = Paramètres
+screen.mainmenu.mode.unranked = Normal
+screen.mainmenu.mode.ranked = Classé
+screen.mainmenu.mode.tournament = Tournoi
+screen.mainmenu.option_selected = {0}, sélectionné
+screen.mainmenu.with_rank = {0}. Rang : {1}
+screen.mainmenu.mode_selected = {0} sélectionné
+screen.mainmenu.gems = Gemmes : {0}
+screen.mainmenu.buy_chests = Acheter des coffres
+screen.mainmenu.with_count = {0}, {1}
 
 # --- ChestSceneScreen ---
 screen.chestscene.name = Coffres
@@ -528,6 +570,15 @@ screen.collection.category.cardskins = Habillages de carte
 screen.collection.category.carpets = Tapis
 screen.collection.category.cardbacks = Dos de carte
 screen.collection.category.albums = Albums
+screen.collection.category.stash = Réserve
+screen.collection.category.bank = Banque
+screen.collection.category.toys = Jouets
+ui.loadout.title = Équiper des objets de collection
+ui.loadout.randomize = Équipement aléatoire
+ui.loadout.category_equipped = {0} : {1}
+ui.loadout.equipped = {0}, équipé
+ui.purchase.title = Boutique
+ui.purchase.confirm = Confirmer
 screen.collection.item_unknown = Inconnu
 screen.collection.equipped = équipé
 screen.collection.category_summary.one = {0}, {1} objet
@@ -540,29 +591,13 @@ screen.collection.equipping = Équipement de {0}
 screen.collection.equipped_done = {0} équipé
 screen.collection.equip_failed = Échec de l'équipement de l'objet
 
-# --- HeroSelectScreen ---
-screen.heroselect.name = Sélection du héros
-screen.heroselect.random = Héros aléatoire : {0}
-screen.state.on = activé
-screen.state.off = désactivé
-screen.heroselect.casual_selected_announce = Décontracté sélectionné
-screen.heroselect.ranked_selected_announce_rank = Classé sélectionné. Rang : {0}
-screen.heroselect.ranked_selected_announce = Classé sélectionné
-screen.heroselect.casual_selected = Décontracté, sélectionné
-screen.heroselect.casual = Décontracté
-screen.heroselect.ranked_selected_rank = Classé, sélectionné. Rang : {0}
-screen.heroselect.ranked_selected = Classé, sélectionné
-screen.heroselect.ranked = Classé
-screen.heroselect.resume = Reprendre
-screen.heroselect.ready = Prêt
-screen.heroselect.back = Retour
-screen.heroselect.unknown_hero = Héros inconnu
-screen.heroselect.hero_selected_tag = sélectionné
-screen.heroselect.hero_locked_tag = verrouillé
-screen.heroselect.hero_is_locked = {0} est verrouillé
-screen.heroselect.hero_selected = {0} sélectionné
-screen.heroselect.random_enabled = Mode héros aléatoire activé
-screen.heroselect.current_hero = Héros actuel : {0}
+# --- HeroSelectUI (hero picker popup) ---
+ui.heroselect.name = Choisir un héros
+ui.heroselect.hint = Entrée pour choisir. Flèche gauche ou droite inclut ou exclut un héros du tirage aléatoire.
+ui.heroselect.locked = {0}, verrouillé
+ui.heroselect.excluded = {0}, exclu de l'aléatoire
+ui.heroselect.excluded_announce = {0} exclu de l'aléatoire
+ui.heroselect.included_announce = {0} inclus dans l'aléatoire
 
 # --- BattlePassScreen ---
 screen.battlepass.name = Pass saisonnier
@@ -823,7 +858,8 @@ patch.textfield.editing = édition
 patch.textfield.empty = {0} : vide
 patch.textfield.unavailable = {0} : indisponible
 patch.textfield.value = {0} : {1}
-vocab.card.size_slots = Taille : {0} emplacements ({1})
+vocab.card.size_slots.one = Taille : {0} emplacement ({1})
+vocab.card.size_slots.other = Taille : {0} emplacements ({1})
 vocab.card.temperature_both = {0} et {1}
 vocab.hero.burn = Brûlure
 vocab.hero.critchance = Chance de critique
@@ -844,6 +880,7 @@ vocab.hero.summary.gold = Or {0}
 vocab.hero.summary.health = Santé {0} sur {1}
 vocab.hero.summary.level = Niveau {0}
 vocab.hero.summary.rage = Rage {0} / {1}
+vocab.tempo = Tempo
 vocab.hero.summary.shield = Bouclier {0}
 vocab.size.large = Grand
 vocab.size.medium = Moyen
