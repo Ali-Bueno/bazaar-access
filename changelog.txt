@@ -2,6 +2,20 @@
 
 ---
 
+## November 16, 2026 (v1.11.1)
+
+### Store fixes
+- Pressing a pack in the chest store reads the confirmation ("10 chests. Gems: 1800") with
+  Confirm and Cancel; it was silent before
+- A completed purchase is announced with your remaining gems (the game only plays a sound); it also
+  goes to the message history
+- The "not enough gems" prompt reads its message
+- Opening the store no longer says "Store, Main menu, Store"
+- Opening 10 chests reads the rewards as soon as they arrive instead of after a fixed 25 seconds;
+  a single chest after 1.5 seconds instead of 6
+
+---
+
 ## November 16, 2026 (v1.11.0)
 
 ### Works again with the current game

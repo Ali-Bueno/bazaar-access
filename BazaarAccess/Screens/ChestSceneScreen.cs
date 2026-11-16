@@ -188,16 +188,15 @@ public class ChestSceneScreen : BaseScreen
             await Task.Delay(5500);
 
             // Trigger the lever pull to start multi-open
+            var previousRewards = _controller.playerChestInventory?.openedChestRewards;
             if (_controller.MultiOpenLever != null)
             {
                 _controller.MultiOpenLever.TriggerPullAndRelease();
             }
 
-            // Wait for multi-open animations to complete (varies by rarity, ~20 seconds)
-            await Task.Delay(20000);
-
-            // Show rewards
-            var rewards = _controller.playerChestInventory?.openedChestRewards;
+            // The rewards are a new list as soon as the server answers; the opening animation (~20 s)
+            // keeps playing, but there is no need to wait for it to read them.
+            var rewards = await WaitForNewRewards(previousRewards);
             if (rewards != null && rewards.Count > 0)
             {
                 var ui = new UI.ChestRewardsUI(_controller.transform, rewards);
@@ -301,13 +300,28 @@ public class ChestSceneScreen : BaseScreen
         }
     }
 
+    private const int SingleOpenDelayMs = 1500;
+    private const int RewardPollMs = 250;
+    private const int RewardTimeoutMs = 25000; // the old fixed wait for the whole multi-open animation
+
+    private async Task<List<PlayerChestInventory.ChestRewardResponse>> WaitForNewRewards(List<PlayerChestInventory.ChestRewardResponse> previous)
+    {
+        for (int waited = 0; waited < RewardTimeoutMs; waited += RewardPollMs)
+        {
+            await Task.Delay(RewardPollMs);
+            var current = _controller?.playerChestInventory?.openedChestRewards;
+            if (current != null && !ReferenceEquals(current, previous) && current.Count > 0) return current;
+        }
+        return _controller?.playerChestInventory?.openedChestRewards;
+    }
+
     /// <summary>
     /// Waits for chest opening animation and shows rewards UI.
     /// </summary>
     private async Task WaitAndShowRewards()
     {
-        // Wait for chest animation to complete (approximately 5-6 seconds)
-        await Task.Delay(6000);
+        // The rewards are already known here; give the opening a moment to start (it used to wait 6 s).
+        await Task.Delay(SingleOpenDelayMs);
 
         var rewards = _controller.playerChestInventory?.openedChestRewards;
         if (rewards == null || rewards.Count == 0)

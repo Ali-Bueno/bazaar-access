@@ -144,7 +144,9 @@ public class GemPromptUI : BaseUI
     {
         const float textLoadDelaySeconds = 0.5f; // OnEnable fills the labels asynchronously
         yield return new WaitForSecondsRealtime(textLoadDelaySeconds);
-        Menu.StartReading(announceMenuName: true);
+        // The menu name was fixed before the texts loaded: read the prompt's own title and message.
+        string text = string.Join(". ", new[] { FieldText("_title"), FieldText("_description") }.Where(t => t != null));
+        TolkWrapper.Speak(string.IsNullOrEmpty(text) ? UIName : text);
     }
 
     protected override void OnBack() => Invoke("Close");
@@ -158,4 +160,124 @@ public class GemPromptUI : BaseUI
         string value = text != null ? TextHelper.CleanText(text.text) : null;
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
+}
+
+/// <summary>
+/// Store purchase confirmation (ConfirmationComponent: "Buy 10 chests", gem price): Confirm or Cancel.
+/// </summary>
+public class PurchaseConfirmationUI : BaseUI
+{
+    private readonly MonoBehaviour _popup;
+
+    public PurchaseConfirmationUI(MonoBehaviour popup) : base(popup.transform, buildMenuNow: false)
+    {
+        _popup = popup;
+        Initialize();
+    }
+
+    public override string UIName => Loc.T("ui.purchase.title");
+
+    protected override void BuildMenu()
+    {
+        // Title and price are set right after the popup appears, so they are read live.
+        Menu.AddOption(() => Summary(), () => { });
+        Menu.AddOption(() => ButtonText("_confirmButton") ?? Loc.T("ui.purchase.confirm"), () =>
+        {
+            int gemsBefore = PurchaseAnnouncer.CurrentGems();
+            Invoke("Confirm");
+            PurchaseAnnouncer.AnnounceWhenGemsChange(gemsBefore);
+        });
+        Menu.AddOption(() => ButtonText("_cancelButton") ?? Loc.T("action.cancel"), () => Invoke("Close"));
+    }
+
+    public override void OnFocus()
+    {
+        Plugin.Instance.StartCoroutine(ReadAfterSetup());
+    }
+
+    private System.Collections.IEnumerator ReadAfterSetup()
+    {
+        const float setupDelaySeconds = 0.3f; // SetTitle / SetPrice run after the node spawns
+        yield return new WaitForSecondsRealtime(setupDelaySeconds);
+        TolkWrapper.Speak(Summary());
+    }
+
+    private string Summary()
+    {
+        string title = FieldText("_itemTitle");
+        string price = FieldText("_itemPrice");
+        if (price != null) price = Loc.T("screen.mainmenu.gems", price);
+        return string.Join(". ", new[] { title, price }.Where(t => !string.IsNullOrEmpty(t)));
+    }
+
+    protected override void OnBack() => Invoke("Close");
+
+    private void Invoke(string method) => AccessTools.Method(_popup.GetType(), method)?.Invoke(_popup, null);
+
+    private string FieldText(string field)
+    {
+        if (_popup == null) return null; // BaseUI reads the name before this class's fields are set
+        var text = AccessTools.Field(_popup.GetType(), field)?.GetValue(_popup) as TMP_Text;
+        string value = text != null ? TextHelper.CleanText(text.text) : null;
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private string ButtonText(string field)
+    {
+        if (_popup == null) return null;
+        var button = AccessTools.Field(_popup.GetType(), field)?.GetValue(_popup) as Component;
+        string value = button != null ? TextHelper.CleanText(button.GetComponentInChildren<TMP_Text>(true)?.text) : null;
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+}
+
+/// <summary>
+/// The game confirms store purchases only with a sound: announce the result once the wallet changes.
+/// </summary>
+public static class PurchaseAnnouncer
+{
+    private const float PollSeconds = 0.25f;
+    private const float TimeoutSeconds = 15f; // the purchase is a server round trip
+
+    public static int CurrentGems() => TheBazaar.ClientCache.Wallet.HasData ? TheBazaar.ClientCache.Wallet.Value.Gems : 0;
+
+    public static void AnnounceWhenGemsChange(int gemsBefore) => Plugin.Instance.StartCoroutine(Wait(gemsBefore));
+
+    /// <summary>For purchases the game reports as done (gem packs): read the new balance once it is applied.</summary>
+    public static void AnnounceDone() => Plugin.Instance.StartCoroutine(AnnounceDoneAfterApply());
+
+    private static System.Collections.IEnumerator AnnounceDoneAfterApply()
+    {
+        const float applyDelaySeconds = 1f; // the wallet delta is applied right after the success callback
+        yield return new WaitForSecondsRealtime(applyDelaySeconds);
+        string text = Loc.T("ui.purchase.done", CurrentGems());
+        MessageBuffer.Add(text);
+        TolkWrapper.Speak(text, interrupt: false);
+    }
+
+    private static System.Collections.IEnumerator Wait(int gemsBefore)
+    {
+        for (float waited = 0f; waited < TimeoutSeconds; waited += PollSeconds)
+        {
+            yield return new WaitForSecondsRealtime(PollSeconds);
+            int gems = CurrentGems();
+            if (gems == gemsBefore) continue;
+
+            string text = Loc.T("ui.purchase.done", gems);
+            MessageBuffer.Add(text);
+            TolkWrapper.Speak(text, interrupt: false);
+            yield break;
+        }
+        TolkWrapper.Speak(Loc.T("ui.purchase.not_confirmed"), interrupt: false);
+    }
+}
+
+[HarmonyLib.HarmonyPatch]
+public static class GemPurchaseSuccessPatch
+{
+    static System.Reflection.MethodBase TargetMethod()
+        => AccessTools.Method(AccessTools.TypeByName("TheBazaar.UI.PurchaseGemsView"), "OnPurchaseSuccess");
+
+    [HarmonyLib.HarmonyPostfix]
+    public static void Postfix() => PurchaseAnnouncer.AnnounceDone();
 }

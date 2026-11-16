@@ -22,7 +22,9 @@ public static class UIPopupShowPatch
     [HarmonyPostfix]
     public static void Postfix(MonoBehaviour __instance)
     {
-        if (__instance == null || OpenUIs.ContainsKey(__instance)) return;
+        if (__instance == null) return;
+        if (PendingClose.Remove(__instance)) return; // shown again while switching screens: keep its UI
+        if (OpenUIs.ContainsKey(__instance)) return;
 
         try
         {
@@ -61,14 +63,41 @@ public static class UIPopupShowPatch
                 return new GemPromptUI(popup);
             case "LoadoutPopupController":
                 return new LoadoutUI(popup);
+            case "ConfirmationComponent":
+                return new PurchaseConfirmationUI(popup);
             default:
                 return null;
         }
     }
 
+    // Store flows hide and re-show the same popup while switching screens; closing its UI at once would
+    // briefly announce the screen underneath ("Store, Main menu, Store").
+    private const float ReshowGraceSeconds = 0.3f;
+    private static readonly HashSet<MonoBehaviour> PendingClose = new HashSet<MonoBehaviour>();
+
     internal static void Close(MonoBehaviour popup)
     {
-        if (popup == null || !OpenUIs.TryGetValue(popup, out var ui)) return;
+        if (popup == null || !OpenUIs.ContainsKey(popup)) return;
+
+        // Generic popups reuse one instance for a different message: rebuild those right away.
+        if (popup is GenericPopup)
+        {
+            CloseNow(popup);
+            return;
+        }
+
+        if (PendingClose.Add(popup)) Plugin.Instance.StartCoroutine(CloseAfterGrace(popup));
+    }
+
+    private static System.Collections.IEnumerator CloseAfterGrace(MonoBehaviour popup)
+    {
+        yield return new WaitForSecondsRealtime(ReshowGraceSeconds);
+        if (PendingClose.Remove(popup)) CloseNow(popup);
+    }
+
+    private static void CloseNow(MonoBehaviour popup)
+    {
+        if (!OpenUIs.TryGetValue(popup, out var ui)) return;
         OpenUIs.Remove(popup);
         AccessibilityMgr.HideUI(ui);
     }
@@ -78,6 +107,28 @@ public static class UIPopupShowPatch
 public static class UIPopupHidePatch
 {
     static MethodBase TargetMethod() => AccessTools.Method(AccessTools.TypeByName("UIScripts.UIPopup"), "Hide");
+
+    [HarmonyPostfix]
+    public static void Postfix(MonoBehaviour __instance) => UIPopupShowPatch.Close(__instance);
+}
+
+/// <summary>
+/// Store flows activate some SequencePopups (e.g. the purchase confirmation) without calling Show:
+/// treat enabling / disabling as show / hide too (the Show hook ignores popups it already handles).
+/// </summary>
+[HarmonyPatch]
+public static class SequencePopupEnablePatch
+{
+    static MethodBase TargetMethod() => AccessTools.Method(AccessTools.TypeByName("UIScripts.SequencePopup"), "OnEnable");
+
+    [HarmonyPostfix]
+    public static void Postfix(MonoBehaviour __instance) => UIPopupShowPatch.Postfix(__instance);
+}
+
+[HarmonyPatch]
+public static class SequencePopupDisablePatch
+{
+    static MethodBase TargetMethod() => AccessTools.Method(AccessTools.TypeByName("UIScripts.SequencePopup"), "OnDisable");
 
     [HarmonyPostfix]
     public static void Postfix(MonoBehaviour __instance) => UIPopupShowPatch.Close(__instance);
