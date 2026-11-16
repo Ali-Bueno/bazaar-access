@@ -214,7 +214,10 @@ public class ChestSceneScreen : BaseScreen
     {
         try
         {
-            // Click the home button to exit
+            // Chests now live in the Collection scene: its navigation menu's Home button is the way out.
+            if (NavigationMenuHelper.TryGoHome()) return;
+
+            // Older builds: the chest scene's own home button
             if (_controller.HomeButton != null)
             {
                 _controller.HomeButton.onClick.Invoke();

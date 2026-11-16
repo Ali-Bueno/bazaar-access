@@ -2,6 +2,15 @@
 
 ---
 
+## November 16, 2026 (v1.11.2)
+
+- The Collection now lists the Stash, Bank and Toys categories (stash and bank cosmetics won in
+  chests were missing); default items no longer read "Invalid" as their rarity
+- Leaving the Chests screen works again ("Back" or Backspace); chests now open inside the
+  Collection, whose menu has its own Home button
+
+---
+
 ## November 16, 2026 (v1.11.1)
 
 ### Store fixes

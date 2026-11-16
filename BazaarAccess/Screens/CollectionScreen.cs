@@ -25,7 +25,7 @@ public class CollectionScreen : BaseScreen
     private CollectionManager _collectionManager;
     private CollectionUIController _uiController;
 
-    // Available collection types (excluding Invalid, Toys, Chests, Stash, Bank, Count)
+    // Collection types (excluding Invalid, Chests, Count). Stash and Bank cosmetics came with the 2026 builds.
     private readonly BazaarInventoryTypes.ECollectionType[] _collectionTypes = new[]
     {
         BazaarInventoryTypes.ECollectionType.HeroSkins,
@@ -33,6 +33,9 @@ public class CollectionScreen : BaseScreen
         BazaarInventoryTypes.ECollectionType.CardSkins,
         BazaarInventoryTypes.ECollectionType.Carpets,
         BazaarInventoryTypes.ECollectionType.CardBacks,
+        BazaarInventoryTypes.ECollectionType.Stash,
+        BazaarInventoryTypes.ECollectionType.Bank,
+        BazaarInventoryTypes.ECollectionType.Toys,
         BazaarInventoryTypes.ECollectionType.Album
     };
 
@@ -147,7 +150,8 @@ public class CollectionScreen : BaseScreen
 
         // Rarity
         // The server sends the rarity in English ("Gold"): use the localized tier name when it matches.
-        if (item.Rarity.Name != null)
+        // Default items (e.g. the starting stash) have the placeholder rarity "Invalid": not read.
+        if (item.Rarity.Name != null && item.Rarity.Name != "Invalid")
         {
             bool isTier = System.Enum.IsDefined(typeof(ETier), item.Rarity.Name);
             parts.Add(isTier ? Gameplay.ItemReader.GetTierName((ETier)System.Enum.Parse(typeof(ETier), item.Rarity.Name)) : item.Rarity.Name);
